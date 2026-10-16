@@ -16,6 +16,10 @@ Giáo viên thiết lập ma trận đề, số câu dựa trên các tiêu chí
 
 ## 3. Luồng dữ liệu
 
+### 3.1. Luồng tạo và lưu câu hỏi
+
+Khi giáo viên nhập câu hỏi và nhấn Lưu, Frontend thu thập dữ liệu từ biểu mẫu và gửi yêu cầu đến Backend thông qua API. Backend xác thực người dùng, kiểm tra quyền truy cập, tính hợp lệ của dữ liệu và thực hiện các quy tắc nghiệp vụ trước khi lưu. Nếu yêu cầu hợp lệ, Backend ghi dữ liệu câu hỏi vào Database; trạng thái và khả năng sử dụng câu hỏi tiếp tục tuân theo quy trình kiểm tra trùng lặp bằng AI. Sau khi xử lý, Backend trả kết quả về Frontend để thông báo cho giáo viên biết thao tác thành công hoặc lỗi cần khắc phục.
+
 ## 4. Thiết kế cơ sở dữ liệu
 
 ## 5. Kiến trúc hệ thống
