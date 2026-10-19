@@ -1,13 +1,6 @@
-const express = require('express');
-const app = express();
-const port = 3000;
+const app = require('./src/app');
 
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok', 
-        service: 'olms-backend'
-    })
-});
+const port = 3000;
 
 app.listen(port, () => {
     console.log(`Backend running at http://localhost:${port}`);
