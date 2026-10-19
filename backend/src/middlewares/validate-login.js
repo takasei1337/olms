@@ -13,6 +13,8 @@ function validateLogin(req, res, next) {
             success: false,
             code: 'VALIDATION_FAILED',
             message: 'Dữ liệu yêu cầu không hợp lệ.',
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString(),   
             data: {
                 details: [],
                 retryable: false
