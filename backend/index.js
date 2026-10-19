@@ -1,3 +1,5 @@
+require('dotenv').config({quiet: true});
+
 const app = require('./src/app');
 
 const port = 3000;
