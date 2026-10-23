@@ -32,7 +32,7 @@ async function revokeRefreshToken(tokenId) {
     .select('id')
     .maybeSingle();
     if (error) throw error;
-    if (!data) throw new Error('Refresh Token was not revoked');
+    if (!data) return;
 }
 
 async function issueRefreshToken(userId) {

@@ -1,19 +1,20 @@
 const express = require('express');
 const validateLogin = require('../middlewares/validate-login');
 const {checkCredentials, findActiveUserById} = require('../services/auth.service')
+
 const {
    generateAccessToken, 
    hashRefreshToken,
-   generateRefreshToken,
    REFRESH_TOKEN_TTL_DAYS
 } = require('../services/token.service');
+
 const { 
    issueRefreshToken,
    findRefreshTokenByHash, 
    revokeRefreshToken,
    rotateRefreshToken
 } = require('../services/refresh-token.service');
-const { hash } = require('bcrypt');
+
 const router = express.Router();
 const refreshCookieOptions = {
    httpOnly: true,
@@ -159,6 +160,56 @@ router.post('/refresh', async (req, res) => {
          token_type: 'Bearer',
          expires_in: 900
       },
+      trace_id: req.traceId,
+      timestamp: new Date().toISOString()
+   });
+});
+
+router.post('/logout', async (req, res) => {
+   const refreshToken = req.cookies?.olms_refresh;
+
+   res.clearCookie('olms_refresh', {
+      path: '/api/v1/auth',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+   });
+
+   if (!refreshToken) {
+      return res.status(200).json({
+         success: true,
+         message: 'Logged out successfully.',
+         trace_id: req.traceId,
+         timestamp: new Date().toISOString()
+      });
+   }
+
+   if (!/^[0-9a-f]{64}$/.test(refreshToken)) {
+      return res.status(200).json({
+         success: true,
+         message: 'Logged out successfully.',
+         trace_id: req.traceId,
+         timestamp: new Date().toISOString()
+      });
+   }
+
+   const tokenHash = hashRefreshToken(refreshToken);
+   const storedToken = await findRefreshTokenByHash(tokenHash);
+
+   if (!storedToken || storedToken.revoked_at !== null) {
+      return res.status(200).json({
+         success: true,
+         message: 'Logged out successfully.',
+         trace_id: req.traceId,
+         timestamp: new Date().toISOString()
+      });
+   }
+
+   await revokeRefreshToken(storedToken.id);
+
+   return res.status(200).json({
+      success: true,
+      message: 'Logged out successfully.',
       trace_id: req.traceId,
       timestamp: new Date().toISOString()
    });
