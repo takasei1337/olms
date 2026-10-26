@@ -15,6 +15,8 @@ const {
    rotateRefreshToken
 } = require('../services/refresh-token.service');
 
+const authenticate = require('../middlewares/authenticate');
+
 const router = express.Router();
 const refreshCookieOptions = {
    httpOnly: true,
@@ -210,6 +212,34 @@ router.post('/logout', async (req, res) => {
    return res.status(200).json({
       success: true,
       message: 'Logged out successfully.',
+      trace_id: req.traceId,
+      timestamp: new Date().toISOString()
+   });
+});
+
+router.get('/me', authenticate, async(req, res) => {
+   const userId = req.auth.sub;
+   const user = await findActiveUserById(userId);
+
+   if (!user) {
+      return res.status(401).json({
+         success: false,
+         code: "INVALID_ACCESS_TOKEN",
+         message: "User does not exist or is inactive.",
+         trace_id: req.traceId,
+         timestamp: new Date().toISOString()
+      });
+   }
+
+   return res.status(200).json({
+      success: true,
+      data: {
+         id: user.id,
+         username: user.username,
+         full_name: user.full_name,
+         role: user.role,
+         status: user.status
+      },
       trace_id: req.traceId,
       timestamp: new Date().toISOString()
    });

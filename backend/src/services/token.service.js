@@ -22,6 +22,10 @@ function generateAccessToken(user) {
     );
 }
 
+function verifyAccessToken(token) {
+    return jwt.verify(token, process.env.JWT_ACCESS_SECRET, {algorithms: ['HS256']});
+}
+
 function generateRefreshToken() {
     return randomBytes(32).toString('hex');
 }
@@ -46,5 +50,6 @@ module.exports = {
     generateRefreshToken,
     hashRefreshToken,
     REFRESH_TOKEN_TTL_DAYS,
-    getRefreshTokenExpiresAt
+    getRefreshTokenExpiresAt,
+    verifyAccessToken
 };
