@@ -35,6 +35,16 @@ async function revokeRefreshToken(tokenId) {
     if (!data) return;
 }
 
+async function revokeAllUserRefreshTokens(userId) {
+    const {error} = await supabase
+    .from('refresh_tokens')
+    .update({revoked_at: new Date().toISOString()})
+    .eq('user_id', userId)
+    .is('revoked_at', null);
+
+    if (error) throw error;
+}
+
 async function issueRefreshToken(userId) {
     const refreshToken = generateRefreshToken();
     const tokenHash = hashRefreshToken(refreshToken);
@@ -77,5 +87,6 @@ module.exports = {
     issueRefreshToken,
     findRefreshTokenByHash,
     revokeRefreshToken,
-    rotateRefreshToken
+    rotateRefreshToken,
+    revokeAllUserRefreshTokens
 };

@@ -1,6 +1,13 @@
 const express = require('express');
 const validateLogin = require('../middlewares/validate-login');
-const {checkCredentials, findActiveUserById} = require('../services/auth.service')
+const {
+   checkCredentials, 
+   findActiveUserById, 
+   verifyPassword, 
+   findUserCredentialsById, 
+   hashPassword, 
+   updateUserPassword
+} = require('../services/auth.service');
 
 const {
    generateAccessToken, 
@@ -12,7 +19,8 @@ const {
    issueRefreshToken,
    findRefreshTokenByHash, 
    revokeRefreshToken,
-   rotateRefreshToken
+   rotateRefreshToken,
+   revokeAllUserRefreshTokens
 } = require('../services/refresh-token.service');
 
 const authenticate = require('../middlewares/authenticate');
@@ -240,6 +248,116 @@ router.get('/me', authenticate, async(req, res) => {
          role: user.role,
          status: user.status
       },
+      trace_id: req.traceId,
+      timestamp: new Date().toISOString()
+   });
+});
+
+router.put('/password', authenticate, async (req, res) => {
+
+   const userId = req.auth.sub;
+   const user = await findActiveUserById(userId);
+
+   if (!user) {
+      return res.status(401).json({
+         success: false,
+         code: "INVALID_ACCESS_TOKEN",
+         message: "User does not exist or is inactive.",
+         trace_id: req.traceId,
+         timestamp: new Date().toISOString()
+      });
+   }
+
+   if (!['ADMIN', 'TEACHER'].includes(user.role)) {
+      return res.status(403).json({
+         success: false,
+         code: "FORBIDDEN",
+         message: 'You do not have permission to change password.',
+         trace_id: req.traceId,
+         timestamp: new Date().toISOString()
+      });
+   }
+
+   const {current_password, new_password} = req.body ?? {};
+
+   const validPassword = typeof new_password === 'string'
+   && new_password.length >= 0 && /[A-Z]/.test(new_password)
+   && /[a-z]/.test(new_password) && /[A-Z]/.test(new_password)
+   && /[A-Za-z0-9]/.test(new_password);
+
+   if (typeof current_password !== 'string' ||
+      current_password.length === 0 ||
+      !validPassword) {
+         return res.status(400).json({
+            success: false,
+            code: 'VALIDATION_ERROR',
+            message: 'Current password is required. New password must have at least 8 characters, including uppercase, lowercase, number and special character.',
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+         });
+      }
+   
+   const credentials = await findUserCredentialsById(userId);
+
+   if (!credentials) {
+      return res.status(401).json({
+         success: false,
+         code: "INVALID_ACCESS_TOKEN",
+         message: "User does not exist or is inactive.",
+         trace_id: req.traceId,
+         timestamp: new Date().toISOString()
+      });
+   }
+
+   const passwordMatches = await verifyPassword(current_password, credentials.password_hash);
+
+   if (!passwordMatches) {
+      return res.status(401).json({
+         success: false,
+         code: "INVALID_CURRENT_PASSWORD",
+         message: 'Current password is incorrect.',
+         trace_id: req.traceId,
+         timestamp: new Date().toISOString()
+      });
+   }
+
+   if (new_password === current_password) {
+      return res.status(409).json({
+         success: false,
+         code: 'PASSWORD_UNCHANGED',
+         message: 'New password must be different from current password.',
+         trace_id: req.traceId,
+         timestamp: new Date().toISOString()
+      });
+   }
+
+   const newPasswordHash = await hashPassword(new_password);
+   const updateUser = await updateUserPassword(userId, newPasswordHash);
+
+   if (!updateUser) {
+      return res.status(401).json({
+         success: false,
+         code: 'INVALID_ACCESS_TOKEN',
+         message: 'User does not exist or is inactive.',
+         trace_id: req.traceId,
+         timestamp: new Date().toISOString()
+      });
+   }
+
+   await revokeAllUserRefreshTokens(userId);
+
+   res.clearCookie('olms_refresh', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/api/v1/auth'
+   });
+
+   return res.status(200).json({
+      success: true,
+      code: 'SUCCESS',
+      message: 'Password changed successfully.',
+      data: {},
       trace_id: req.traceId,
       timestamp: new Date().toISOString()
    });

@@ -18,6 +18,10 @@ async function verifyPassword(password, passwordHash) {
     return await bcrypt.compare(password, passwordHash);
 }
 
+async function hashPassword(password) {
+    return await bcrypt.hash(password, 12);
+}
+
 async function checkCredentials(username, password) {
     const user = await findUserByUsername(username);
     if (!user || user.status !== 'ACTIVE') return null;
@@ -39,10 +43,39 @@ async function findActiveUserById(userId) {
     return data;
 }
 
+async function findUserCredentialsById(userId) {
+    const {data, error} = await supabase
+    .from('users')
+    .select('id, password_hash')
+    .eq('id', userId)
+    .eq('status', 'ACTIVE')
+    .is('deleted_at', null)
+    .maybeSingle();
+
+    if (error) throw error;
+    return data;
+}
+
+async function updateUserPassword(userId, passwordHash) {
+    const {data, error} = await supabase
+    .from('users')
+    .update({password_hash: passwordHash})
+    .eq('id', userId)
+    .eq('status', 'ACTIVE')
+    .is('deleted_at', null)
+    .select('id')
+    .maybeSingle();
+
+    if (error) throw error;
+    return data;
+}
 
 module.exports = {
     findUserByUsername,
     verifyPassword,
     checkCredentials,
-    findActiveUserById
+    findActiveUserById,
+    findUserCredentialsById,
+    hashPassword,
+    updateUserPassword
 };
