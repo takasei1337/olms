@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const {hashPassword} = require('./auth.service');
 
 async function findUsers(from, to, q, role, status) {
     let query = supabase
@@ -41,7 +42,28 @@ async function findUserById(userId) {
     return data;
 }
 
+async function createUser(username, password, fullName, email, role) {
+    const passwordHash = await hashPassword(password);
+    const now = new Date().toISOString();
+
+    const {data, error} = await supabase
+    .from('users')
+    .insert({
+        id: require('node:crypto').randomUUID(),
+        username, password_hash: passwordHash,
+        full_name: fullName,
+        email, role, status: 'ACTIVE',
+        created_at: now, updated_at: now
+    })
+    .select('id, username, full_name, email, role, status, created_at')
+    .single();
+
+    if (error) throw error;
+    return data;
+}
+
 module.exports = {
     findUsers,
-    findUserById
+    findUserById,
+    createUser
 };

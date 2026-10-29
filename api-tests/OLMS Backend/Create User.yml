@@ -1,0 +1,28 @@
+info:
+  name: Create User
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: http://localhost:3000/api/v1/users
+  body:
+    type: json
+    data: |-
+      {
+        "username": "olms_test_student03",
+        "password": "Student123!",
+        "full_name": "OLMS Test Student 03",
+        "email": "olms_test_student03@example.com",
+        "role": "STUDENT"
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMWE4YTAzZS05ZDkxLTRkZjQtYTY5Yy0yOTliNWEyNTk2OTciLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3OTMyNDUyNjUsImV4cCI6MTc5MzI0NjE2NX0.0q9FvwZ9pXw_B1Rm_b0Lb0wb6pjIDPgf60btOWoOQ3k
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

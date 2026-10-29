@@ -2,10 +2,61 @@ const express = require('express');
 const router = express.Router();
 const authenticate = require('../middlewares/authenticate');
 const requireAdmin = require('../middlewares/require-admin');
-const {findUsers, findUserById} = require('../services/users.service');
+const {findUsers, findUserById, createUser} = require('../services/users.service');
 
 router.use(authenticate);
 router.use(requireAdmin);
+
+function validateCreateUserInput(body) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return 'Request body must be a JSON object.';
+    }
+
+    const requiredFields = ['username', 'password', 'full_name', 'email', 'role'];
+
+    for (const field of requiredFields) {
+        if (typeof body[field] !== 'string' || !body[field].trim()) {
+            return `${field} is required and must be a non-empty string.`;
+        }
+    }
+
+    if (body.username.length > 50) {
+        return 'username must not exceed 50 characters.';
+    }
+
+    const validPassword =
+        body.password.length >= 8 &&
+        /[A-Z]/.test(body.password) &&
+        /[a-z]/.test(body.password) &&
+        /[0-9]/.test(body.password) &&
+        /[^A-Za-z0-9]/.test(body.password);
+
+    if (!validPassword) {
+        return 'password must have at least 8 characters, including uppercase, lowercase, number and special character.';
+    }
+
+    if (body.full_name.length > 150) {
+        return 'full_name must not exceed 150 characters.';
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(body.email)) {
+        return 'email must be a valid email address.';
+    }
+
+    if (!['ADMIN', 'TEACHER'].includes(body.role)) {
+        return 'role must be ADMIN or TEACHER.';
+    }
+
+    const allowedFields = requiredFields;
+
+    if (Object.keys(body).some(field => !allowedFields.includes(field))) {
+        return 'Request contains unsupported fields.';
+    }
+
+    return null;
+}
 
 router.get('/', async (req, res) => {
     const q = String(req.query.q ?? '').trim();
@@ -100,6 +151,48 @@ router.get('/:id', async (req, res, next) => {
             timestamp: new Date().toISOString()
         });
     } catch (error) {
+        next(error);
+    }
+});
+
+router.post('/', async (req, res, next) => {
+    try {
+        const validationError = validateCreateUserInput(req.body);
+
+        if (validationError) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: validationError,
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const {username, password, full_name, email, role} = req.body;
+        
+        const user = await createUser(username, password, full_name, email, role);
+
+        return res.status(201).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'User created successfully.',
+            data: user,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        if (error.code === '23505') {
+            return res.status(409).json({
+                success: false,
+                code: 'USER_ALREADY_EXISTS',
+                message: 'Username or email already exists.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
         next(error);
     }
 });

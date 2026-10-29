@@ -280,10 +280,13 @@ router.put('/password', authenticate, async (req, res) => {
 
    const {current_password, new_password} = req.body ?? {};
 
-   const validPassword = typeof new_password === 'string'
-   && new_password.length >= 0 && /[A-Z]/.test(new_password)
-   && /[a-z]/.test(new_password) && /[A-Z]/.test(new_password)
-   && /[A-Za-z0-9]/.test(new_password);
+   const validPassword =
+      typeof new_password === 'string' &&
+      new_password.length >= 8 &&
+      /[A-Z]/.test(new_password) &&
+      /[a-z]/.test(new_password) &&
+      /[0-9]/.test(new_password) &&
+      /[^A-Za-z0-9]/.test(new_password);
 
    if (typeof current_password !== 'string' ||
       current_password.length === 0 ||
