@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authenticate = require('../middlewares/authenticate');
 const requireAdmin = require('../middlewares/require-admin');
-const {findUsers} = require('../services/users.service');
+const {findUsers, findUserById} = require('../services/users.service');
 
 router.use(authenticate);
 router.use(requireAdmin);
@@ -63,6 +63,45 @@ router.get('/', async (req, res) => {
         trace_id: req.traceId,
         timestamp: new Date().toISOString()
     });
+});
+
+router.get('/:id', async (req, res, next) => {
+    try {
+        const {id} = req.params;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(id)) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid user ID format.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        const user = await findUserById(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                code: 'USER_NOT_FOUND',
+                message: 'User not found.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'User retrieved successfully.',
+            data: user,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        next(error);
+    }
 });
 
 module.exports = router;

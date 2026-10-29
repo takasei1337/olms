@@ -5,8 +5,17 @@ info:
 
 http:
   method: GET
-  url: http://localhost:3000/api/v1/users
-  auth: inherit
+  url: http://localhost:3000/api/v1/users?page=1&page_size=100
+  params:
+    - name: page
+      value: "1"
+      type: query
+    - name: page_size
+      value: "100"
+      type: query
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMWE4YTAzZS05ZDkxLTRkZjQtYTY5Yy0yOTliNWEyNTk2OTciLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3OTMyMzg3ODQsImV4cCI6MTc5MzIzOTY4NH0.DfWUCuL2GbEkGNjz9cTlgdZE4r4cd6-Seq_G-EQ9OhQ
 
 settings:
   encodeUrl: true

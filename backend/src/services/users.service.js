@@ -29,6 +29,19 @@ async function findUsers(from, to, q, role, status) {
     };
 }
 
+async function findUserById(userId) {
+    const {data, error} = await supabase
+    .from('users')
+    .select('id, username, full_name, role, status')
+    .eq('id', userId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+    if (error) throw error;
+    return data;
+}
+
 module.exports = {
-    findUsers
+    findUsers,
+    findUserById
 };
