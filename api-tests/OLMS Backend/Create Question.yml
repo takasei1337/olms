@@ -1,0 +1,45 @@
+info:
+  name: Create Question
+  type: http
+  seq: 17
+
+http:
+  method: POST
+  url: http://localhost:3000/api/v1/questions
+  body:
+    type: json
+    data: |-
+      {
+        "type_id": "0199ac14-a9bc-7001-8000-000000000001",
+        "difficulty_level": "EASY",
+        "content": "Kết quả của phép tính 2 + 3 là bao nhiêu?",
+        "explanation": "2 + 3 = 5.",
+        "requested_status": "DRAFT",
+        "answer_spec": {
+          "schema_version": 1,
+          "kind": "SINGLE_CHOICE",
+          "choices": [
+            {
+              "id": "0199ac14-a9bc-7001-8000-000000000101",
+              "text": "4",
+              "order_no": 1,
+              "is_correct": false
+            },
+            {
+              "id": "0199ac14-a9bc-7001-8000-000000000102",
+              "text": "5",
+              "order_no": 2,
+              "is_correct": true
+            }
+          ]
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+

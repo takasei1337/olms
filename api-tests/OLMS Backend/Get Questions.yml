@@ -1,0 +1,24 @@
+info:
+  name: Get Questions
+  type: http
+  seq: 15
+
+http:
+  method: GET
+  url: http://localhost:3000/api/v1/questions?page=1&page_size=20
+  params:
+    - name: page
+      value: "1"
+      type: query
+    - name: page_size
+      value: "20"
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+

@@ -1,0 +1,21 @@
+info:
+  name: Delete Question
+  type: http
+  seq: 20
+
+http:
+  method: DELETE
+  url: http://localhost:3000/api/v1/questions/:questionId
+  params:
+    - name: questionId
+      value: 0199ac14-a9bc-7001-8000-000000000002
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+

@@ -1,0 +1,27 @@
+info:
+  name: Update Question Status
+  type: http
+  seq: 19
+
+http:
+  method: PATCH
+  url: http://localhost:3000/api/v1/questions/:questionId/status
+  params:
+    - name: questionId
+      value: 0199ac14-a9bc-7001-8000-000000000002
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "status": "ACTIVE"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
