@@ -10,8 +10,8 @@ http:
     type: json
     data: |-
       {
-        "username": "olms_test_student",
-        "password": "Admin123@"
+        "username": "admin",
+        "password": "Iroha1337@"
       }
   auth: inherit
 

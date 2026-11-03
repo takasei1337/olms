@@ -1,0 +1,24 @@
+info:
+  name: Update User
+  type: http
+  seq: 9
+
+http:
+  method: PATCH
+  url: http://localhost:3000/api/v1/users/34b637d7-bba1-4d55-b61e-f59493fdc2e8
+  body:
+    type: json
+    data: |-
+      {
+        "phone": null
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzOGEyNWRiZC1kNzY0LTRiYTYtYTRiYy0zNzI5ZTMzN2MwYjQiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3OTMyNTY3MjAsImV4cCI6MTc5MzI1NzYyMH0.Q5xnWKtkz4QPorZCsxxEkydP8YdZlleVchXeljtJPfw
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

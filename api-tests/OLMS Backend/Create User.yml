@@ -10,15 +10,15 @@ http:
     type: json
     data: |-
       {
-        "username": "olms_test_student03",
-        "password": "Student123!",
-        "full_name": "OLMS Test Student 03",
-        "email": "olms_test_student03@example.com",
-        "role": "STUDENT"
+        "username": "admin",
+        "password": "Iroha1337@",
+        "full_name": "OLMS ADMIN",
+        "email": "admin@olms.com",
+        "role": "ADMIN"
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMWE4YTAzZS05ZDkxLTRkZjQtYTY5Yy0yOTliNWEyNTk2OTciLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3OTMyNDUyNjUsImV4cCI6MTc5MzI0NjE2NX0.0q9FvwZ9pXw_B1Rm_b0Lb0wb6pjIDPgf60btOWoOQ3k
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMWE4YTAzZS05ZDkxLTRkZjQtYTY5Yy0yOTliNWEyNTk2OTciLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3OTMyNTY2NDEsImV4cCI6MTc5MzI1NzU0MX0.1-Q4Kw5a1xyfMG5EnQa7nxeyHqjjfPaoDaUVYDRHNmo
 
 settings:
   encodeUrl: true

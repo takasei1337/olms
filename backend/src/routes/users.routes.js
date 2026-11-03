@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authenticate = require('../middlewares/authenticate');
 const requireAdmin = require('../middlewares/require-admin');
-const {findUsers, findUserById, createUser} = require('../services/users.service');
+const {findUsers, findUserById, createUser, updateUser} = require('../services/users.service');
 
 router.use(authenticate);
 router.use(requireAdmin);
@@ -182,6 +182,149 @@ router.post('/', async (req, res, next) => {
             trace_id: req.traceId,
             timestamp: new Date().toISOString()
         });
+    } catch (error) {
+        if (error.code === '23505') {
+            return res.status(409).json({
+                success: false,
+                code: 'USER_ALREADY_EXISTS',
+                message: 'Username or email already exists.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+router.patch('/:id', async (req, res, next) => {
+
+    try {
+        const {id} = req.params;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(id)) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid user ID format.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Request body must be a JSON object.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }    
+
+        const allowedFields = ['full_name', 'email', 'phone', 'role'];
+
+        const unsupportedFields = (Object.keys(req.body).filter(field => !allowedFields.includes(field)));
+
+        if (unsupportedFields.length > 0) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Request contains unsupported fields.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        if (Object.keys(req.body).length === 0) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'At least one field is required for update.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        if (Object.prototype.hasOwnProperty.call(req.body, 'full_name')) {
+            if (typeof req.body.full_name !== 'string' || !req.body.full_name.trim() || req.body.full_name.length > 150) {
+                return res.status(400).json({
+                    success: false,
+                    code: 'VALIDATION_ERROR',
+                    message: 'full_name must be a non-empty string with at most 150 characters.',
+                    data: null,
+                    trace_id: req.traceId,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (typeof req.body.email !== 'string' || !emailRegex.test(req.body.email) || req.body.email.length > 255) {
+                return res.status(400).json({
+                    success: false,
+                    code: 'VALIDATION_ERROR',
+                    message: 'email must be a valid email address with at most 255 characters.',
+                    data: null,
+                    trace_id: req.traceId,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(req.body, 'role')) {
+            if (typeof req.body.role !== 'string' || !['ADMIN', 'TEACHER'].includes(req.body.role)) {
+                return res.status(400).json({
+                    success: false,
+                    code: 'VALIDATION_ERROR',
+                    message: 'role must be ADMIN or TEACHER.',
+                    data: null,
+                    trace_id: req.traceId,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(req.body, 'phone')) {
+            if (req.body.phone !== null && (typeof req.body.phone !== 'string' || !/^\+?[0-9]{9,15}$/.test(req.body.phone))) {
+                return res.status(400).json({
+                    success: false,
+                    code: 'VALIDATION_ERROR',
+                    message: 'phone must be null or a valid phone number containing 9 to 15 digits.',
+                    data: null,
+                    trace_id: req.traceId,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        const user = await updateUser(id, req.body);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                code: 'USER_NOT_FOUND',
+                message: 'User not found.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'User updated successfully.',
+            data: user,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+
     } catch (error) {
         if (error.code === '23505') {
             return res.status(409).json({

@@ -62,8 +62,26 @@ async function createUser(username, password, fullName, email, role) {
     return data;
 }
 
+
+async function updateUser(id, updates) {
+    const {data, error} = await supabase
+    .from('users')
+    .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .is('deleted_at', null)
+    .select('id, username, full_name, email, phone, role, status, updated_at')
+    .maybeSingle();
+
+    if (error) throw error;
+    return data;
+}
+
 module.exports = {
     findUsers,
     findUserById,
-    createUser
+    createUser,
+    updateUser
 };
