@@ -1,0 +1,28 @@
+info:
+  name: Update Subject
+  type: http
+  seq: 12
+
+http:
+  method: PATCH
+  url: http://localhost:3000/api/v1/subjects/:subjectId
+  params:
+    - name: subjectId
+      value: 0199ac14-a9bc-7001-8000-000000000001
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Toán cao cấp 1 (Cập nhật)",
+        "description": "Giải tích và hình học giải tích"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
