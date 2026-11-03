@@ -340,4 +340,19 @@ router.patch('/:id', async (req, res, next) => {
     }
 });
 
+router.delete('/:id', async (req, res, next) => {
+    try {
+        return res.status(501).json({
+            success: false,
+            code: "NOT_IMPLEMENTED",
+            message: "Delete user endpoint is not implemented yet.",
+            data: null,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 module.exports = router;

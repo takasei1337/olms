@@ -3,6 +3,7 @@ const cookieParser = require('cookie-parser');
 const healthRoutes = require('./routes/health.routes');
 const apiRoutes = require('./routes/api.routes');
 const requestContext = require('./middlewares/request-context');
+const pendingRoutes = require('./routes/pending.routes');
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use(requestContext);
 
 app.use(healthRoutes);
 app.use('/api/v1', apiRoutes);
+app.use('/api/v1', pendingRoutes);
 
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
