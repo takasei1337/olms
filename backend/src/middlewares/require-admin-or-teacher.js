@@ -1,8 +1,8 @@
-const {findActiveUserById} = require('../services/auth.service');
+const authService = require('../services/auth.service');
 
 async function requireAdminOrTeacher(req, res, next) {
     try {
-        const user = await findActiveUserById(req.auth.sub);
+        const user = await authService.findActiveUserById(req.auth.sub);
 
         if (!user) {
             return res.status(401).json({

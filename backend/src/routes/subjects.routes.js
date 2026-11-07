@@ -3,6 +3,7 @@ const router = express.Router();
 const authenticate = require('../middlewares/authenticate');
 const requireAdminOrTeacher = require('../middlewares/require-admin-or-teacher');
 const subjectsService = require('../services/subjects.service');
+const chaptersService = require('../services/chapters.service');
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -313,6 +314,169 @@ router.delete('/:subjectId', async (req, res, next) => {
             timestamp: new Date().toISOString()
         });
     } catch (error) {
+        next(error);
+    }
+});
+
+function validateCreateChapterInput(body) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return 'Request body must be a JSON object.';
+    }
+
+    const allowedFields = ['code', 'name', 'order_no'];
+    const unsupportedFields = Object.keys(body).filter(field => !allowedFields.includes(field));
+    if (unsupportedFields.length > 0) {
+        return 'Request contains unsupported fields.';
+    }
+
+    if (typeof body.name !== 'string' || !body.name.trim()) {
+        return 'name is required and must be a non-empty string.';
+    }
+    if (body.name.trim().length > 150) {
+        return 'name must not exceed 150 characters.';
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'code') && body.code !== null) {
+        if (typeof body.code !== 'string') {
+            return 'code must be a string or null.';
+        }
+        if (body.code.trim().length > 20) {
+            return 'code must not exceed 20 characters.';
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'order_no')) {
+        if (!Number.isInteger(body.order_no) || body.order_no < 0) {
+            return 'order_no must be a non-negative integer.';
+        }
+    }
+
+    return null;
+}
+
+// 5. GET /api/v1/subjects/:subjectId/chapters - Liệt kê chương của môn
+router.get('/:subjectId/chapters', async (req, res, next) => {
+    try {
+        const {subjectId} = req.params;
+
+        if (!UUID_REGEX.test(subjectId)) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid subject ID format.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const subject = await subjectsService.findSubjectById(subjectId);
+        if (!subject) {
+            return res.status(404).json({
+                success: false,
+                code: 'SUBJECT_NOT_FOUND',
+                message: 'Subject not found.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const chapters = await chaptersService.findChaptersBySubjectId(subjectId);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Chapters fetched successfully.',
+            data: chapters,
+            meta: null,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// 6. POST /api/v1/subjects/:subjectId/chapters - Thêm chương mới cho môn
+router.post('/:subjectId/chapters', async (req, res, next) => {
+    try {
+        const {subjectId} = req.params;
+
+        if (!UUID_REGEX.test(subjectId)) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid subject ID format.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const validationError = validateCreateChapterInput(req.body);
+        if (validationError) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: validationError,
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const subject = await subjectsService.findSubjectById(subjectId);
+        if (!subject) {
+            return res.status(404).json({
+                success: false,
+                code: 'SUBJECT_NOT_FOUND',
+                message: 'Subject not found.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // P-02: TEACHER can only add chapter to their own subject
+        if (req.currentUser.role === 'TEACHER' && subject.created_by !== req.currentUser.id) {
+            return res.status(403).json({
+                success: false,
+                code: 'FORBIDDEN',
+                message: 'You do not have permission to add chapter to this subject.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const chapter = await chaptersService.createChapter({
+            subjectId,
+            code: req.body.code,
+            name: req.body.name,
+            orderNo: req.body.order_no
+        });
+
+        return res.status(201).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Chapter created successfully.',
+            data: chapter,
+            meta: null,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        if (error.code === '23505') {
+            return res.status(409).json({
+                success: false,
+                code: 'CONFLICT',
+                message: 'Chapter with this code already exists in this subject.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
         next(error);
     }
 });

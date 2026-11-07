@@ -1,0 +1,24 @@
+# Dependencies & Environment
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Documentation
+docs
+
+# Agent configuration files
+agents.md
+gemini.md
+AGENTS.md
+GEMINI.md
+.agents/
+.gemini/
+
+# Explicitly ensure README.md is never ignored
+!README.md
+!readme.md
