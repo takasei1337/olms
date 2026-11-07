@@ -1,0 +1,28 @@
+info:
+  name: Create Lesson
+  type: http
+  seq: 25
+
+http:
+  method: POST
+  url: http://localhost:3000/api/v1/chapters/:chapterId/lessons
+  params:
+    - name: chapterId
+      value: 0199ac14-a9bc-7001-8000-000000000010
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "code": "LES01",
+        "name": "Bài 1: Giới hạn của dãy số",
+        "order_no": 1
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
