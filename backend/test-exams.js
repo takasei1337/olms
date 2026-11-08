@@ -142,6 +142,14 @@ test('EXAMS MODULE UNIT & INTEGRATION TESTS (MOCK)', async (t) => {
         replaceMatrix: examsService.replaceMatrix,
         replaceGradingRules: examsService.replaceGradingRules,
         validateMatrix: examsService.validateMatrix,
+        generateExamVariants: examsService.generateExamVariants,
+        listExamVariants: examsService.listExamVariants,
+        publishExam: examsService.publishExam,
+        startExam: examsService.startExam,
+        endExam: examsService.endExam,
+        archiveExam: examsService.archiveExam,
+        cancelExam: examsService.cancelExam,
+        getPrintFiles: examsService.getPrintFiles,
         supabaseFrom: supabase.from
     };
 
@@ -155,7 +163,15 @@ test('EXAMS MODULE UNIT & INTEGRATION TESTS (MOCK)', async (t) => {
             deleteExam: originals.deleteExam,
             replaceMatrix: originals.replaceMatrix,
             replaceGradingRules: originals.replaceGradingRules,
-            validateMatrix: originals.validateMatrix
+            validateMatrix: originals.validateMatrix,
+            generateExamVariants: originals.generateExamVariants,
+            listExamVariants: originals.listExamVariants,
+            publishExam: originals.publishExam,
+            startExam: originals.startExam,
+            endExam: originals.endExam,
+            archiveExam: originals.archiveExam,
+            cancelExam: originals.cancelExam,
+            getPrintFiles: originals.getPrintFiles
         });
         supabase.from = originals.supabaseFrom;
         server.close();
@@ -671,6 +687,312 @@ test('EXAMS MODULE UNIT & INTEGRATION TESTS (MOCK)', async (t) => {
             assert.ok(qRecord.calls.some(c => c[0] === 'eq' && c[1] === 'question_versions.is_current' && c[2] === true));
             assert.ok(qRecord.calls.some(c => c[0] === 'in' && c[1] === 'ai_check_status' && c[2].includes('CHECKED') && c[2].includes('OVERRIDDEN')));
             assert.ok(qRecord.calls.some(c => c[0] === 'in' && c[1] === 'lesson_id' && c[2].includes('0199ac14-a9bc-7001-8000-000000000040')));
+        } finally {
+            supabase.from = prevFrom;
+        }
+    });
+
+    await t.test('11. POST /exams/:examId/generate - Validations, Ownership & Variant Creation', async () => {
+        // Validation: bad UUID
+        const resBadId = await makeRequest(server, {
+            path: '/api/v1/exams/not-a-uuid/generate',
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        }, { variant_count: 2, variant_code_start: '101' });
+        assert.strictEqual(resBadId.status, 400);
+
+        // Validation: bad variant_count
+        const resBadCount = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/generate`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        }, { variant_count: 0, variant_code_start: '101' });
+        assert.strictEqual(resBadCount.status, 400);
+
+        // Validation: bad variant_code_start
+        const resBadCode = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/generate`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        }, { variant_count: 2, variant_code_start: 'AB' });
+        assert.strictEqual(resBadCode.status, 400);
+
+        // Ownership P-02: Teacher 2 cannot generate Teacher 1 exam
+        examsService.generateExamVariants = async (examId, params, user) => {
+            if (user.role === 'TEACHER' && user.id === TEACHER_2.id) {
+                const err = new Error('You do not have permission to generate variants for this exam.');
+                err.code = 'FORBIDDEN';
+                err.status = 403;
+                throw err;
+            }
+            return {
+                exam_id: examId,
+                status: 'GENERATED',
+                variants: [
+                    { id: '0199ac14-a9bc-7001-8000-000000000001', variant_code: '101', is_root: true, questions_count: 40 },
+                    { id: '0199ac14-a9bc-7001-8000-000000000002', variant_code: '102', is_root: false, questions_count: 40 }
+                ],
+                generated_at: new Date().toISOString()
+            };
+        };
+
+        const resForbidden = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/generate`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacher2Token}` }
+        }, { variant_count: 2, variant_code_start: '101' });
+        assert.strictEqual(resForbidden.status, 403);
+
+        // Success 201
+        const resSuccess = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/generate`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        }, { variant_count: 2, variant_code_start: '101' });
+        assert.strictEqual(resSuccess.status, 201);
+        assert.strictEqual(resSuccess.body.data.status, 'GENERATED');
+        assert.strictEqual(resSuccess.body.data.variants.length, 2);
+        assert.strictEqual(resSuccess.body.data.variants[0].is_root, true);
+    });
+
+    await t.test('12. GET /exams/:examId/variants - List generated variants', async () => {
+        examsService.listExamVariants = async (examId, user) => {
+            if (user.role === 'TEACHER' && user.id === TEACHER_2.id) {
+                const err = new Error('Forbidden');
+                err.code = 'FORBIDDEN';
+                err.status = 403;
+                throw err;
+            }
+            return [
+                { id: '0199ac14-a9bc-7001-8000-000000000001', variant_code: '101', is_root: true, questions_count: 40 },
+                { id: '0199ac14-a9bc-7001-8000-000000000002', variant_code: '102', is_root: false, questions_count: 40 }
+            ];
+        };
+
+        const resForbidden = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/variants`,
+            method: 'GET',
+            headers: { Authorization: `Bearer ${teacher2Token}` }
+        });
+        assert.strictEqual(resForbidden.status, 403);
+
+        const resSuccess = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/variants`,
+            method: 'GET',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        });
+        assert.strictEqual(resSuccess.status, 200);
+        assert.strictEqual(resSuccess.body.data.length, 2);
+        assert.strictEqual(resSuccess.body.data[0].variant_code, '101');
+    });
+
+    await t.test('13. Lifecycle transitions (publish, start, end, archive, cancel)', async () => {
+        // Publish: 409 from DRAFT, 200 from GENERATED
+        examsService.publishExam = async (examId) => {
+            return { ...MOCK_EXAM, status: 'PUBLISHED' };
+        };
+        const resPub = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/publish`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        });
+        assert.strictEqual(resPub.status, 200);
+        assert.strictEqual(resPub.body.data.status, 'PUBLISHED');
+
+        // Start: 200 -> IN_PROGRESS
+        examsService.startExam = async (examId) => {
+            return { ...MOCK_EXAM, status: 'IN_PROGRESS' };
+        };
+        const resStart = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/start`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        });
+        assert.strictEqual(resStart.status, 200);
+        assert.strictEqual(resStart.body.data.status, 'IN_PROGRESS');
+
+        // End: 200 -> ENDED
+        examsService.endExam = async (examId) => {
+            return { ...MOCK_EXAM, status: 'ENDED' };
+        };
+        const resEnd = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/end`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        });
+        assert.strictEqual(resEnd.status, 200);
+        assert.strictEqual(resEnd.body.data.status, 'ENDED');
+
+        // Archive: 200 -> ARCHIVED
+        examsService.archiveExam = async (examId) => {
+            return { ...MOCK_EXAM, status: 'ARCHIVED' };
+        };
+        const resArchive = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/archive`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        });
+        assert.strictEqual(resArchive.status, 200);
+        assert.strictEqual(resArchive.body.data.status, 'ARCHIVED');
+
+        // Cancel: 200 -> CANCELLED
+        examsService.cancelExam = async (examId, { reason }) => {
+            return { ...MOCK_EXAM, status: 'CANCELLED' };
+        };
+        const resCancel = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/cancel`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        }, { reason: 'Hoãn thi do thiên tai' });
+        assert.strictEqual(resCancel.status, 200);
+        assert.strictEqual(resCancel.body.data.status, 'CANCELLED');
+    });
+
+    await t.test('14. POST /exams/:examId/print-files - Paper/Both PDF package export', async () => {
+        examsService.getPrintFiles = async (examId) => {
+            return {
+                download_url: `https://storage.olms.edu.vn/exams/${examId}/print-bundle.zip`,
+                expires_at: '2026-10-10T02:00:00Z',
+                file_name: 'CSDL_GK_2026_print_package.zip'
+            };
+        };
+
+        const resPrint = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/print-files`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        });
+        assert.strictEqual(resPrint.status, 200);
+        assert.ok(resPrint.body.data.download_url.includes('print-bundle.zip'));
+    });
+
+    await t.test('15. Service Logic: ARC-02 Hybrid Anti-Clustering & DB-02 Root Invariance', async () => {
+        const prevFrom = supabase.from;
+        try {
+            const mockExamDraft = {
+                id: '0199ac14-a9bc-7001-8000-000000000099',
+                code: 'EXAM_ARC02',
+                status: 'DRAFT',
+                subject_id: '0199ac14-a9bc-7001-8000-000000000010',
+                total_questions: 2,
+                total_score: 10,
+                created_by: TEACHER_1.id
+            };
+
+            const mockMatrix = [
+                {
+                    exam_id: mockExamDraft.id,
+                    question_type_id: '0199ac14-a9bc-7001-8000-000000000020',
+                    difficulty_level: 'MEDIUM',
+                    num_questions: 2,
+                    score_per_question: 5,
+                    max_questions_per_topic: 1
+                }
+            ];
+
+            const mockGradingRule = [
+                {
+                    exam_id: mockExamDraft.id,
+                    question_type_id: '0199ac14-a9bc-7001-8000-000000000020',
+                    rule_type: 'EXACT_MATCH'
+                }
+            ];
+
+            const mockCandidates = [
+                {
+                    id: 'q-001',
+                    topic_tag: 'TOPIC_A',
+                    question_versions: [
+                        {
+                            id: 'qv-001',
+                            options_snapshot: { choices: [{ id: 'opt_1' }, { id: 'opt_2' }] }
+                        }
+                    ]
+                },
+                {
+                    id: 'q-002',
+                    topic_tag: 'TOPIC_A',
+                    question_versions: [
+                        {
+                            id: 'qv-002',
+                            options_snapshot: { choices: [{ id: 'opt_3' }, { id: 'opt_4' }] }
+                        }
+                    ]
+                }
+            ];
+
+            let insertedVariants = [];
+            let insertedQuestions = [];
+            let updatedExamStatus = null;
+
+            supabase.from = (table) => {
+                const chain = {
+                    select: () => chain,
+                    eq: () => chain,
+                    in: () => chain,
+                    is: () => chain,
+                    order: () => chain,
+                    maybeSingle: async () => ({ data: mockExamDraft, error: null }),
+                    single: async () => ({ data: mockExamDraft, error: null }),
+                    delete: () => chain,
+                    insert: async (data) => {
+                        if (table === 'exam_variants') insertedVariants = data;
+                        if (table === 'exam_variant_questions') insertedQuestions = data;
+                        return { error: null };
+                    },
+                    update: (updates) => {
+                        if (table === 'exams') updatedExamStatus = updates.status;
+                        return {
+                            eq: async () => ({ error: null }),
+                            in: async () => ({ error: null })
+                        };
+                    }
+                };
+
+                chain.then = (resolve) => {
+                    if (table === 'exams') return resolve({ data: mockExamDraft, error: null });
+                    if (table === 'exam_matrices') return resolve({ data: mockMatrix, error: null });
+                    if (table === 'exam_grading_rules') return resolve({ data: mockGradingRule, error: null });
+                    if (table === 'chapters') return resolve({ data: [{ id: 'ch-01' }], error: null });
+                    if (table === 'lessons') return resolve({ data: [{ id: 'les-01' }], error: null });
+                    if (table === 'questions') return resolve({ data: mockCandidates, count: 2, error: null });
+                    if (table === 'exam_variants') return resolve({ data: [], error: null });
+                    return resolve({ data: [], error: null });
+                };
+
+                return chain;
+            };
+
+            // Strict mode with max_questions_per_topic=1 but both candidates are TOPIC_A -> must reject with 422 TOPIC_POOL_INSUFFICIENT
+            await assert.rejects(
+                originals.generateExamVariants(mockExamDraft.id, {
+                    variant_count: 2,
+                    variant_code_start: '101',
+                    strict_topic_balance: true
+                }, TEACHER_1),
+                (err) => err.code === 'TOPIC_POOL_INSUFFICIENT' && err.status === 422
+            );
+
+            // Non-strict mode -> relaxes cap, creates 2 variants with root variant and shuffled child
+            const result = await originals.generateExamVariants(mockExamDraft.id, {
+                variant_count: 2,
+                variant_code_start: '101',
+                strict_topic_balance: false
+            }, TEACHER_1);
+
+            assert.strictEqual(result.status, 'GENERATED');
+            assert.strictEqual(insertedVariants.length, 2);
+            assert.strictEqual(insertedVariants[0].is_root, true);
+            assert.strictEqual(insertedVariants[0].variant_code, '101');
+            assert.strictEqual(insertedVariants[1].is_root, false);
+            assert.strictEqual(insertedVariants[1].variant_code, '102');
+            assert.strictEqual(updatedExamStatus, 'GENERATED');
+
+            // DB-02 check: question count in both variants must be equal to 2
+            const v1Questions = insertedQuestions.filter(q => q.variant_id === insertedVariants[0].id);
+            const v2Questions = insertedQuestions.filter(q => q.variant_id === insertedVariants[1].id);
+            assert.strictEqual(v1Questions.length, 2);
+            assert.strictEqual(v2Questions.length, 2);
         } finally {
             supabase.from = prevFrom;
         }

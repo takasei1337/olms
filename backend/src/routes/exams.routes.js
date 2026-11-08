@@ -540,4 +540,242 @@ router.post('/:examId/matrix/validate', async (req, res, next) => {
     }
 });
 
+// POST /exams/:examId/generate - Sinh đề gốc + mã đề, đóng băng transaction
+router.post('/:examId/generate', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const {
+            variant_count,
+            variant_code_start,
+            strict_topic_balance,
+            similarity_threshold
+        } = req.body || {};
+
+        const result = await examsService.generateExamVariants(examId, {
+            variant_count,
+            variant_code_start,
+            strict_topic_balance,
+            similarity_threshold
+        }, req.currentUser);
+
+        return res.status(201).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: result,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                details: error.details,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// GET /exams/:examId/variants - Liệt kê mã đề để in/đối chiếu
+router.get('/:examId/variants', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const variants = await examsService.listExamVariants(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: variants,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/publish - Phát hành đề và mở cấp phát tài khoản
+router.post('/:examId/publish', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const updated = await examsService.publishExam(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/start - Đánh dấu bắt đầu kỳ thi
+router.post('/:examId/start', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const updated = await examsService.startExam(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/end - Kết thúc kỳ thi, thu bài chưa nộp
+router.post('/:examId/end', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const updated = await examsService.endExam(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/archive - Đóng băng kỳ thi vào lưu trữ
+router.post('/:examId/archive', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const updated = await examsService.archiveExam(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/cancel - Hủy kỳ thi trước giờ diễn ra
+router.post('/:examId/cancel', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const { reason } = req.body || {};
+        const updated = await examsService.cancelExam(examId, { reason }, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/print-files - Tạo link tải PDF đề/phiếu giấy
+router.post('/:examId/print-files', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const result = await examsService.getPrintFiles(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: result,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
 module.exports = router;

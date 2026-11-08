@@ -953,6 +953,547 @@ async function validateMatrix(examId, currentUser) {
     };
 }
 
+function shuffle(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function getOptionOrder(optionsSnapshot, shouldShuffle = false) {
+    if (!optionsSnapshot || typeof optionsSnapshot !== 'object') {
+        return [];
+    }
+    if (Array.isArray(optionsSnapshot.choices)) {
+        let order = optionsSnapshot.choices.map((c, idx) => c.id || idx);
+        if (shouldShuffle && order.length > 1) {
+            order = shuffle(order);
+        }
+        return order;
+    }
+    if (Array.isArray(optionsSnapshot.pairs)) {
+        let order = optionsSnapshot.pairs.map((p, idx) => p.id || idx);
+        if (shouldShuffle && order.length > 1) {
+            order = shuffle(order);
+        }
+        return order;
+    }
+    return [];
+}
+
+async function generateExamVariants(examId, {
+    variant_count,
+    variant_code_start,
+    strict_topic_balance = false,
+    similarity_threshold = 0.7
+}, currentUser) {
+    if (!isValidUUID(examId)) {
+        const err = new Error('examId must be a valid UUID.');
+        err.code = 'INVALID_ID_FORMAT';
+        err.status = 400;
+        throw err;
+    }
+
+    const count = parseInt(variant_count, 10);
+    if (isNaN(count) || count < 1 || count > 100) {
+        const err = new Error('variant_count must be an integer between 1 and 100.');
+        err.code = 'INVALID_REQUEST_BODY';
+        err.status = 400;
+        throw err;
+    }
+
+    if (typeof variant_code_start !== 'string' || !/^[0-9]{3,10}$/.test(variant_code_start.trim())) {
+        const err = new Error('variant_code_start must be a string containing 3 to 10 digits.');
+        err.code = 'INVALID_REQUEST_BODY';
+        err.status = 400;
+        throw err;
+    }
+    const startCodeStr = variant_code_start.trim();
+
+    const simThreshold = parseFloat(similarity_threshold);
+    if (isNaN(simThreshold) || simThreshold < 0 || simThreshold > 1) {
+        const err = new Error('similarity_threshold must be a number between 0 and 1.');
+        err.code = 'INVALID_REQUEST_BODY';
+        err.status = 400;
+        throw err;
+    }
+
+    const exam = await findExamById(examId);
+    if (!exam) {
+        const err = new Error('Exam not found.');
+        err.code = 'NOT_FOUND';
+        err.status = 404;
+        throw err;
+    }
+
+    // Ownership check (P-02)
+    if (currentUser && currentUser.role === 'TEACHER' && exam.created_by !== currentUser.id) {
+        const err = new Error('You do not have permission to generate variants for this exam.');
+        err.code = 'FORBIDDEN';
+        err.status = 403;
+        throw err;
+    }
+
+    // Exam status check: must be DRAFT
+    if (exam.status !== 'DRAFT') {
+        const err = new Error(`Only DRAFT exams can generate variants. Current status is ${exam.status}.`);
+        err.code = 'INVALID_EXAM_STATUS';
+        err.status = 409;
+        throw err;
+    }
+
+    // Deep matrix validation
+    const validation = await validateMatrix(examId, currentUser);
+    if (!validation.valid) {
+        const err = new Error(validation.issues?.[0]?.message || 'Ma trận đề thi không hợp lệ hoặc thiếu câu hỏi.');
+        err.code = 'EXAM_MATRIX_INVALID';
+        err.status = 422;
+        err.details = validation.issues;
+        throw err;
+    }
+
+    // Fetch matrix rows
+    const { data: rows, error: rowsErr } = await supabase
+        .from('exam_matrices')
+        .select('*')
+        .eq('exam_id', examId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: true });
+
+    if (rowsErr) throw rowsErr;
+    const matrixRows = rows || [];
+
+    // Ensure grading rules exist for all matrix question types (required by DB trigger olms_validate_variant_membership)
+    const { data: gradingRules, error: grErr } = await supabase
+        .from('exam_grading_rules')
+        .select('question_type_id')
+        .eq('exam_id', examId)
+        .is('deleted_at', null);
+    if (grErr) throw grErr;
+
+    const coveredTypeIds = new Set((gradingRules || []).map(r => r.question_type_id));
+    const missingTypes = matrixRows.filter(r => !coveredTypeIds.has(r.question_type_id));
+    if (missingTypes.length > 0) {
+        const err = new Error('Kỳ thi chưa thiết lập quy tắc chấm điểm (grading rules) cho tất cả dạng câu hỏi trong ma trận.');
+        err.code = 'GRADING_RULES_MISSING';
+        err.status = 422;
+        throw err;
+    }
+
+    // Collect questions per matrix row applying ARC-02 Hybrid Balancing
+    const selectedQuestions = [];
+    const usedQuestionIds = new Set();
+    const globalTopicCounts = new Map();
+
+    for (let rowIndex = 0; rowIndex < matrixRows.length; rowIndex++) {
+        const row = matrixRows[rowIndex];
+        const maxPerTopic = row.max_questions_per_topic || 2;
+
+        let qQuery = supabase
+            .from('questions')
+            .select(`
+                id,
+                topic_tag,
+                lesson_id,
+                question_versions!inner (
+                    id,
+                    type_id,
+                    difficulty_level,
+                    options_snapshot,
+                    is_current
+                )
+            `)
+            .eq('question_versions.type_id', row.question_type_id)
+            .eq('question_versions.difficulty_level', row.difficulty_level)
+            .eq('question_versions.is_current', true)
+            .eq('status', 'ACTIVE')
+            .in('ai_check_status', ['CHECKED', 'OVERRIDDEN'])
+            .is('deleted_at', null);
+
+        if (row.lesson_id) {
+            qQuery = qQuery.eq('lesson_id', row.lesson_id);
+        } else if (row.chapter_id) {
+            const { data: lessons, error: lesErr } = await supabase
+                .from('lessons')
+                .select('id')
+                .eq('chapter_id', row.chapter_id)
+                .is('deleted_at', null);
+            if (lesErr) throw lesErr;
+            const lessonIds = (lessons || []).map(l => l.id);
+            if (lessonIds.length > 0) {
+                qQuery = qQuery.in('lesson_id', lessonIds);
+            }
+        } else {
+            const { data: chapters, error: chapErr } = await supabase
+                .from('chapters')
+                .select('id')
+                .eq('subject_id', exam.subject_id)
+                .is('deleted_at', null);
+            if (chapErr) throw chapErr;
+            const chapterIds = (chapters || []).map(c => c.id);
+            if (chapterIds.length > 0) {
+                const { data: lessons, error: lesErr } = await supabase
+                    .from('lessons')
+                    .select('id')
+                    .in('chapter_id', chapterIds)
+                    .is('deleted_at', null);
+                if (lesErr) throw lesErr;
+                const lessonIds = (lessons || []).map(l => l.id);
+                if (lessonIds.length > 0) {
+                    qQuery = qQuery.in('lesson_id', lessonIds);
+                }
+            }
+        }
+
+        const { data: candidateQuestions, error: cqErr } = await qQuery;
+        if (cqErr) throw cqErr;
+
+        // Filter out any question already used in this exam
+        const availablePool = (candidateQuestions || []).filter(q => !usedQuestionIds.has(q.id));
+
+        // Shuffled pool for selection
+        const shuffledPool = shuffle(availablePool);
+        const rowChosen = [];
+        const overflowPool = [];
+
+        for (const candidate of shuffledPool) {
+            if (rowChosen.length === row.num_questions) break;
+
+            const topic = (candidate.topic_tag || '').trim() || 'UNTAGGED';
+            const currentTopicCount = globalTopicCounts.get(topic) || 0;
+
+            if (topic !== 'UNTAGGED' && currentTopicCount >= maxPerTopic) {
+                overflowPool.push(candidate);
+                continue;
+            }
+
+            rowChosen.push(candidate);
+            usedQuestionIds.add(candidate.id);
+            if (topic !== 'UNTAGGED') {
+                globalTopicCounts.set(topic, currentTopicCount + 1);
+            }
+        }
+
+        // Check if enough questions were selected under ARC-02 topic cap
+        if (rowChosen.length < row.num_questions) {
+            if (strict_topic_balance) {
+                const err = new Error(`ARC-02: Không đủ câu hỏi đa dạng theo topic (trần ${maxPerTopic} câu/topic) cho dòng ma trận ${rowIndex + 1}.`);
+                err.code = 'TOPIC_POOL_INSUFFICIENT';
+                err.status = 422;
+                throw err;
+            }
+
+            // Fallback non-strict: take from overflowPool (TOPIC_CAP_RELAXED)
+            for (const candidate of overflowPool) {
+                if (rowChosen.length === row.num_questions) break;
+                rowChosen.push(candidate);
+                usedQuestionIds.add(candidate.id);
+                const topic = (candidate.topic_tag || '').trim() || 'UNTAGGED';
+                if (topic !== 'UNTAGGED') {
+                    globalTopicCounts.set(topic, (globalTopicCounts.get(topic) || 0) + 1);
+                }
+            }
+        }
+
+        if (rowChosen.length < row.num_questions) {
+            const err = new Error(`Thiếu câu hỏi khả dụng cho dòng ma trận ${rowIndex + 1}.`);
+            err.code = 'EXAM_QUESTION_POOL_INSUFFICIENT';
+            err.status = 422;
+            throw err;
+        }
+
+        // Attach point / score for each question from row or proportion
+        const pointPerQ = row.score_per_question !== null && row.score_per_question !== undefined
+            ? parseFloat(row.score_per_question)
+            : parseFloat((exam.total_score / exam.total_questions).toFixed(2));
+
+        for (const q of rowChosen) {
+            const version = Array.isArray(q.question_versions) ? q.question_versions[0] : q.question_versions;
+            selectedQuestions.push({
+                question_id: q.id,
+                version_id: version.id,
+                options_snapshot: version.options_snapshot,
+                score: pointPerQ
+            });
+        }
+    }
+
+    // Root questions order
+    const rootQuestions = [...selectedQuestions];
+    const baseCodeNum = parseInt(startCodeStr, 10);
+    const codeLength = startCodeStr.length;
+
+    // Clean up any existing variants/questions if this draft was previously generated
+    const { data: oldVariants } = await supabase
+        .from('exam_variants')
+        .select('id')
+        .eq('exam_id', examId);
+
+    if (oldVariants && oldVariants.length > 0) {
+        const oldIds = oldVariants.map(v => v.id);
+        await supabase.from('exam_variant_questions').delete().in('variant_id', oldIds);
+        await supabase.from('exam_variants').delete().in('id', oldIds);
+    }
+
+    const now = new Date().toISOString();
+    const createdVariants = [];
+    const variantsToInsert = [];
+    const variantQuestionsToInsert = [];
+    const versionIdsToFreeze = new Set(rootQuestions.map(q => q.version_id));
+
+    // Generate Variant 0 (Root) and additional variants
+    for (let vIdx = 0; vIdx < count; vIdx++) {
+        const isRoot = vIdx === 0;
+        const variantId = require('crypto').randomUUID();
+        const variantCode = String(baseCodeNum + vIdx).padStart(codeLength, '0');
+
+        variantsToInsert.push({
+            id: variantId,
+            exam_id: examId,
+            variant_code: variantCode,
+            is_root: isRoot,
+            created_at: now,
+            updated_at: now
+        });
+
+        // Questions order: canonical order for root, shuffled for other variants
+        const currentQuestions = isRoot ? rootQuestions : shuffle([...rootQuestions]);
+
+        for (let qIdx = 0; qIdx < currentQuestions.length; qIdx++) {
+            const q = currentQuestions[qIdx];
+            const optionOrder = getOptionOrder(q.options_snapshot, !isRoot);
+
+            variantQuestionsToInsert.push({
+                id: require('crypto').randomUUID(),
+                variant_id: variantId,
+                question_version_id: q.version_id,
+                position_in_variant: qIdx + 1,
+                option_order: optionOrder,
+                score: q.score,
+                created_at: now
+            });
+        }
+
+        createdVariants.push({
+            id: variantId,
+            variant_code: variantCode,
+            is_root: isRoot,
+            questions_count: currentQuestions.length
+        });
+    }
+
+    // Step 1: Insert variants
+    const { error: insVarErr } = await supabase
+        .from('exam_variants')
+        .insert(variantsToInsert);
+    if (insVarErr) throw insVarErr;
+
+    // Step 2: Insert variant questions
+    const { error: insVqErr } = await supabase
+        .from('exam_variant_questions')
+        .insert(variantQuestionsToInsert);
+    if (insVqErr) throw insVqErr;
+
+    // Step 3: Freeze question versions
+    if (versionIdsToFreeze.size > 0) {
+        await supabase
+            .from('question_versions')
+            .update({ frozen_at: now })
+            .in('id', Array.from(versionIdsToFreeze));
+    }
+
+    // Step 4: Transition exam status from DRAFT -> GENERATED
+    const { error: examUpdateErr } = await supabase
+        .from('exams')
+        .update({
+            status: 'GENERATED',
+            updated_at: now
+        })
+        .eq('id', examId);
+    if (examUpdateErr) throw examUpdateErr;
+
+    return {
+        exam_id: examId,
+        status: 'GENERATED',
+        variants: createdVariants,
+        generated_at: now
+    };
+}
+
+async function listExamVariants(examId, currentUser) {
+    if (!isValidUUID(examId)) {
+        const err = new Error('examId must be a valid UUID.');
+        err.code = 'INVALID_ID_FORMAT';
+        err.status = 400;
+        throw err;
+    }
+
+    const exam = await findExamById(examId);
+    if (!exam) {
+        const err = new Error('Exam not found.');
+        err.code = 'NOT_FOUND';
+        err.status = 404;
+        throw err;
+    }
+
+    if (currentUser && currentUser.role === 'TEACHER' && exam.created_by !== currentUser.id) {
+        const err = new Error('You do not have permission to view variants of this exam.');
+        err.code = 'FORBIDDEN';
+        err.status = 403;
+        throw err;
+    }
+
+    const { data: variants, error } = await supabase
+        .from('exam_variants')
+        .select(`
+            id,
+            variant_code,
+            is_root,
+            exam_variant_questions (
+                id
+            )
+        `)
+        .eq('exam_id', examId)
+        .is('deleted_at', null)
+        .order('is_root', { ascending: false })
+        .order('variant_code', { ascending: true });
+
+    if (error) throw error;
+
+    return (variants || []).map(v => ({
+        id: v.id,
+        variant_code: v.variant_code,
+        is_root: v.is_root,
+        questions_count: Array.isArray(v.exam_variant_questions) ? v.exam_variant_questions.length : 0
+    }));
+}
+
+async function updateExamStatus(examId, targetStatus, allowedFromStatuses, currentUser, extraUpdates = {}) {
+    if (!isValidUUID(examId)) {
+        const err = new Error('examId must be a valid UUID.');
+        err.code = 'INVALID_ID_FORMAT';
+        err.status = 400;
+        throw err;
+    }
+
+    const exam = await findExamById(examId);
+    if (!exam) {
+        const err = new Error('Exam not found.');
+        err.code = 'NOT_FOUND';
+        err.status = 404;
+        throw err;
+    }
+
+    if (currentUser && currentUser.role === 'TEACHER' && exam.created_by !== currentUser.id) {
+        const err = new Error('You do not have permission to update this exam status.');
+        err.code = 'FORBIDDEN';
+        err.status = 403;
+        throw err;
+    }
+
+    if (!allowedFromStatuses.includes(exam.status)) {
+        const err = new Error(`Cannot transition exam to ${targetStatus} from current status '${exam.status}'. Allowed statuses: ${allowedFromStatuses.join(', ')}.`);
+        err.code = 'INVALID_EXAM_STATUS';
+        err.status = 409;
+        throw err;
+    }
+
+    const now = new Date().toISOString();
+    const updates = {
+        status: targetStatus,
+        updated_at: now,
+        ...extraUpdates
+    };
+
+    const { data: updated, error } = await supabase
+        .from('exams')
+        .update(updates)
+        .eq('id', examId)
+        .select(`
+            id,
+            code,
+            name,
+            subject_id,
+            form_template_id,
+            status,
+            delivery_mode,
+            total_questions,
+            duration_minutes,
+            opens_at,
+            closes_at,
+            total_score,
+            result_visibility_mode,
+            result_published_at,
+            created_by,
+            created_at,
+            updated_at
+        `)
+        .single();
+
+    if (error) throw error;
+    return updated;
+}
+
+async function publishExam(examId, currentUser) {
+    return updateExamStatus(examId, 'PUBLISHED', ['GENERATED'], currentUser);
+}
+
+async function startExam(examId, currentUser) {
+    return updateExamStatus(examId, 'IN_PROGRESS', ['PUBLISHED'], currentUser);
+}
+
+async function endExam(examId, currentUser) {
+    return updateExamStatus(examId, 'ENDED', ['IN_PROGRESS'], currentUser);
+}
+
+async function archiveExam(examId, currentUser) {
+    return updateExamStatus(examId, 'ARCHIVED', ['ENDED', 'RESULT_PUBLISHED'], currentUser);
+}
+
+async function cancelExam(examId, { reason } = {}, currentUser) {
+    return updateExamStatus(examId, 'CANCELLED', ['DRAFT', 'GENERATED', 'PUBLISHED', 'IN_PROGRESS'], currentUser);
+}
+
+async function getPrintFiles(examId, currentUser) {
+    if (!isValidUUID(examId)) {
+        const err = new Error('examId must be a valid UUID.');
+        err.code = 'INVALID_ID_FORMAT';
+        err.status = 400;
+        throw err;
+    }
+
+    const exam = await findExamById(examId);
+    if (!exam) {
+        const err = new Error('Exam not found.');
+        err.code = 'NOT_FOUND';
+        err.status = 404;
+        throw err;
+    }
+
+    if (currentUser && currentUser.role === 'TEACHER' && exam.created_by !== currentUser.id) {
+        const err = new Error('You do not have permission to export print files for this exam.');
+        err.code = 'FORBIDDEN';
+        err.status = 403;
+        throw err;
+    }
+
+    if (exam.status === 'DRAFT') {
+        const err = new Error('Cannot export print files for DRAFT exam. Please generate variants first.');
+        err.code = 'INVALID_EXAM_STATUS';
+        err.status = 409;
+        throw err;
+    }
+
+    const now = Date.now();
+    return {
+        download_url: `https://storage.olms.edu.vn/exams/${exam.id}/print-bundle.zip`,
+        expires_at: new Date(now + 3600000).toISOString(),
+        file_name: `${exam.code}_print_package.zip`
+    };
+}
+
 module.exports = {
     isValidUUID,
     listExams,
@@ -964,5 +1505,13 @@ module.exports = {
     deleteExam,
     replaceMatrix,
     replaceGradingRules,
-    validateMatrix
+    validateMatrix,
+    generateExamVariants,
+    listExamVariants,
+    publishExam,
+    startExam,
+    endExam,
+    archiveExam,
+    cancelExam,
+    getPrintFiles
 };
