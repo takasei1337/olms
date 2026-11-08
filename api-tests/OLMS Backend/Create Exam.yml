@@ -10,9 +10,9 @@ http:
     type: json
     data: |-
       {
-        "code": "CSDL_GK_2026_1",
+        "code": "EXAM_BRUNO_2826",
         "name": "Thi Giữa kỳ Cơ sở dữ liệu 2026.1",
-        "subject_id": "0199ac14-a9bc-7001-8000-000000000001",
+        "subject_id": "d1d03215-0882-46fa-a112-e0d9725a3882",
         "delivery_mode": "ONLINE",
         "total_questions": 40,
         "duration_minutes": 60,
@@ -21,6 +21,9 @@ http:
         "total_score": 10,
         "result_visibility_mode": "HIDDEN"
       }
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

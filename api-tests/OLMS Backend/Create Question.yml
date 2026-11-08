@@ -10,7 +10,8 @@ http:
     type: json
     data: |-
       {
-        "type_id": "0199ac14-a9bc-7001-8000-000000000001",
+        "type_id": "02dc896b-51c3-4add-a369-40c817c9f0f5",
+        "lesson_id": "7b75cc0a-01e9-46dc-8732-6bba75de9e10",
         "difficulty_level": "EASY",
         "content": "Kết quả của phép tính 2 + 3 là bao nhiêu?",
         "explanation": "2 + 3 = 5.",
@@ -34,6 +35,9 @@ http:
           ]
         }
       }
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

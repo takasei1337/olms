@@ -15,6 +15,15 @@ http:
       }
   auth: inherit
 
+vars:post-response:
+  - name: token
+    value: res.body.data.access_token
+
+script:post-response: |-
+  if (res.body && res.body.data && res.body.data.access_token) {
+    bru.setVar('token', res.body.data.access_token);
+  }
+
 settings:
   encodeUrl: true
   timeout: 0

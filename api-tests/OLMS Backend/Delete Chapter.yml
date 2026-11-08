@@ -10,6 +10,9 @@ http:
     - name: chapterId
       value: 0199ac14-a9bc-7001-8000-000000000010
       type: path
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

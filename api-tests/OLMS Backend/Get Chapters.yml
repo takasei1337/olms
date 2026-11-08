@@ -8,8 +8,11 @@ http:
   url: http://localhost:3000/api/v1/subjects/:subjectId/chapters
   params:
     - name: subjectId
-      value: 0199ac14-a9bc-7001-8000-000000000001
+      value: d1d03215-0882-46fa-a112-e0d9725a3882
       type: path
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

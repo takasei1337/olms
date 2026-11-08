@@ -16,6 +16,9 @@ http:
     - name: status
       value: "DRAFT"
       type: query
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

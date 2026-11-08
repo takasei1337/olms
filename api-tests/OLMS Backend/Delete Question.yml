@@ -10,6 +10,9 @@ http:
     - name: questionId
       value: 0199ac14-a9bc-7001-8000-000000000002
       type: path
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

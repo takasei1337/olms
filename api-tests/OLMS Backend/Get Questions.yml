@@ -13,6 +13,9 @@ http:
     - name: page_size
       value: "20"
       type: query
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

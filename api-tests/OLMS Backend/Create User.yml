@@ -10,15 +10,16 @@ http:
     type: json
     data: |-
       {
-        "username": "admin",
+        "username": "teacher_bruno_auto",
         "password": "Iroha1337@",
-        "full_name": "OLMS ADMIN",
-        "email": "admin@olms.com",
-        "role": "ADMIN"
+        "full_name": "Teacher Bruno Auto",
+        "email": "teacher_bruno_auto@olms.edu.vn",
+        "role": "TEACHER"
       }
-  auth:
-    type: bearer
-    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMWE4YTAzZS05ZDkxLTRkZjQtYTY5Yy0yOTliNWEyNTk2OTciLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3OTMyNTY2NDEsImV4cCI6MTc5MzI1NzU0MX0.1-Q4Kw5a1xyfMG5EnQa7nxeyHqjjfPaoDaUVYDRHNmo
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true

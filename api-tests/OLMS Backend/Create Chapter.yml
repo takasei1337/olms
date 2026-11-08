@@ -8,16 +8,19 @@ http:
   url: http://localhost:3000/api/v1/subjects/:subjectId/chapters
   params:
     - name: subjectId
-      value: 0199ac14-a9bc-7001-8000-000000000001
+      value: d1d03215-0882-46fa-a112-e0d9725a3882
       type: path
   body:
     type: json
     data: |-
       {
-        "code": "CH01",
+        "code": "CH_BRUNO_2810",
         "name": "Chương 1: Giới hạn và Hàm số",
         "order_no": 1
       }
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

@@ -3,6 +3,10 @@ opencollection: 1.0.0
 info:
   name: OLMS Backend
 bundled: false
+auth:
+  mode: bearer
+  bearer:
+    token: "{{token}}"
 extensions:
   bruno:
     ignore:

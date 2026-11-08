@@ -6,6 +6,9 @@ info:
 http:
   method: GET
   url: http://localhost:3000/api/v1/question-types
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

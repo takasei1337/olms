@@ -6,6 +6,10 @@ info:
 http:
   method: GET
   url: http://localhost:3000/api/v1/users/f1a8a03e-9d91-4df4-a69c-299b5a259697
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true

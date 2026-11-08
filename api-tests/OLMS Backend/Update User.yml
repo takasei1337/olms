@@ -12,9 +12,10 @@ http:
       {
         "phone": null
       }
-  auth:
-    type: bearer
-    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzOGEyNWRiZC1kNzY0LTRiYTYtYTRiYy0zNzI5ZTMzN2MwYjQiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3OTMyNTY3MjAsImV4cCI6MTc5MzI1NzYyMH0.Q5xnWKtkz4QPorZCsxxEkydP8YdZlleVchXeljtJPfw
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true

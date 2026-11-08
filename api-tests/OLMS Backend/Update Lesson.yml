@@ -8,7 +8,7 @@ http:
   url: http://localhost:3000/api/v1/lessons/:lessonId
   params:
     - name: lessonId
-      value: 0199ac14-a9bc-7001-8000-000000000100
+      value: 7b75cc0a-01e9-46dc-8732-6bba75de9e10
       type: path
   body:
     type: json
@@ -17,6 +17,9 @@ http:
         "name": "Bài 1: Giới hạn của dãy số và hàm số (Cập nhật)",
         "order_no": 1
       }
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

@@ -8,7 +8,7 @@ http:
   url: http://localhost:3000/api/v1/questions/:questionId
   params:
     - name: questionId
-      value: 0199ac14-a9bc-7001-8000-000000000002
+      value: 3efc4efc-a19b-4135-9cd9-bad26ca09101
       type: path
   body:
     type: json
@@ -17,6 +17,9 @@ http:
         "content": "Kết quả của biểu thức 2 + 3 là?",
         "difficulty_level": "EASY"
       }
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:
