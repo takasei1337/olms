@@ -1,0 +1,31 @@
+info:
+  name: Create Exam
+  type: http
+  seq: 29
+
+http:
+  method: POST
+  url: http://localhost:3000/api/v1/exams
+  body:
+    type: json
+    data: |-
+      {
+        "code": "CSDL_GK_2026_1",
+        "name": "Thi Giữa kỳ Cơ sở dữ liệu 2026.1",
+        "subject_id": "0199ac14-a9bc-7001-8000-000000000001",
+        "delivery_mode": "ONLINE",
+        "total_questions": 40,
+        "duration_minutes": 60,
+        "opens_at": "2026-11-20T08:00:00.000Z",
+        "closes_at": "2026-11-20T10:00:00.000Z",
+        "total_score": 10,
+        "result_visibility_mode": "HIDDEN"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

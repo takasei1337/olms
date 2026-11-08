@@ -8,6 +8,7 @@ const questionTypesRoutes = require('./question-types.routes');
 const questionsRoutes = require('./questions.routes');
 const chaptersRoutes = require('./chapters.routes');
 const lessonsRoutes = require('./lessons.routes');
+const examsRoutes = require('./exams.routes');
 
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
@@ -16,5 +17,6 @@ router.use('/chapters', chaptersRoutes);
 router.use('/lessons', lessonsRoutes);
 router.use('/question-types', questionTypesRoutes);
 router.use('/questions', questionsRoutes);
+router.use('/exams', examsRoutes);
 
 module.exports = router;
