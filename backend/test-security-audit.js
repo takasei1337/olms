@@ -24,6 +24,7 @@ const subjectsService = require('./src/services/subjects.service');
 const chaptersService = require('./src/services/chapters.service');
 const lessonsService = require('./src/services/lessons.service');
 const questionsService = require('./src/services/questions.service');
+const examsService = require('./src/services/exams.service');
 
 // Test Identities
 const ADMIN_USER = {
@@ -300,6 +301,15 @@ async function runSecurityAudit() {
                 created_by: TEACHER_1.id
             };
 
+            const EXAM_T1 = {
+                id: '55555555-5555-4555-8555-555555555555',
+                code: 'T1_EXAM',
+                name: 'Teacher 1 Exam',
+                subject_id: SUBJECT_T1.id,
+                status: 'DRAFT',
+                created_by: TEACHER_1.id
+            };
+
             // Setup service mocks for ownership checks
             subjectsService.findSubjectById = async (id) => (id === SUBJECT_T1.id ? SUBJECT_T1 : null);
             subjectsService.updateSubject = async (id, data) => ({ ...SUBJECT_T1, ...data });
@@ -317,6 +327,8 @@ async function runSecurityAudit() {
 
             questionsService.findQuestionById = async (id) => (id === QUESTION_T1.id ? QUESTION_T1 : null);
             questionsService.updateQuestion = async (id, data) => ({ ...QUESTION_T1, ...data });
+
+            examsService.findExamById = async (id) => (id === EXAM_T1.id ? EXAM_T1 : null);
 
             // 5.1 Teacher 2 modifies Teacher 1 Subject -> 403
             const resSubIdor = await makeRequest(server, {
@@ -378,7 +390,17 @@ async function runSecurityAudit() {
             assert.strictEqual(resQuesPatchIdor.body.code, 'FORBIDDEN');
             testPassed('Prevents Teacher B from updating Teacher A question (Question IDOR)');
 
-            // 5.7 Admin bypasses ownership checks lawfully
+            // 5.7 Teacher 2 views Teacher 1 Exam -> 403
+            const resExamGetIdor = await makeRequest(server, {
+                path: `/api/v1/exams/${EXAM_T1.id}`,
+                method: 'GET',
+                headers: { Authorization: `Bearer ${teacher2Token}` }
+            });
+            assert.strictEqual(resExamGetIdor.status, 403);
+            assert.strictEqual(resExamGetIdor.body.code, 'FORBIDDEN');
+            testPassed('Prevents Teacher B from viewing Teacher A exam details (Exam GET IDOR)');
+
+            // 5.8 Admin bypasses ownership checks lawfully
             const resAdminEdit = await makeRequest(server, {
                 path: `/api/v1/subjects/${SUBJECT_T1.id}`,
                 method: 'PATCH',

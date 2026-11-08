@@ -295,6 +295,17 @@ router.get('/:examId', async (req, res, next) => {
             });
         }
 
+        // Enforce P-02 Ownership: TEACHER can only view their own exam; ADMIN can view any
+        if (req.currentUser.role === 'TEACHER' && exam.created_by !== req.currentUser.id) {
+            return res.status(403).json({
+                success: false,
+                code: 'FORBIDDEN',
+                message: 'You do not have permission to view this exam.',
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
         return res.status(200).json({
             success: true,
             code: 'SUCCESS',
@@ -378,6 +389,140 @@ router.delete('/:examId', async (req, res, next) => {
             code: 'SUCCESS',
             message: 'Thành công',
             data: {},
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// PUT /exams/:examId/matrix - Replace entire DRAFT exam matrix
+router.put('/:examId/matrix', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        if (!examsService.isValidUUID(examId)) {
+            return res.status(400).json({
+                success: false,
+                code: 'INVALID_ID_FORMAT',
+                message: 'examId must be a valid UUID.',
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        if (!req.body || !Array.isArray(req.body.rows)) {
+            return res.status(400).json({
+                success: false,
+                code: 'INVALID_REQUEST_BODY',
+                message: 'Field "rows" must be an array of matrix rows.',
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        await examsService.replaceMatrix(examId, req.body.rows, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: {},
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// PUT /exams/:examId/grading-rules - Replace DRAFT grading rules
+router.put('/:examId/grading-rules', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        if (!examsService.isValidUUID(examId)) {
+            return res.status(400).json({
+                success: false,
+                code: 'INVALID_ID_FORMAT',
+                message: 'examId must be a valid UUID.',
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        if (!req.body || !Array.isArray(req.body.rules)) {
+            return res.status(400).json({
+                success: false,
+                code: 'INVALID_REQUEST_BODY',
+                message: 'Field "rules" must be an array of grading rules.',
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        await examsService.replaceGradingRules(examId, req.body.rules, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: {},
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/matrix/validate - Deep validate matrix feasibility against active question bank
+router.post('/:examId/matrix/validate', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        if (!examsService.isValidUUID(examId)) {
+            return res.status(400).json({
+                success: false,
+                code: 'INVALID_ID_FORMAT',
+                message: 'examId must be a valid UUID.',
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const validationResult = await examsService.validateMatrix(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: validationResult,
             timestamp: new Date().toISOString(),
             trace_id: req.traceId
         });

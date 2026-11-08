@@ -1,6 +1,6 @@
 const supabase = require('../config/supabase');
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VALID_DELIVERY_MODES = ['ONLINE', 'PAPER', 'BOTH'];
 const VALID_RESULT_VISIBILITY_MODES = ['HIDDEN', 'SCORE_ONLY', 'SCORE_AND_STATUS', 'FULL_REVIEW'];
 const VALID_STATUSES = ['DRAFT', 'GENERATED', 'PUBLISHED', 'IN_PROGRESS', 'ENDED', 'RESULT_PUBLISHED', 'ARCHIVED', 'CANCELLED'];
@@ -94,9 +94,7 @@ async function listExams({ q, subject_id, status, page = 1, pageSize = 20, curre
             page: currentPage,
             page_size: limit,
             total_items: totalItems,
-            total_pages: totalPages,
-            has_next: currentPage < totalPages,
-            has_prev: currentPage > 1
+            total_pages: totalPages
         }
     };
 }
@@ -554,6 +552,407 @@ async function deleteExam(examId, currentUser) {
     return data;
 }
 
+async function replaceMatrix(examId, rows, currentUser) {
+    const exam = await findExamById(examId);
+    if (!exam) {
+        const err = new Error(`Exam with ID ${examId} not found.`);
+        err.code = 'EXAM_NOT_FOUND';
+        err.status = 404;
+        throw err;
+    }
+
+    if (currentUser.role !== 'ADMIN' && exam.created_by !== currentUser.id) {
+        const err = new Error('Only the creator or an admin can modify this exam matrix.');
+        err.code = 'FORBIDDEN';
+        err.status = 403;
+        throw err;
+    }
+
+    if (exam.status !== 'DRAFT') {
+        const err = new Error(`Cannot modify matrix of exam in "${exam.status}" status. Only DRAFT exams can be modified.`);
+        err.code = 'EXAM_NOT_DRAFT';
+        err.status = 409;
+        throw err;
+    }
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+        const err = new Error('Field "rows" must be a non-empty array.');
+        err.code = 'INVALID_MATRIX_DATA';
+        err.status = 400;
+        throw err;
+    }
+
+    const VALID_DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'];
+    const matrixInserts = [];
+
+    for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || typeof r !== 'object') {
+            const err = new Error(`Row ${i} must be an object.`);
+            err.code = 'INVALID_MATRIX_DATA';
+            err.status = 400;
+            throw err;
+        }
+
+        if (!r.question_type_id || !isValidUUID(r.question_type_id)) {
+            const err = new Error(`Row ${i}: question_type_id must be a valid UUID.`);
+            err.code = 'INVALID_MATRIX_DATA';
+            err.status = 400;
+            throw err;
+        }
+
+        if (!VALID_DIFFICULTIES.includes(r.difficulty_level)) {
+            const err = new Error(`Row ${i}: difficulty_level must be one of: ${VALID_DIFFICULTIES.join(', ')}.`);
+            err.code = 'INVALID_MATRIX_DATA';
+            err.status = 400;
+            throw err;
+        }
+
+        const numQ = parseInt(r.num_questions, 10);
+        if (isNaN(numQ) || numQ <= 0) {
+            const err = new Error(`Row ${i}: num_questions must be an integer greater than 0.`);
+            err.code = 'INVALID_MATRIX_DATA';
+            err.status = 400;
+            throw err;
+        }
+
+        const score = parseFloat(r.score_per_question);
+        if (isNaN(score) || score <= 0) {
+            const err = new Error(`Row ${i}: score_per_question must be a number greater than 0.`);
+            err.code = 'INVALID_MATRIX_DATA';
+            err.status = 400;
+            throw err;
+        }
+
+        if (r.chapter_id && !isValidUUID(r.chapter_id)) {
+            const err = new Error(`Row ${i}: chapter_id must be a valid UUID.`);
+            err.code = 'INVALID_MATRIX_DATA';
+            err.status = 400;
+            throw err;
+        }
+
+        if (r.lesson_id) {
+            if (!isValidUUID(r.lesson_id)) {
+                const err = new Error(`Row ${i}: lesson_id must be a valid UUID.`);
+                err.code = 'INVALID_MATRIX_DATA';
+                err.status = 400;
+                throw err;
+            }
+            if (!r.chapter_id) {
+                const err = new Error(`Row ${i}: chapter_id is required when lesson_id is provided.`);
+                err.code = 'INVALID_MATRIX_DATA';
+                err.status = 422;
+                throw err;
+            }
+        }
+
+        let maxPerTopic = 2;
+        if (Object.prototype.hasOwnProperty.call(r, 'max_questions_per_topic')) {
+            if (r.max_questions_per_topic === null) {
+                maxPerTopic = null;
+            } else if (!Number.isInteger(r.max_questions_per_topic) || r.max_questions_per_topic < 1) {
+                const err = new Error(`Row ${i}: max_questions_per_topic must be a positive integer or null.`);
+                err.code = 'INVALID_MATRIX_DATA';
+                err.status = 400;
+                throw err;
+            } else {
+                maxPerTopic = r.max_questions_per_topic;
+            }
+        }
+
+        matrixInserts.push({
+            exam_id: examId,
+            chapter_id: r.chapter_id || null,
+            lesson_id: r.lesson_id || null,
+            question_type_id: r.question_type_id,
+            difficulty_level: r.difficulty_level,
+            num_questions: numQ,
+            score_per_question: score,
+            max_questions_per_topic: maxPerTopic
+        });
+    }
+
+    // Delete existing matrix rows for this exam
+    const { error: delErr } = await supabase
+        .from('exam_matrices')
+        .delete()
+        .eq('exam_id', examId);
+
+    if (delErr) throw delErr;
+
+    // Insert new matrix rows
+    const { error: insErr } = await supabase
+        .from('exam_matrices')
+        .insert(matrixInserts);
+
+    if (insErr) throw insErr;
+
+    return {};
+}
+
+async function replaceGradingRules(examId, rules, currentUser) {
+    const exam = await findExamById(examId);
+    if (!exam) {
+        const err = new Error(`Exam with ID ${examId} not found.`);
+        err.code = 'EXAM_NOT_FOUND';
+        err.status = 404;
+        throw err;
+    }
+
+    if (currentUser.role !== 'ADMIN' && exam.created_by !== currentUser.id) {
+        const err = new Error('Only the creator or an admin can modify grading rules.');
+        err.code = 'FORBIDDEN';
+        err.status = 403;
+        throw err;
+    }
+
+    if (exam.status !== 'DRAFT') {
+        const err = new Error(`Cannot modify grading rules of exam in "${exam.status}" status.`);
+        err.code = 'EXAM_NOT_DRAFT';
+        err.status = 409;
+        throw err;
+    }
+
+    if (!Array.isArray(rules) || rules.length === 0) {
+        const err = new Error('Field "rules" must be a non-empty array.');
+        err.code = 'INVALID_GRADING_RULES';
+        err.status = 400;
+        throw err;
+    }
+
+    const VALID_SCORING_MODES = ['EXACT_MATCH', 'PARTIAL_CREDIT'];
+    const VALID_ROUNDING_RULES = ['ROUND_HALF_UP', 'ROUND_DOWN', 'NONE'];
+    const rulesInserts = [];
+
+    for (let i = 0; i < rules.length; i++) {
+        const rule = rules[i];
+        if (!rule || typeof rule !== 'object') {
+            const err = new Error(`Rule ${i} must be an object.`);
+            err.code = 'INVALID_GRADING_RULES';
+            err.status = 400;
+            throw err;
+        }
+
+        if (!rule.question_type_id || !isValidUUID(rule.question_type_id)) {
+            const err = new Error(`Rule ${i}: question_type_id must be a valid UUID.`);
+            err.code = 'INVALID_GRADING_RULES';
+            err.status = 400;
+            throw err;
+        }
+
+        if (!VALID_SCORING_MODES.includes(rule.scoring_mode)) {
+            const err = new Error(`Rule ${i}: scoring_mode must be one of: ${VALID_SCORING_MODES.join(', ')}.`);
+            err.code = 'INVALID_GRADING_RULES';
+            err.status = 400;
+            throw err;
+        }
+
+        if (rule.allow_negative_marking === true) {
+            const err = new Error(`Rule ${i}: allow_negative_marking cannot be true in current system policy.`);
+            err.code = 'NEGATIVE_MARKING_DISALLOWED';
+            err.status = 422;
+            throw err;
+        }
+
+        rulesInserts.push({
+            exam_id: examId,
+            question_type_id: rule.question_type_id,
+            scoring_mode: rule.scoring_mode,
+            allow_negative_marking: false,
+            penalty_for_wrong: rule.penalty_for_wrong !== undefined ? Boolean(rule.penalty_for_wrong) : true,
+            case_sensitive: rule.case_sensitive !== undefined ? Boolean(rule.case_sensitive) : false,
+            rounding_precision: rule.rounding_precision !== undefined ? parseInt(rule.rounding_precision, 10) : 2,
+            rounding_rule: rule.rounding_rule && VALID_ROUNDING_RULES.includes(rule.rounding_rule) ? rule.rounding_rule : 'ROUND_HALF_UP'
+        });
+    }
+
+    // Delete existing rules
+    const { error: delErr } = await supabase
+        .from('exam_grading_rules')
+        .delete()
+        .eq('exam_id', examId);
+
+    if (delErr) throw delErr;
+
+    // Insert new rules
+    const { error: insErr } = await supabase
+        .from('exam_grading_rules')
+        .insert(rulesInserts);
+
+    if (insErr) throw insErr;
+
+    return {};
+}
+
+async function validateMatrix(examId, currentUser) {
+    const exam = await findExamById(examId);
+    if (!exam) {
+        const err = new Error(`Exam with ID ${examId} not found.`);
+        err.code = 'EXAM_NOT_FOUND';
+        err.status = 404;
+        throw err;
+    }
+
+    if (currentUser.role !== 'ADMIN' && exam.created_by !== currentUser.id) {
+        const err = new Error('Only the creator or an admin can validate this exam matrix.');
+        err.code = 'FORBIDDEN';
+        err.status = 403;
+        throw err;
+    }
+
+    // Retrieve matrix rows
+    const { data: rows, error: rowsErr } = await supabase
+        .from('exam_matrices')
+        .select('*')
+        .eq('exam_id', examId)
+        .is('deleted_at', null);
+
+    if (rowsErr) throw rowsErr;
+
+    const matrixRows = rows || [];
+    const issues = [];
+    let matrixTotalQuestions = 0;
+    let matrixTotalScore = 0;
+
+    for (let index = 0; index < matrixRows.length; index++) {
+        const row = matrixRows[index];
+        matrixTotalQuestions += row.num_questions;
+        matrixTotalScore += row.num_questions * parseFloat(row.score_per_question);
+
+        // Count available ACTIVE + AI-verified questions in question pool (matches trg_check_exam_publish_readiness)
+        let qQuery = supabase
+            .from('questions')
+            .select('id, question_versions!inner(id)', { count: 'exact', head: true })
+            .eq('question_versions.type_id', row.question_type_id)
+            .eq('question_versions.difficulty_level', row.difficulty_level)
+            .eq('question_versions.is_current', true)
+            .eq('status', 'ACTIVE')
+            .in('ai_check_status', ['CHECKED', 'OVERRIDDEN'])
+            .is('deleted_at', null);
+
+        if (row.lesson_id) {
+            qQuery = qQuery.eq('lesson_id', row.lesson_id);
+        } else if (row.chapter_id) {
+            // Filter by chapter via active lessons
+            const { data: lessons, error: lesErr } = await supabase
+                .from('lessons')
+                .select('id')
+                .eq('chapter_id', row.chapter_id)
+                .is('deleted_at', null);
+
+            if (lesErr) throw lesErr;
+
+            if (lessons && lessons.length > 0) {
+                const lessonIds = lessons.map(l => l.id);
+                qQuery = qQuery.in('lesson_id', lessonIds);
+            } else {
+                // Chapter has no lessons, available = 0
+                issues.push({
+                    row_index: index,
+                    code: 'EXAM_QUESTION_POOL_INSUFFICIENT',
+                    requested: row.num_questions,
+                    available: 0,
+                    message: `Chương chưa có bài học hoặc câu hỏi khả dụng (cần ${row.num_questions} câu).`
+                });
+                continue;
+            }
+        } else {
+            // Whole subject scope: active chapters -> active lessons of exam.subject_id
+            const { data: chapters, error: chapErr } = await supabase
+                .from('chapters')
+                .select('id')
+                .eq('subject_id', exam.subject_id)
+                .is('deleted_at', null);
+
+            if (chapErr) throw chapErr;
+
+            const chapterIds = (chapters || []).map(c => c.id);
+            if (chapterIds.length === 0) {
+                issues.push({
+                    row_index: index,
+                    code: 'EXAM_QUESTION_POOL_INSUFFICIENT',
+                    requested: row.num_questions,
+                    available: 0,
+                    message: `Môn học chưa có chương/bài học hoặc câu hỏi khả dụng (cần ${row.num_questions} câu).`
+                });
+                continue;
+            }
+
+            const { data: lessons, error: lesErr } = await supabase
+                .from('lessons')
+                .select('id')
+                .in('chapter_id', chapterIds)
+                .is('deleted_at', null);
+
+            if (lesErr) throw lesErr;
+
+            if (lessons && lessons.length > 0) {
+                const lessonIds = lessons.map(l => l.id);
+                qQuery = qQuery.in('lesson_id', lessonIds);
+            } else {
+                issues.push({
+                    row_index: index,
+                    code: 'EXAM_QUESTION_POOL_INSUFFICIENT',
+                    requested: row.num_questions,
+                    available: 0,
+                    message: `Môn học chưa có bài học hoặc câu hỏi khả dụng (cần ${row.num_questions} câu).`
+                });
+                continue;
+            }
+        }
+
+        const { count, error: countErr } = await qQuery;
+        if (countErr) throw countErr;
+        const available = count ?? 0;
+
+        if (available < row.num_questions) {
+            issues.push({
+                row_index: index,
+                code: 'EXAM_QUESTION_POOL_INSUFFICIENT',
+                requested: row.num_questions,
+                available,
+                message: `Thiếu ${row.num_questions - available} câu hỏi hợp lệ trong ngân hàng.`
+            });
+        }
+    }
+
+    if (matrixRows.length === 0) {
+        issues.push({
+            code: 'EXAM_MATRIX_EMPTY',
+            message: 'Kỳ thi chưa thiết lập ma trận đề.'
+        });
+    }
+
+    if (matrixTotalQuestions !== exam.total_questions) {
+        issues.push({
+            code: 'EXAM_TOTAL_QUESTIONS_MISMATCH',
+            requested: exam.total_questions,
+            available: matrixTotalQuestions,
+            message: `Tổng số câu trong ma trận (${matrixTotalQuestions}) không khớp với cấu hình kỳ thi (${exam.total_questions}).`
+        });
+    }
+
+    const roundedMatrixScore = Math.round(matrixTotalScore * 100) / 100;
+    const roundedExamScore = Math.round(exam.total_score * 100) / 100;
+    if (roundedMatrixScore !== roundedExamScore) {
+        issues.push({
+            code: 'EXAM_TOTAL_SCORE_MISMATCH',
+            requested: exam.total_score,
+            available: roundedMatrixScore,
+            message: `Tổng điểm trong ma trận (${roundedMatrixScore}) không khớp với cấu hình kỳ thi (${roundedExamScore}).`
+        });
+    }
+
+    return {
+        valid: issues.length === 0,
+        expected_questions: exam.total_questions,
+        matrix_questions: matrixTotalQuestions,
+        expected_score: exam.total_score,
+        matrix_score: roundedMatrixScore,
+        issues
+    };
+}
+
 module.exports = {
     isValidUUID,
     listExams,
@@ -562,5 +961,8 @@ module.exports = {
     countActiveVariantsByExamId,
     createExam,
     updateExam,
-    deleteExam
+    deleteExam,
+    replaceMatrix,
+    replaceGradingRules,
+    validateMatrix
 };

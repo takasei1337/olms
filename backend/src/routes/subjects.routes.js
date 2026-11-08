@@ -114,12 +114,10 @@ router.get('/', async (req, res, next) => {
             message: 'Subjects retrieved successfully.',
             data: subjects,
             meta: {
-                pagination: {
-                    page,
-                    page_size: pageSize,
-                    total,
-                    total_pages: Math.ceil(total / pageSize)
-                }
+                page,
+                page_size: pageSize,
+                total_items: total,
+                total_pages: Math.ceil(total / pageSize)
             },
             trace_id: req.traceId,
             timestamp: new Date().toISOString()

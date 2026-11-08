@@ -11,7 +11,7 @@ const jwt = require('jsonwebtoken');
 const app = require('./src/app');
 const authService = require('./src/services/auth.service');
 const examsService = require('./src/services/exams.service');
-const { supabase } = require('./src/config/supabase');
+const supabase = require('./src/config/supabase');
 
 const ADMIN_USER = {
     id: 'a0000000-0000-4000-8000-000000000001',
@@ -132,7 +132,32 @@ test('EXAMS MODULE UNIT & INTEGRATION TESTS (MOCK)', async (t) => {
         updated_at: '2026-11-08T00:00:00.000Z'
     };
 
+    const originals = {
+        findActiveUserById: authService.findActiveUserById,
+        listExams: examsService.listExams,
+        findExamById: examsService.findExamById,
+        createExam: examsService.createExam,
+        updateExam: examsService.updateExam,
+        deleteExam: examsService.deleteExam,
+        replaceMatrix: examsService.replaceMatrix,
+        replaceGradingRules: examsService.replaceGradingRules,
+        validateMatrix: examsService.validateMatrix,
+        supabaseFrom: supabase.from
+    };
+
     t.after(() => {
+        Object.assign(authService, { findActiveUserById: originals.findActiveUserById });
+        Object.assign(examsService, {
+            listExams: originals.listExams,
+            findExamById: originals.findExamById,
+            createExam: originals.createExam,
+            updateExam: originals.updateExam,
+            deleteExam: originals.deleteExam,
+            replaceMatrix: originals.replaceMatrix,
+            replaceGradingRules: originals.replaceGradingRules,
+            validateMatrix: originals.validateMatrix
+        });
+        supabase.from = originals.supabaseFrom;
         server.close();
     });
 
@@ -172,9 +197,7 @@ test('EXAMS MODULE UNIT & INTEGRATION TESTS (MOCK)', async (t) => {
                     page: 1,
                     page_size: 20,
                     total_items: 1,
-                    total_pages: 1,
-                    has_next: false,
-                    has_prev: false
+                    total_pages: 1
                 }
             };
         };
@@ -188,6 +211,12 @@ test('EXAMS MODULE UNIT & INTEGRATION TESTS (MOCK)', async (t) => {
         assert.strictEqual(resList.body.success, true);
         assert.strictEqual(resList.body.data.length, 1);
         assert.strictEqual(resList.body.data[0].code, 'EXAM_MID_2026');
+        assert.deepStrictEqual(resList.body.meta, {
+            page: 1,
+            page_size: 20,
+            total_items: 1,
+            total_pages: 1
+        });
     });
 
     await t.test('3. POST /exams - Validation, Time range & Creation', async () => {
@@ -261,8 +290,17 @@ test('EXAMS MODULE UNIT & INTEGRATION TESTS (MOCK)', async (t) => {
         });
         assert.strictEqual(resNotFound.status, 404);
 
-        // Found -> 200
+        // Teacher 2 cannot view Teacher 1 exam -> 403 (P-02)
         examsService.findExamById = async () => MOCK_EXAM;
+        const resForbiddenView = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}`,
+            method: 'GET',
+            headers: { Authorization: `Bearer ${teacher2Token}` }
+        });
+        assert.strictEqual(resForbiddenView.status, 403);
+        assert.strictEqual(resForbiddenView.body.code, 'FORBIDDEN');
+
+        // Found for Owner Teacher -> 200
         const resFound = await makeRequest(server, {
             path: `/api/v1/exams/${MOCK_EXAM.id}`,
             method: 'GET',
@@ -270,6 +308,15 @@ test('EXAMS MODULE UNIT & INTEGRATION TESTS (MOCK)', async (t) => {
         });
         assert.strictEqual(resFound.status, 200);
         assert.strictEqual(resFound.body.data.id, MOCK_EXAM.id);
+
+        // Found for Admin (any exam) -> 200
+        const resAdminFound = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}`,
+            method: 'GET',
+            headers: { Authorization: `Bearer ${adminToken}` }
+        });
+        assert.strictEqual(resAdminFound.status, 200);
+        assert.strictEqual(resAdminFound.body.data.id, MOCK_EXAM.id);
     });
 
     await t.test('5. PATCH /exams/:examId - Validation, P-02 Ownership & Update', async () => {
@@ -328,5 +375,304 @@ test('EXAMS MODULE UNIT & INTEGRATION TESTS (MOCK)', async (t) => {
         });
         assert.strictEqual(resSuccessDelete.status, 200);
         assert.strictEqual(resSuccessDelete.body.success, true);
+    });
+
+    await t.test('7. PUT /exams/:examId/matrix - Validation & Matrix replacement', async () => {
+        // Missing rows -> 400
+        const resBadBody = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/matrix`,
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        }, { invalid_field: true });
+        assert.strictEqual(resBadBody.status, 400);
+
+        // Teacher 2 modifying Teacher 1 matrix -> 403
+        examsService.replaceMatrix = async (examId, rows, currentUser) => {
+            if (currentUser.id === TEACHER_2.id) {
+                const err = new Error('Only the creator or an admin can modify this exam matrix.');
+                err.code = 'FORBIDDEN';
+                err.status = 403;
+                throw err;
+            }
+            return {};
+        };
+
+        const resForbiddenMatrix = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/matrix`,
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${teacher2Token}` }
+        }, {
+            rows: [
+                {
+                    question_type_id: '55555555-5555-4555-8555-555555555555',
+                    difficulty_level: 'EASY',
+                    num_questions: 10,
+                    score_per_question: 0.25
+                }
+            ]
+        });
+        assert.strictEqual(resForbiddenMatrix.status, 403);
+
+        // Creator replaces matrix successfully -> 200
+        const resSuccessMatrix = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/matrix`,
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        }, {
+            rows: [
+                {
+                    question_type_id: '55555555-5555-4555-8555-555555555555',
+                    difficulty_level: 'EASY',
+                    num_questions: 20,
+                    score_per_question: 0.25
+                },
+                {
+                    question_type_id: '55555555-5555-4555-8555-555555555555',
+                    difficulty_level: 'MEDIUM',
+                    num_questions: 20,
+                    score_per_question: 0.25
+                }
+            ]
+        });
+        assert.strictEqual(resSuccessMatrix.status, 200);
+        assert.strictEqual(resSuccessMatrix.body.success, true);
+    });
+
+    await t.test('8. PUT /exams/:examId/grading-rules - Policy checks & Replacement', async () => {
+        // Missing rules -> 400
+        const resBadRules = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/grading-rules`,
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        }, {});
+        assert.strictEqual(resBadRules.status, 400);
+
+        // Disallow negative marking -> 422
+        examsService.replaceGradingRules = async (examId, rules) => {
+            if (rules.some(r => r.allow_negative_marking === true)) {
+                const err = new Error('Negative marking is disallowed.');
+                err.code = 'NEGATIVE_MARKING_DISALLOWED';
+                err.status = 422;
+                throw err;
+            }
+            return {};
+        };
+
+        const resNegativeMarking = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/grading-rules`,
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        }, {
+            rules: [
+                {
+                    question_type_id: '55555555-5555-4555-8555-555555555555',
+                    scoring_mode: 'EXACT_MATCH',
+                    allow_negative_marking: true
+                }
+            ]
+        });
+        assert.strictEqual(resNegativeMarking.status, 422);
+
+        // Success -> 200
+        const resSuccessRules = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/grading-rules`,
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        }, {
+            rules: [
+                {
+                    question_type_id: '55555555-5555-4555-8555-555555555555',
+                    scoring_mode: 'EXACT_MATCH',
+                    allow_negative_marking: false
+                }
+            ]
+        });
+        assert.strictEqual(resSuccessRules.status, 200);
+        assert.strictEqual(resSuccessRules.body.success, true);
+    });
+
+    await t.test('9. POST /exams/:examId/matrix/validate - Feasibility & Issue collection', async () => {
+        // Insufficient question pool -> valid: false with issues
+        examsService.validateMatrix = async (examId) => {
+            return {
+                valid: false,
+                expected_questions: 40,
+                matrix_questions: 40,
+                expected_score: 10,
+                matrix_score: 10,
+                issues: [
+                    {
+                        row_index: 0,
+                        code: 'EXAM_QUESTION_POOL_INSUFFICIENT',
+                        requested: 20,
+                        available: 15,
+                        message: 'Thiếu 5 câu hỏi hợp lệ trong ngân hàng.'
+                    }
+                ]
+            };
+        };
+
+        const resInvalid = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/matrix/validate`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        });
+        assert.strictEqual(resInvalid.status, 200);
+        assert.strictEqual(resInvalid.body.data.valid, false);
+        assert.strictEqual(resInvalid.body.data.issues.length, 1);
+        assert.strictEqual(resInvalid.body.data.issues[0].code, 'EXAM_QUESTION_POOL_INSUFFICIENT');
+
+        // Fully valid pool -> valid: true with empty issues
+        examsService.validateMatrix = async (examId) => {
+            return {
+                valid: true,
+                expected_questions: 40,
+                matrix_questions: 40,
+                expected_score: 10,
+                matrix_score: 10,
+                issues: []
+            };
+        };
+
+        const resValid = await makeRequest(server, {
+            path: `/api/v1/exams/${MOCK_EXAM.id}/matrix/validate`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        });
+        assert.strictEqual(resValid.status, 200);
+        assert.strictEqual(resValid.body.data.valid, true);
+        assert.strictEqual(resValid.body.data.issues.length, 0);
+    });
+
+    await t.test('10. UUIDv7 support & Strict Matrix replace/validate service logic', async () => {
+        // UUIDv7 IDs from Bruno examples must be accepted
+        assert.strictEqual(examsService.isValidUUID('0199ac14-a9bc-7001-8000-000000000001'), true);
+        assert.strictEqual(examsService.isValidUUID('not-a-uuid'), false);
+
+        const examV7 = {
+            ...MOCK_EXAM,
+            id: '0199ac14-a9bc-7001-8000-000000000099',
+            subject_id: '0199ac14-a9bc-7001-8000-000000000010',
+            total_questions: 10,
+            total_score: 5
+        };
+
+        const recordedQueries = [];
+        let insertedMatrixRows = null;
+
+        function createQueryMock(table) {
+            const calls = [];
+            const record = { table, calls };
+            recordedQueries.push(record);
+
+            const execute = () => {
+                if (table === 'exams') {
+                    return { data: examV7, error: null };
+                }
+                if (table === 'exam_matrices') {
+                    const isDelete = calls.some(c => c[0] === 'delete');
+                    const insertCall = calls.find(c => c[0] === 'insert');
+                    if (isDelete) return { error: null };
+                    if (insertCall) {
+                        insertedMatrixRows = insertCall[1];
+                        return { error: null };
+                    }
+                    return {
+                        data: [
+                            {
+                                chapter_id: null,
+                                lesson_id: null,
+                                question_type_id: '0199ac14-a9bc-7001-8000-000000000020',
+                                difficulty_level: 'MEDIUM',
+                                num_questions: 10,
+                                score_per_question: 0.5,
+                                max_questions_per_topic: 2
+                            }
+                        ],
+                        error: null
+                    };
+                }
+                if (table === 'chapters') {
+                    return { data: [{ id: '0199ac14-a9bc-7001-8000-000000000030' }], error: null };
+                }
+                if (table === 'lessons') {
+                    return { data: [{ id: '0199ac14-a9bc-7001-8000-000000000040' }], error: null };
+                }
+                if (table === 'questions') {
+                    return { count: 12, error: null };
+                }
+                return { data: [], error: null };
+            };
+
+            const chain = {
+                select: (...args) => { calls.push(['select', ...args]); return chain; },
+                insert: (...args) => { calls.push(['insert', ...args]); return chain; },
+                delete: (...args) => { calls.push(['delete', ...args]); return chain; },
+                eq: (...args) => { calls.push(['eq', ...args]); return chain; },
+                in: (...args) => { calls.push(['in', ...args]); return chain; },
+                is: (...args) => { calls.push(['is', ...args]); return chain; },
+                maybeSingle: async () => execute(),
+                single: async () => execute(),
+                then: (resolve, reject) => Promise.resolve(execute()).then(resolve, reject)
+            };
+            return chain;
+        }
+
+        const prevFrom = supabase.from;
+        try {
+            supabase.from = (table) => createQueryMock(table);
+
+            // Real replaceMatrix handles max_questions_per_topic (default 2, explicit, null, invalid 0)
+            await assert.rejects(
+                () => originals.replaceMatrix(examV7.id, [
+                    {
+                        question_type_id: '0199ac14-a9bc-7001-8000-000000000020',
+                        difficulty_level: 'EASY',
+                        num_questions: 5,
+                        score_per_question: 0.5,
+                        max_questions_per_topic: 0
+                    }
+                ], TEACHER_1),
+                (err) => err.code === 'INVALID_MATRIX_DATA' && err.status === 400
+            );
+
+            await originals.replaceMatrix(examV7.id, [
+                {
+                    question_type_id: '0199ac14-a9bc-7001-8000-000000000020',
+                    difficulty_level: 'EASY',
+                    num_questions: 5,
+                    score_per_question: 0.5
+                },
+                {
+                    question_type_id: '0199ac14-a9bc-7001-8000-000000000020',
+                    difficulty_level: 'MEDIUM',
+                    num_questions: 5,
+                    score_per_question: 0.5,
+                    max_questions_per_topic: 3
+                }
+            ], TEACHER_1);
+
+            assert.strictEqual(insertedMatrixRows.length, 2);
+            assert.strictEqual(insertedMatrixRows[0].max_questions_per_topic, 2);
+            assert.strictEqual(insertedMatrixRows[1].max_questions_per_topic, 3);
+
+            // Real validateMatrix queries question_versions!inner + AI status + subject chapters/lessons fallback
+            recordedQueries.length = 0;
+            const validation = await originals.validateMatrix(examV7.id, TEACHER_1);
+            assert.strictEqual(validation.valid, true);
+            assert.strictEqual(validation.matrix_questions, 10);
+            assert.strictEqual(validation.matrix_score, 5);
+
+            const qRecord = recordedQueries.find(r => r.table === 'questions');
+            assert.ok(qRecord, 'validateMatrix must query questions table');
+            assert.ok(qRecord.calls.some(c => c[0] === 'select' && String(c[1]).includes('question_versions!inner')));
+            assert.ok(qRecord.calls.some(c => c[0] === 'eq' && c[1] === 'question_versions.type_id'));
+            assert.ok(qRecord.calls.some(c => c[0] === 'eq' && c[1] === 'question_versions.difficulty_level' && c[2] === 'MEDIUM'));
+            assert.ok(qRecord.calls.some(c => c[0] === 'eq' && c[1] === 'question_versions.is_current' && c[2] === true));
+            assert.ok(qRecord.calls.some(c => c[0] === 'in' && c[1] === 'ai_check_status' && c[2].includes('CHECKED') && c[2].includes('OVERRIDDEN')));
+            assert.ok(qRecord.calls.some(c => c[0] === 'in' && c[1] === 'lesson_id' && c[2].includes('0199ac14-a9bc-7001-8000-000000000040')));
+        } finally {
+            supabase.from = prevFrom;
+        }
     });
 });

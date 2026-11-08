@@ -41,8 +41,8 @@ function validateCreateUserInput(body) {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!emailRegex.test(body.email)) {
-        return 'email must be a valid email address.';
+    if (!emailRegex.test(body.email) || body.email.length > 150) {
+        return 'email must be a valid email address with at most 150 characters.';
     }
 
     if (!['ADMIN', 'TEACHER'].includes(body.role)) {
@@ -106,10 +106,10 @@ router.get('/', async (req, res) => {
         message: 'Users retrieved successfully.',
         data: users,
         meta: {
-            pagination: {
-                page, page_size: pageSize,
-                total, total_pages: Math.ceil(total / pageSize)
-            }
+            page,
+            page_size: pageSize,
+            total_items: total,
+            total_pages: Math.ceil(total / pageSize)
         },
         trace_id: req.traceId,
         timestamp: new Date().toISOString()
@@ -266,11 +266,11 @@ router.patch('/:id', async (req, res, next) => {
         if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            if (typeof req.body.email !== 'string' || !emailRegex.test(req.body.email) || req.body.email.length > 255) {
+            if (typeof req.body.email !== 'string' || !emailRegex.test(req.body.email) || req.body.email.length > 150) {
                 return res.status(400).json({
                     success: false,
                     code: 'VALIDATION_ERROR',
-                    message: 'email must be a valid email address with at most 255 characters.',
+                    message: 'email must be a valid email address with at most 150 characters.',
                     data: null,
                     trace_id: req.traceId,
                     timestamp: new Date().toISOString()
@@ -336,21 +336,6 @@ router.patch('/:id', async (req, res, next) => {
                 timestamp: new Date().toISOString()
             });
         }
-        next(error);
-    }
-});
-
-router.delete('/:id', async (req, res, next) => {
-    try {
-        return res.status(501).json({
-            success: false,
-            code: "NOT_IMPLEMENTED",
-            message: "Delete user endpoint is not implemented yet.",
-            data: null,
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
         next(error);
     }
 });
