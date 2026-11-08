@@ -22,4 +22,32 @@ Khi giáo viên nhập câu hỏi và nhấn Lưu, Frontend thu thập dữ li�
 
 ## 4. Thiết kế cơ sở dữ liệu
 
+- **Hệ quản trị mục tiêu**: PostgreSQL 18 (bộ DDL chuẩn tại `docs/11_SQL_DDL_Migrations.zip`) và PostgreSQL 17 trên Supabase (bộ thích ứng `database/schema-pg17/` + migration gia tăng `database/migrations/`).
+- **Quy mô bảng**: 23 bảng nghiệp vụ cốt lõi (`users`, `student_profiles`, `audit_logs`, `subjects`, `chapters`, `lessons`, `question_types`, `questions`, `question_versions`, `answer_options`, `form_templates`, `exams`, `exam_matrices`, `exam_grading_rules`, `exam_variants`, `exam_variant_questions`, `participants`, `submissions`, `student_answers`, `scan_images`, `detected_answers`, `grades`, `submission_answer_grades`) cùng bảng `refresh_tokens` cho IAM Token Rotation.
+- **Tính toàn vẹn & Quyết định thiết kế**:
+  - Soft Delete chuẩn hóa (`deleted_at`, `deleted_by`) kết hợp khóa ngoại `RESTRICT` (`P-03`) và bảng `audit_logs` append-only.
+  - Snapshot đề thi bất biến tại `question_versions.options_snapshot` (`P-06`) với 5 dạng câu hỏi chuẩn (`SINGLE_CHOICE`, `MULTI_CHOICE`, `DROPDOWN`, `INPUT`, `MATCHING`).
+  - CSDL là nguồn chân lý cho đồng hồ/hạn nộp (`P-04`: `min(started_at + duration, closes_at)`), Autosave CAS theo từng câu (`ARC-01`: `olms_autosave_online_cas`), OMR staging (`P-07`), vòng đời kỳ thi 8 trạng thái (`P-08`) và cột cân bằng chủ đề `questions.topic_tag` / `exam_matrices.max_questions_per_topic` (`ARC-02`).
+  - Xem chi tiết ERD tại `docs/07_CSDL_ERD.dbml` và hướng dẫn triển khai SQL tại `database/README.md`.
+
 ## 5. Kiến trúc hệ thống
+
+- **Phong cách kiến trúc**: RESTful Modular Backend (`backend/`, Node.js + Express 5 + Supabase/PostgreSQL) tách biệt với Async Workers (AI Semantic Check & OMR Server-side Processing) và chuẩn hóa giao diện bằng hệ thống Design Tokens 3 tầng (`design-tokens/`).
+- **Xác thực & Phân quyền (`JWT + RBAC`)**:
+  - Access Token JWT thời hạn **15 phút (`expires_in: 900`)** gửi qua Header `Authorization: Bearer <token>`, kết hợp Refresh Token HttpOnly Cookie có xoay vòng & phát hiện tái sử dụng.
+  - Phân quyền RBAC (`P-02`): `ADMIN` có toàn quyền quản trị hệ thống và điều hành nghiệp vụ (trừ `/me/*` của thí sinh); `TEACHER` toàn quyền trên cây tri thức, câu hỏi, kỳ thi, thí sinh và OMR **do mình sở hữu** (riêng `POST/PATCH/DELETE /question-types` chỉ dành cho `ADMIN`); `STUDENT` thao tác phiên thi và xem kết quả cá nhân theo chính sách hiển thị `P-05`.
+- **Cân bằng đề thi & Bảo toàn phiên thi**:
+  - Sinh đề Hybrid 2 lớp **ARC-02** (`Lớp 1`: giới hạn cứng ≤ 2 câu/`topic_tag`; `Lớp 2`: AI Semantic Guardrail lọc câu trùng ý tưởng > 0.70).
+  - Lưu bài trực tuyến dùng **Compare-And-Swap (`ARC-01`)** chống xung đột đa tab và cho phép retry ACK idempotent.
+
+## 6. Cấu trúc dự án & Khởi chạy phát triển
+
+- `backend/`: REST API server mặc định tại `http://localhost:3000/api/v1` (36/82 OpenAPI endpoints đã triển khai + `GET /health`, 46 endpoints trả `501 NOT_IMPLEMENTED` chờ các giai đoạn tiếp theo). Chạy kiểm thử đơn vị và kiểm thử bảo mật OWASP:
+  ```bash
+  npm --prefix backend test
+  npm --prefix backend run test:security
+  ```
+- `database/`: Schema PostgreSQL 17/Supabase và migrations.
+- `design-tokens/`: Primitive → Semantic → Component tokens (`tokens.json`, `tokens.css`, `tailwind.tokens.js`).
+- `api-tests/`: Hợp đồng OpenAPI `06_OpenAPI_3.0.yaml` (82 operations) và bộ Bruno `api-tests/OLMS Backend/` (36 file `.yml` gồm 35 kịch bản request + `opencollection.yml`).
+- `docs/`: Tài liệu SRS/SAD/CSDL/API/Test Plan, sơ đồ tuần tự, JSON Schemas và báo cáo tiến độ (`docs/agents/tien-do.md`).

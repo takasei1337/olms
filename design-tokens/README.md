@@ -18,15 +18,15 @@ flowchart TD
 1. **Primitive Tokens (`tokens.json` -> `primitive`)**:
    - Thang màu thương hiệu xanh Navy/Indigo học thuật (`#2563EB`, `#1D4ED8`, `#1E40AF`).
    - Thang màu trung tính Slate/Gray, thang đo khoảng cách 4px-base, radius, typography.
-2. **Semantic Tokens (`tokens.json` -> `semantic` & `tokens.css`)**:
-   - Trạng thái bề mặt (`surface-canvas`, `surface-card`, `surface-border`).
+2. **Semantic Tokens (`tokens.json` -> `semantic` & `tokens.css` -> `--olms-*`)**:
+   - Trạng thái bề mặt (`--olms-surface-canvas` / `surface-canvas`, `--olms-surface-card` / `surface-card`, `--olms-surface-border` / `surface-border`).
    - Ngữ cảnh học tập & thi cử:
-     - **Exam Autosave Status**: `exam-status-saved` (xanh lá), `exam-status-saving` (hổ phách), `exam-status-unanswered` (xám viền đứt), `exam-status-flagged` (tím nhạt).
-     - **Exam Countdown Timer**: `timer-normal` (trung tính), `timer-warning` (< 5 phút), `timer-critical` (< 1 phút đập nhịp).
-     - **AI Similarity Warning**: `ai-similarity-badge` & `ai-override-notice` phục vụ cảnh báo trùng ý tưởng câu hỏi.
-     - **OMR Bubble Status**: `omr-bubble-valid`, `omr-bubble-invalid`, `omr-bubble-ambiguous` (chấm phiếu trắc nghiệm).
+     - **Exam Autosave Status**: `--olms-exam-status-saved` / `exam-saved` (xanh lá), `--olms-exam-status-saving` / `exam-saving` (hổ phách), `--olms-exam-status-unanswered` / `exam-unanswered` (xám viền đứt), `--olms-exam-status-flagged` / `exam-flagged` (tím nhạt).
+     - **Exam Countdown Timer**: `--olms-timer-normal` / `timer-normal` (xanh ngọc bình thường), `--olms-timer-warning` / `timer-warning` (< 5 phút), `--olms-timer-critical` / `timer-critical` (< 1 phút đập nhịp).
+     - **AI Similarity Warning**: `--olms-ai-similarity-badge` / `ai-similarity` & `--olms-ai-override-notice` / `ai-override` phục vụ cảnh báo trùng ý tưởng câu hỏi.
+     - **OMR Bubble Status**: `--olms-omr-valid` / `omr-valid`, `--olms-omr-invalid` / `omr-invalid`, `--olms-omr-ambiguous` / `omr-ambiguous` (chấm phiếu trắc nghiệm).
 3. **Component Specs (`tokens.json` -> `component`)**:
-   - Quy chuẩn chi tiết cho `questionCard`, `examTimer`, `matrixGridCell`, `omrBubble`.
+   - Quy chuẩn chi tiết cho `question_card`, `exam_timer`, `matrix_grid`, `omr_viewer`.
 
 ---
 
