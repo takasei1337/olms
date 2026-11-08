@@ -1,0 +1,23 @@
+info:
+  name: Get Exam Variants
+  type: http
+  seq: 37
+
+http:
+  method: GET
+  url: http://localhost:3000/api/v1/exams/:examId/variants
+  params:
+    - name: examId
+      value: 1011995d-3179-4667-8ee3-f6a2d6ff1ceb
+      type: path
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
