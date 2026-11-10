@@ -15,7 +15,7 @@ http:
       type: query
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMWE4YTAzZS05ZDkxLTRkZjQtYTY5Yy0yOTliNWEyNTk2OTciLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3OTMyMzg3ODQsImV4cCI6MTc5MzIzOTY4NH0.DfWUCuL2GbEkGNjz9cTlgdZE4r4cd6-Seq_G-EQ9OhQ
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
 
 settings:
   encodeUrl: true

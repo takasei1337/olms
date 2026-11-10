@@ -2097,6 +2097,49 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
+  /questions/{questionId}/ai-recheck:
+    post:
+      tags:
+        - Questions
+      summary: Kiểm tra lại trùng lặp AI cho câu hỏi (Phần mở rộng MVP)
+      operationId: post_questions__questionId__ai_recheck
+      description: 'Vai trò: TEACHER (chủ sở hữu) hoặc ADMIN. Phần mở rộng MVP theo SRS 5.9 phục vụ kiểm tra lại trùng lặp câu hỏi khi trạng thái là PENDING hoặc SKIPPED_TIMEOUT, hoặc sau khi cập nhật nội dung câu hỏi DRAFT. Không cho phép kiểm tra lại câu hỏi đã được AI Override.'
+      x-roles:
+        - TEACHER
+        - ADMIN
+      x-use-case: Questions
+      parameters:
+        - in: path
+          name: questionId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID của câu hỏi cần kiểm tra lại AI
+      responses:
+        '200':
+          description: Kiểm tra hoàn tất (thành công hoặc timeout SKIPPED_TIMEOUT)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Question'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /questions/{questionId}/ai-override:
     post:
       tags:
@@ -6016,9 +6059,12 @@ components:
         variant_count:
           type: integer
           minimum: 1
+          maximum: 100
+          description: Số lượng mã đề cần sinh (tối thiểu 1, tối đa 100)
         variant_code_start:
           type: string
-          description: Mã đề đầu 3 chữ số, ví dụ 101
+          pattern: '^[0-9]{3,10}$'
+          description: Mã đề đầu gồm 3 đến 10 chữ số, ví dụ 101
       required:
         - variant_count
         - variant_code_start

@@ -1,0 +1,31 @@
+info:
+  name: Update Exam Matrix
+  type: http
+  seq: 26
+
+http:
+  method: PUT
+  url: http://localhost:3000/api/v1/exams/1011995d-3179-4667-8ee3-f6a2d6ff1ceb/matrix
+  body:
+    type: json
+    data: |-
+      {
+        "rows": [
+          {
+            "question_type_id": "02dc896b-51c3-4add-a369-40c817c9f0f5",
+            "difficulty_level": "MEDIUM",
+            "num_questions": 1,
+            "score_per_question": 10
+          }
+        ]
+      }
+  auth:
+    type: bearer
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

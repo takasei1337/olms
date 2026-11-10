@@ -6,7 +6,9 @@ info:
 http:
   method: GET
   url: http://localhost:3000/api/v1/question-types
-  auth: inherit
+  auth:
+    type: bearer
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
 
 settings:
   encodeUrl: true
@@ -14,4 +16,3 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
-

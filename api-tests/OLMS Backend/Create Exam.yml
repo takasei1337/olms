@@ -1,0 +1,33 @@
+info:
+  name: Create Exam
+  type: http
+  seq: 22
+
+http:
+  method: POST
+  url: http://localhost:3000/api/v1/exams
+  body:
+    type: json
+    data: |-
+      {
+        "code": "OLMS_EXAM_MVP_001",
+        "name": "Kỳ thi kiểm thử MVP OLMS",
+        "subject_id": "d1d03215-0882-46fa-a112-e0d9725a3882",
+        "delivery_mode": "ONLINE",
+        "total_questions": 1,
+        "duration_minutes": 15,
+        "opens_at": "2026-12-01T01:00:00Z",
+        "closes_at": "2026-12-01T03:00:00Z",
+        "total_score": 10,
+        "result_visibility_mode": "HIDDEN"
+      }
+  auth:
+    type: bearer
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

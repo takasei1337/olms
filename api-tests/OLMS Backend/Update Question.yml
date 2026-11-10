@@ -5,19 +5,16 @@ info:
 
 http:
   method: PATCH
-  url: http://localhost:3000/api/v1/questions/:questionId
-  params:
-    - name: questionId
-      value: 0199ac14-a9bc-7001-8000-000000000002
-      type: path
+  url: http://localhost:3000/api/v1/questions/3efc4efc-a19b-4135-9cd9-bad26ca09101
   body:
     type: json
     data: |-
       {
-        "content": "Kết quả của biểu thức 2 + 3 là?",
-        "difficulty_level": "EASY"
+        "lesson_id": "7b75cc0a-01e9-46dc-8732-6bba75de9e10"
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
 
 settings:
   encodeUrl: true
@@ -25,4 +22,3 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
-

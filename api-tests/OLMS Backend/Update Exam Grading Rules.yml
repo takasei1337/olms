@@ -1,0 +1,34 @@
+info:
+  name: Update Exam Grading Rules
+  type: http
+  seq: 27
+
+http:
+  method: PUT
+  url: http://localhost:3000/api/v1/exams/1011995d-3179-4667-8ee3-f6a2d6ff1ceb/grading-rules
+  body:
+    type: json
+    data: |-
+      {
+        "rules": [
+          {
+            "question_type_id": "02dc896b-51c3-4add-a369-40c817c9f0f5",
+            "scoring_mode": "EXACT_MATCH",
+            "penalty_for_wrong": false,
+            "case_sensitive": false,
+            "rounding_precision": 0,
+            "rounding_rule": "NONE",
+            "allow_negative_marking": false
+          }
+        ]
+      }
+  auth:
+    type: bearer
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

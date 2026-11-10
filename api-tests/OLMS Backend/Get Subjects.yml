@@ -6,7 +6,15 @@ info:
 http:
   method: GET
   url: http://localhost:3000/api/v1/subjects
-  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        
+      }
+  auth:
+    type: bearer
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
 
 settings:
   encodeUrl: true

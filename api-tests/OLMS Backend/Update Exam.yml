@@ -1,0 +1,28 @@
+info:
+  name: Update Exam
+  type: http
+  seq: 24
+
+http:
+  method: PATCH
+  url: http://localhost:3000/api/v1/exams/0199ac14-a9bc-7001-8000-000000000001
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Kỳ thi giữa kỳ Hệ thống thông tin (Cập nhật)",
+        "duration_minutes": 60,
+        "total_score": 10.0,
+        "result_visibility_mode": "SCORE_AND_STATUS"
+      }
+  auth:
+    type: bearer
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+

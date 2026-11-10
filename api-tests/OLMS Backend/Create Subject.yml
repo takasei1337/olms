@@ -10,11 +10,13 @@ http:
     type: json
     data: |-
       {
-        "code": "MATH101",
-        "name": "Toán cao cấp 1",
-        "description": "Giải tích và đại số tuyến tính"
+        "code": "OLMS_EXAM_001",
+        "name": "Môn học kiểm thử kỳ thi MVP",
+        "description": "Dữ liệu kiểm thử module Exams và quy trình sinh đề OLMS"
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
 
 settings:
   encodeUrl: true
@@ -22,4 +24,3 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
-

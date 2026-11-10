@@ -10,31 +10,33 @@ http:
     type: json
     data: |-
       {
-        "type_id": "0199ac14-a9bc-7001-8000-000000000001",
-        "difficulty_level": "EASY",
-        "content": "Kết quả của phép tính 2 + 3 là bao nhiêu?",
-        "explanation": "2 + 3 = 5.",
+        "type_id": "02dc896b-51c3-4add-a369-40c817c9f0f5",
+        "difficulty_level": "MEDIUM",
+        "content": "Kết quả của phép tính 7 + 5 là bao nhiêu?",
+        "explanation": "7 + 5 = 12.",
         "requested_status": "DRAFT",
         "answer_spec": {
           "schema_version": 1,
           "kind": "SINGLE_CHOICE",
           "choices": [
             {
-              "id": "0199ac14-a9bc-7001-8000-000000000101",
-              "text": "4",
+              "id": "0199ac14-a9bc-7001-8000-000000000201",
+              "text": "12",
               "order_no": 1,
-              "is_correct": false
+              "is_correct": true
             },
             {
-              "id": "0199ac14-a9bc-7001-8000-000000000102",
-              "text": "5",
+              "id": "0199ac14-a9bc-7001-8000-000000000202",
+              "text": "13",
               "order_no": 2,
-              "is_correct": true
+              "is_correct": false
             }
           ]
         }
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
 
 settings:
   encodeUrl: true
@@ -42,4 +44,3 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
-

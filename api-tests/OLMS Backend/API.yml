@@ -1,0 +1,30 @@
+info:
+  name: API
+  type: http
+  seq: 32
+
+http:
+  method: POST
+  url: https://api.inceptionlabs.ai/v1/chat/completions
+  body:
+    type: json
+    data: |-
+      {
+        "model": "mercury-3",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Trả lời duy nhất một từ: OK"
+          }
+        ]
+      }
+  auth:
+    type: bearer
+    token: "{{process.env.INCEPTION_API_KEY}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

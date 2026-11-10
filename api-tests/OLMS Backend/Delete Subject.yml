@@ -5,12 +5,10 @@ info:
 
 http:
   method: DELETE
-  url: http://localhost:3000/api/v1/subjects/:subjectId
-  params:
-    - name: subjectId
-      value: 0199ac14-a9bc-7001-8000-000000000001
-      type: path
-  auth: inherit
+  url: http://localhost:3000/api/v1/subjects/e70795b1-8d12-4387-8de7-30fd36182e37
+  auth:
+    type: bearer
+    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
 
 settings:
   encodeUrl: true
@@ -18,4 +16,3 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
-
