@@ -1,0 +1,397 @@
+// OLMS canonical DBML: generated from 02_tables + 03_indexes_and_fks
+// PostgreSQL 18+; all 23 business tables; no inferred relationships.
+
+Table users {
+  id uuid [pk, not null]
+  username varchar(50) [not null]
+  password_hash varchar(255) [not null]
+  full_name varchar(150) [not null]
+  email varchar(150)
+  phone varchar(20)
+  role user_role_enum [not null]
+  status varchar(20) [not null]
+  last_login_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table audit_logs {
+  id uuid [pk, not null]
+  actor_user_id uuid
+  action varchar(50) [not null]
+  entity_name varchar(100) [not null]
+  entity_id uuid
+  old_value jsonb
+  new_value jsonb
+  ip_address inet
+  user_agent varchar(255)
+  created_at timestamptz [not null]
+}
+
+Table student_profiles {
+  id uuid [pk, not null]
+  student_code varchar(30) [not null]
+  full_name varchar(150) [not null]
+  email varchar(150)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table subjects {
+  id uuid [pk, not null]
+  code varchar(20) [not null]
+  name varchar(150) [not null]
+  description text
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table chapters {
+  id uuid [pk, not null]
+  subject_id uuid [not null]
+  code varchar(20)
+  name varchar(150) [not null]
+  order_no smallint [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table lessons {
+  id uuid [pk, not null]
+  chapter_id uuid [not null]
+  code varchar(20)
+  name varchar(150) [not null]
+  order_no smallint [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table question_types {
+  id uuid [pk, not null]
+  code varchar(30) [not null]
+  name varchar(100) [not null]
+  description text
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table questions {
+  id uuid [pk, not null]
+  lesson_id uuid
+  type_id uuid [not null]
+  status varchar(20) [not null]
+  ai_similarity_score numeric(5,4)
+  ai_check_status varchar(20) [not null]
+  is_duplicate_overridden boolean [not null]
+  ai_audit_metadata jsonb
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table question_versions {
+  id uuid [pk, not null]
+  question_id uuid [not null]
+  version_no int [not null]
+  type_id uuid [not null]
+  difficulty_level difficulty_level_enum [not null]
+  content text [not null]
+  media_url varchar(500)
+  explanation text
+  options_snapshot jsonb [not null]
+  is_current boolean [not null]
+  frozen_at timestamptz
+  created_by uuid
+  created_at timestamptz [not null]
+}
+
+Table answer_options {
+  id uuid [pk, not null]
+  question_id uuid [not null]
+  content text [not null]
+  is_correct boolean [not null]
+  match_key varchar(50)
+  order_no smallint [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table form_templates {
+  id uuid [pk, not null]
+  code varchar(50) [not null]
+  version varchar(20) [not null]
+  name varchar(150) [not null]
+  num_questions smallint [not null]
+  is_active boolean [not null]
+  layout_config jsonb [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table exams {
+  id uuid [pk, not null]
+  code varchar(30) [not null]
+  name varchar(200) [not null]
+  subject_id uuid [not null]
+  form_template_id uuid
+  status varchar(20) [not null]
+  delivery_mode varchar(20) [not null]
+  total_questions smallint [not null]
+  duration_minutes smallint [not null]
+  opens_at timestamptz [not null]
+  closes_at timestamptz [not null]
+  total_score numeric(5,2) [not null]
+  result_visibility_mode varchar(20) [not null]
+  result_published_at timestamptz
+  result_published_by uuid
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table exam_matrices {
+  id uuid [pk, not null]
+  exam_id uuid [not null]
+  chapter_id uuid
+  lesson_id uuid
+  question_type_id uuid [not null]
+  difficulty_level difficulty_level_enum [not null]
+  num_questions smallint [not null]
+  score_per_question numeric(5,2) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table exam_grading_rules {
+  id uuid [pk, not null]
+  exam_id uuid [not null]
+  question_type_id uuid [not null]
+  scoring_mode varchar(20) [not null]
+  allow_negative_marking boolean [not null]
+  penalty_for_wrong boolean [not null]
+  case_sensitive boolean [not null]
+  rounding_precision smallint [not null]
+  rounding_rule varchar(20) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table exam_variants {
+  id uuid [pk, not null]
+  exam_id uuid [not null]
+  variant_code varchar(10) [not null]
+  is_root boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table exam_variant_questions {
+  id uuid [pk, not null]
+  variant_id uuid [not null]
+  question_version_id uuid [not null]
+  position_in_variant smallint [not null]
+  option_order jsonb [not null]
+  score numeric(5,2) [not null]
+  created_at timestamptz [not null]
+}
+
+Table participants {
+  id uuid [pk, not null]
+  exam_id uuid [not null]
+  student_user_id uuid [not null]
+  student_profile_id uuid [not null]
+  student_code varchar(30) [not null]
+  full_name_snapshot varchar(150) [not null]
+  variant_id uuid
+  seat_no varchar(10)
+  status varchar(20) [not null]
+  attendance_status varchar(20) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  deleted_by uuid
+}
+
+Table submissions {
+  id uuid [pk, not null]
+  participant_id uuid [not null]
+  exam_id uuid [not null]
+  variant_id uuid
+  source varchar(10) [not null]
+  started_at timestamptz [not null]
+  submitted_at timestamptz
+  status varchar(20) [not null]
+  raw_score numeric(5,2)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  submit_token uuid
+}
+
+Table student_answers {
+  id uuid [pk, not null]
+  submission_id uuid [not null]
+  exam_variant_question_id uuid [not null]
+  client_sequence bigint [not null]
+  last_edit_token uuid
+  selected_options jsonb
+  answer_text text
+  response_data jsonb
+  grading_status varchar(20) [not null]
+  score numeric(5,2) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table submission_answer_grades {
+  id uuid [pk, not null]
+  submission_id uuid [not null]
+  exam_variant_question_id uuid [not null]
+  answer_snapshot jsonb
+  correct_answer_snapshot jsonb [not null]
+  grading_rule_snapshot jsonb
+  grading_status varchar(20) [not null]
+  max_score numeric(5,2) [not null]
+  earned_score numeric(5,2) [not null]
+  grading_details jsonb
+  iteration smallint [not null]
+  is_final boolean [not null]
+  graded_by uuid
+  graded_at timestamptz [not null]
+}
+
+Table scan_images {
+  id uuid [pk, not null]
+  exam_id uuid [not null]
+  submission_id uuid
+  page_no smallint [not null]
+  file_path varchar(500) [not null]
+  checksum varchar(64)
+  sharpness_score numeric(6,2)
+  uploaded_at timestamptz [not null]
+  created_at timestamptz [not null]
+  association_status varchar(24) [not null]
+  processing_status varchar(24) [not null]
+  image_revision integer [not null]
+  error_code varchar(50)
+  last_attempt_at timestamptz
+  retry_count integer [not null]
+  observed_student_code varchar(30)
+  recognition_payload jsonb
+  binding_actor uuid
+}
+
+Table detected_answers {
+  id uuid [pk, not null]
+  submission_id uuid [not null]
+  scan_image_id uuid [not null]
+  question_position smallint [not null]
+  detected_options jsonb
+  fill_scores jsonb [not null]
+  confidence numeric(4,3)
+  detection_status varchar(20) [not null]
+  manually_corrected boolean [not null]
+  original_detection jsonb
+  corrected_options jsonb
+  corrected_by uuid
+  corrected_at timestamptz
+  created_at timestamptz [not null]
+}
+
+Table grades {
+  id uuid [pk, not null]
+  submission_id uuid [not null]
+  total_score numeric(5,2) [not null]
+  correct_count smallint [not null]
+  wrong_count smallint [not null]
+  blank_count smallint [not null]
+  graded_by uuid
+  graded_at timestamptz [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Ref: users.deleted_by > users.id [delete: set_null]
+Ref: audit_logs.actor_user_id > users.id [delete: set_null]
+Ref: subjects.created_by > users.id [delete: set_null]
+Ref: subjects.deleted_by > users.id [delete: set_null]
+Ref: chapters.subject_id > subjects.id [delete: restrict]
+Ref: chapters.deleted_by > users.id [delete: set_null]
+Ref: lessons.chapter_id > chapters.id [delete: restrict]
+Ref: lessons.deleted_by > users.id [delete: set_null]
+Ref: question_types.deleted_by > users.id [delete: set_null]
+Ref: questions.lesson_id > lessons.id [delete: set_null]
+Ref: questions.type_id > question_types.id [delete: restrict]
+Ref: questions.created_by > users.id [delete: set_null]
+Ref: questions.deleted_by > users.id [delete: set_null]
+Ref: question_versions.question_id > questions.id [delete: restrict]
+Ref: question_versions.type_id > question_types.id [delete: restrict]
+Ref: question_versions.created_by > users.id [delete: set_null]
+Ref: answer_options.question_id > questions.id [delete: cascade]
+Ref: answer_options.deleted_by > users.id [delete: set_null]
+Ref: exams.result_published_by > users.id [delete: restrict]
+Ref: form_templates.deleted_by > users.id [delete: set_null]
+Ref: exams.subject_id > subjects.id [delete: restrict]
+Ref: exams.form_template_id > form_templates.id [delete: set_null]
+Ref: exams.created_by > users.id [delete: set_null]
+Ref: exams.deleted_by > users.id [delete: set_null]
+Ref: exam_matrices.exam_id > exams.id [delete: cascade]
+Ref: exam_matrices.chapter_id > chapters.id [delete: set_null]
+Ref: exam_matrices.lesson_id > lessons.id [delete: set_null]
+Ref: exam_matrices.question_type_id > question_types.id [delete: restrict]
+Ref: exam_matrices.deleted_by > users.id [delete: set_null]
+Ref: exam_grading_rules.exam_id > exams.id [delete: cascade]
+Ref: exam_grading_rules.question_type_id > question_types.id [delete: restrict]
+Ref: exam_grading_rules.deleted_by > users.id [delete: set_null]
+Ref: exam_variants.exam_id > exams.id [delete: cascade]
+Ref: exam_variants.deleted_by > users.id [delete: set_null]
+Ref: exam_variant_questions.variant_id > exam_variants.id [delete: cascade]
+Ref: exam_variant_questions.question_version_id > question_versions.id [delete: restrict]
+Ref: student_profiles.deleted_by > users.id [delete: set_null]
+Ref: participants.exam_id > exams.id [delete: restrict]
+Ref: participants.student_profile_id > student_profiles.id [delete: restrict]
+Ref: participants.student_user_id > users.id [delete: restrict]
+Ref: participants.(variant_id,exam_id) > exam_variants.(id,exam_id) [delete: restrict]
+Ref: participants.deleted_by > users.id [delete: set_null]
+Ref: submissions.(participant_id,exam_id) > participants.(id,exam_id) [delete: restrict]
+Ref: submissions.(variant_id,exam_id) > exam_variants.(id,exam_id) [delete: restrict]
+Ref: student_answers.submission_id > submissions.id [delete: cascade]
+Ref: student_answers.exam_variant_question_id > exam_variant_questions.id [delete: restrict]
+Ref: submission_answer_grades.submission_id > submissions.id [delete: cascade]
+Ref: submission_answer_grades.exam_variant_question_id > exam_variant_questions.id [delete: restrict]
+Ref: submission_answer_grades.graded_by > users.id [delete: set_null]
+Ref: scan_images.submission_id > submissions.id [delete: restrict]
+Ref: scan_images.exam_id > exams.id [delete: restrict]
+Ref: scan_images.(submission_id,exam_id) > submissions.(id,exam_id) [delete: restrict]
+Ref: scan_images.binding_actor > users.id [delete: restrict]
+Ref: detected_answers.submission_id > submissions.id [delete: cascade]
+Ref: detected_answers.(scan_image_id,submission_id) > scan_images.(id,submission_id) [delete: cascade]
+Ref: detected_answers.corrected_by > users.id [delete: set_null]
+Ref: grades.submission_id > submissions.id [delete: cascade]
+Ref: grades.graded_by > users.id [delete: set_null]
