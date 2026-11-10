@@ -57,9 +57,11 @@ npm-debug.log*
 /docs/previews/
 ~$*
 
-# Raw Bruno reports and generated fixture credentials
+# Raw Bruno reports, generated verification snapshots and test fixtures
 /api-tests/reports/
 /api-tests/.bruno*.json
+/api-tests/OLMS Backend/fixtures/
+/docs/verification/bruno-*.json
 
 # Agent configuration files
 agents.md
