@@ -1,7 +1,7 @@
 info:
   name: Get Question Types
   type: http
-  seq: 24
+  seq: 40
   tags:
     - olms
     - positive
@@ -11,6 +11,15 @@ http:
   auth: inherit
 runtime:
   scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200 && Array.isArray(res.body?.data)) {
+          for (const t of res.body.data) {
+            if (["MULTI_CHOICE", "DROPDOWN", "INPUT", "MATCHING"].includes(t.code)) {
+              bru.setVar(t.code.toLowerCase() + "_type_id", t.id);
+            }
+          }
+        }
     - type: tests
       code: |-
         const body = res.getBody();

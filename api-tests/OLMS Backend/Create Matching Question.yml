@@ -1,0 +1,89 @@
+info:
+  name: Create Matching Question
+  type: http
+  seq: 132
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/questions"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "lesson_id": "{{lesson_id}}",
+        "type_id": "{{matching_type_id}}",
+        "difficulty_level": "MEDIUM",
+        "topic_tag": "{{run_id}}_MT",
+        "content": "Bruno {{run_id}} MATCHING: Nối biểu thức với giá trị tương ứng.",
+        "explanation": "1+1=2, 2+2=4.",
+        "requested_status": "DRAFT",
+        "answer_spec": {
+          "schema_version": 1,
+          "kind": "MATCHING",
+          "left_items": [
+            {
+              "id": "l1",
+              "label": "1 + 1"
+            },
+            {
+              "id": "l2",
+              "label": "2 + 2"
+            }
+          ],
+          "right_items": [
+            {
+              "id": "r1",
+              "label": "2"
+            },
+            {
+              "id": "r2",
+              "label": "4"
+            }
+          ],
+          "pairs": [
+            {
+              "left_id": "l1",
+              "right_id": "r1"
+            },
+            {
+              "left_id": "l2",
+              "right_id": "r2"
+            }
+          ]
+        }
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["lesson_id","matching_type_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          const captured = res.body?.data?.["id"];
+          if (captured) {
+            bru.setVar("mt_matching_q_id", captured);
+          }
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 201 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: lesson_id, matching_type_id. Run the collection sequentially with Local environment."

@@ -1,7 +1,7 @@
 info:
   name: Student Review Score And Status
   type: http
-  seq: 87
+  seq: 103
   tags:
     - olms
     - positive

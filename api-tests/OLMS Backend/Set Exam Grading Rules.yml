@@ -1,7 +1,7 @@
 info:
   name: Set Exam Grading Rules
   type: http
-  seq: 48
+  seq: 64
   tags:
     - olms
     - positive

@@ -1,0 +1,85 @@
+info:
+  name: Create Multi Choice Question
+  type: http
+  seq: 123
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/questions"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "lesson_id": "{{lesson_id}}",
+        "type_id": "{{multi_choice_type_id}}",
+        "difficulty_level": "MEDIUM",
+        "topic_tag": "{{run_id}}_MC",
+        "content": "Bruno {{run_id}} MULTI: Chọn các số nguyên tố nhỏ hơn 6?",
+        "explanation": "2, 3, 5 là số nguyên tố.",
+        "requested_status": "DRAFT",
+        "answer_spec": {
+          "schema_version": 1,
+          "kind": "MULTI_CHOICE",
+          "choices": [
+            {
+              "id": "0199ac14-a9bc-7001-8000-000000000201",
+              "text": "2",
+              "order_no": 1,
+              "is_correct": true
+            },
+            {
+              "id": "0199ac14-a9bc-7001-8000-000000000202",
+              "text": "3",
+              "order_no": 2,
+              "is_correct": true
+            },
+            {
+              "id": "0199ac14-a9bc-7001-8000-000000000203",
+              "text": "5",
+              "order_no": 3,
+              "is_correct": true
+            },
+            {
+              "id": "0199ac14-a9bc-7001-8000-000000000204",
+              "text": "4",
+              "order_no": 4,
+              "is_correct": false
+            }
+          ]
+        }
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["lesson_id","multi_choice_type_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          const captured = res.body?.data?.["id"];
+          if (captured) {
+            bru.setVar("mt_multi_q_id", captured);
+          }
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 201 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: lesson_id, multi_choice_type_id. Run the collection sequentially with Local environment."

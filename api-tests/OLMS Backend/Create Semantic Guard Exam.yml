@@ -1,0 +1,58 @@
+info:
+  name: Create Semantic Guard Exam
+  type: http
+  seq: 118
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/exams"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "code": "{{run_id}}_SEM",
+        "name": "Bruno {{run_id}} SEM",
+        "subject_id": "{{subject_id}}",
+        "delivery_mode": "ONLINE",
+        "total_questions": 2,
+        "duration_minutes": 30,
+        "opens_at": "{{opens_at}}",
+        "closes_at": "{{closes_at}}",
+        "total_score": 2,
+        "result_visibility_mode": "HIDDEN"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["subject_id","pool_sim_question_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          const captured = res.body?.data?.["id"];
+          if (captured) {
+            bru.setVar("sem_exam_id", captured);
+          }
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 201 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: subject_id, pool_sim_question_id. Run the collection sequentially with Local environment."

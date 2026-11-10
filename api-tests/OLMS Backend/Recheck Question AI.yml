@@ -1,7 +1,7 @@
 info:
   name: Recheck Question AI
   type: http
-  seq: 32
+  seq: 48
   tags:
     - olms
     - positive

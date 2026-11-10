@@ -1,7 +1,7 @@
 info:
   name: Get Exam Statistics
   type: http
-  seq: 79
+  seq: 95
   tags:
     - olms
     - positive

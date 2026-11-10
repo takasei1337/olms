@@ -1,0 +1,44 @@
+info:
+  name: Start Multi-Type Exam
+  type: http
+  seq: 141
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/exams/{{mt_exam_id}}/start"
+  auth: inherit
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["mt_exam_id","mt_published"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 200) {
+          bru.setVar("mt_started", true);
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.status).to.equal("IN_PROGRESS");
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: mt_exam_id, mt_published. Run the collection sequentially with Local environment."

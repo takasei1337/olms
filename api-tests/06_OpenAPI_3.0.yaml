@@ -659,11 +659,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 5
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/users.routes.js
+        line: 441
+        schema-contract-validation: bruno-verified
       x-target-description: 'Vai trò: ADMIN. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có.'
       x-target-roles: *id010
@@ -740,11 +739,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 6
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/users.routes.js
+        line: 365
+        schema-contract-validation: bruno-verified
       x-target-description: 'Vai trò: ADMIN. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có.'
       x-target-roles: *id011
@@ -826,11 +824,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 7
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/users.routes.js
+        line: 403
+        schema-contract-validation: bruno-verified
       x-target-description: 'Vai trò: ADMIN. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có.'
       x-target-roles: *id012
@@ -928,17 +925,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 8
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
-      x-target-description: 'Payload dữ liệu là danh sách audit log; schema chi tiết chờ chốt chính sách masking
-        dữ liệu nhạy cảm.
-
-
-        Vai trò: ADMIN. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
-        sẵn có.'
+        status: implemented
+        source: backend/src/routes/audit-logs.routes.js
+        line: 23
+        schema-contract-validation: bruno-verified
+      x-target-description: 'Payload dữ liệu là danh sách audit log đã lược thông tin nhạy cảm (id, actor_user_id, action, entity_name, entity_id, created_at).'
       x-target-roles: *id013
       x-target-responses:
         '200':
@@ -977,8 +968,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-      security: []
-      x-current-role-gate: []
+      security:
+      - bearerAuth: []
+      x-current-role-gate:
+      - ADMIN
   /subjects:
     get:
       tags:

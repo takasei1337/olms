@@ -1,7 +1,7 @@
 info:
   name: Get Chapters
   type: http
-  seq: 18
+  seq: 34
   tags:
     - olms
     - positive

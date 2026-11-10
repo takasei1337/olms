@@ -12,9 +12,11 @@ const examsRoutes = require('./exams.routes');
 const participantsRoutes = require('./participants.routes');
 const resultsRoutes = require('./results.routes');
 const meRoutes = require('./me.routes');
+const auditLogsRoutes = require('./audit-logs.routes');
 
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
+router.use('/audit-logs', auditLogsRoutes);
 router.use('/subjects', subjectsRoutes);
 router.use('/chapters', chaptersRoutes);
 router.use('/lessons', lessonsRoutes);

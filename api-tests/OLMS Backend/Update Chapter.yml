@@ -1,7 +1,7 @@
 info:
   name: Update Chapter
   type: http
-  seq: 20
+  seq: 36
   tags:
     - olms
     - positive

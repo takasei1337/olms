@@ -1,7 +1,7 @@
 info:
   name: Create Question Type
   type: http
-  seq: 25
+  seq: 41
   tags:
     - olms
     - positive

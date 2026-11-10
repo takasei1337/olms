@@ -1,7 +1,7 @@
 info:
   name: Update Exam Grading Rules
   type: http
-  seq: 49
+  seq: 65
   tags:
     - olms
     - positive

@@ -1,7 +1,7 @@
 info:
   name: Delete Lesson
   type: http
-  seq: 108
+  seq: 162
   tags:
     - olms
     - positive

@@ -19,6 +19,13 @@ runtime:
   scripts:
     - type: after-response
       code: |-
+        if (res.status === 200) {
+          const captured = res.body?.data?.["user"]?.["id"];
+          if (captured) {
+            bru.setVar("admin_user_id", captured);
+          }
+        }
+
         if (res.status === 200 && res.body?.data?.access_token) {
           bru.setVar("admin_token", res.body.data.access_token);
         }

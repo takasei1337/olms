@@ -1,7 +1,7 @@
 info:
   name: Get Lessons
   type: http
-  seq: 21
+  seq: 37
   tags:
     - olms
     - positive

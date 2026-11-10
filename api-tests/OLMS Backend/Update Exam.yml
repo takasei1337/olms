@@ -1,7 +1,7 @@
 info:
   name: Update Exam
   type: http
-  seq: 45
+  seq: 61
   tags:
     - olms
     - positive

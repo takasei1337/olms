@@ -1,0 +1,50 @@
+info:
+  name: Publish Multi-Type Results
+  type: http
+  seq: 151
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/exams/{{mt_exam_id}}/results/publish"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "result_visibility_mode": "FULL_REVIEW"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["mt_exam_id","mt_ended"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 200) {
+          bru.setVar("mt_results_published", true);
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.status).to.equal("RESULT_PUBLISHED");
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: mt_exam_id, mt_ended. Run the collection sequentially with Local environment."

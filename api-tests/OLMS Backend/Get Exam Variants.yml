@@ -1,7 +1,7 @@
 info:
   name: Get Exam Variants
   type: http
-  seq: 52
+  seq: 68
   tags:
     - olms
     - positive

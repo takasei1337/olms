@@ -1,7 +1,7 @@
 info:
   name: Get Exam Results
   type: http
-  seq: 77
+  seq: 93
   tags:
     - olms
     - positive

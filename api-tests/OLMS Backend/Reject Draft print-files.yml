@@ -1,7 +1,7 @@
 info:
   name: Reject Draft print-files
   type: http
-  seq: 103
+  seq: 157
   tags:
     - olms
     - negative

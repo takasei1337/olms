@@ -1,7 +1,7 @@
 info:
   name: Student My Results List
   type: http
-  seq: 83
+  seq: 99
   tags:
     - olms
     - positive

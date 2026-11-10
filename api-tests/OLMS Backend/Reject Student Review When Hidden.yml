@@ -1,7 +1,7 @@
 info:
   name: Reject Student Review When Hidden
   type: http
-  seq: 92
+  seq: 108
   tags:
     - olms
     - negative

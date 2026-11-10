@@ -1,7 +1,7 @@
 info:
   name: Get Exams
   type: http
-  seq: 43
+  seq: 59
   tags:
     - olms
     - positive

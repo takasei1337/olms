@@ -1,7 +1,7 @@
 info:
   name: Delete Participant
   type: http
-  seq: 61
+  seq: 77
   tags:
     - olms
     - positive

@@ -1,7 +1,7 @@
 info:
   name: Update Question Type
   type: http
-  seq: 26
+  seq: 42
   tags:
     - olms
     - positive

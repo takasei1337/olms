@@ -1,0 +1,58 @@
+info:
+  name: Create Multi-Type Grading Exam
+  type: http
+  seq: 135
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/exams"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "code": "{{run_id}}_MULTI",
+        "name": "Bruno {{run_id}} MULTI",
+        "subject_id": "{{subject_id}}",
+        "delivery_mode": "ONLINE",
+        "total_questions": 4,
+        "duration_minutes": 30,
+        "opens_at": "{{opens_at}}",
+        "closes_at": "{{closes_at}}",
+        "total_score": 4,
+        "result_visibility_mode": "HIDDEN"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["subject_id","mt_multi_q_id","mt_dropdown_q_id","mt_input_q_id","mt_matching_q_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          const captured = res.body?.data?.["id"];
+          if (captured) {
+            bru.setVar("mt_exam_id", captured);
+          }
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 201 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: subject_id, mt_multi_q_id, mt_dropdown_q_id, mt_input_q_id, mt_matching_q_id. Run the collection sequentially with Local environment."

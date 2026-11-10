@@ -1,0 +1,41 @@
+info:
+  name: Activate Matching Question
+  type: http
+  seq: 134
+  tags:
+    - olms
+    - positive
+http:
+  method: PATCH
+  url: "{{base_url}}/questions/{{mt_matching_q_id}}/status"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "status": "ACTIVE"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["mt_matching_q_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: mt_matching_q_id. Run the collection sequentially with Local environment."

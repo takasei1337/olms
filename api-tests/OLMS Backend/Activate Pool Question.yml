@@ -1,7 +1,7 @@
 info:
   name: Activate Pool Question
   type: http
-  seq: 41
+  seq: 57
   tags:
     - olms
     - positive

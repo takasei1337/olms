@@ -1,0 +1,51 @@
+info:
+  name: Submit Multi-Type Exam
+  type: http
+  seq: 148
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/me/submissions/{{mt_submission_id}}/submit"
+  auth:
+    type: bearer
+    token: "{{mt_student_token}}"
+  headers:
+    - name: Idempotency-Key
+      value: "{{mt_submit_token}}"
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["mt_student_token","mt_submission_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+
+        const hex8 = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
+        const buildUuid = (suffix) => {
+          const variant = (8 + Math.floor(Math.random() * 4)).toString(16);
+          return `${hex8()}-${hex8().slice(0, 4)}-4${hex8().slice(0, 3)}-${variant}${hex8().slice(0, 3)}-${hex8()}${suffix}`;
+        };
+        bru.setVar("mt_submit_token", buildUuid("0003"));
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.submission_status).to.equal("SUBMITTED");
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: mt_student_token, mt_submission_id. Run the collection sequentially with Local environment."

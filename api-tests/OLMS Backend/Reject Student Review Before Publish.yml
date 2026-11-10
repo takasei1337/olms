@@ -1,7 +1,7 @@
 info:
   name: Reject Student Review Before Publish
   type: http
-  seq: 81
+  seq: 97
   tags:
     - olms
     - negative

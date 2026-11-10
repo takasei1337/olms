@@ -1,7 +1,7 @@
 info:
   name: Reject Draft archive
   type: http
-  seq: 102
+  seq: 156
   tags:
     - olms
     - negative

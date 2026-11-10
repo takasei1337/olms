@@ -1,7 +1,7 @@
 info:
   name: Reject Draft end
   type: http
-  seq: 101
+  seq: 155
   tags:
     - olms
     - negative

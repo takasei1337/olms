@@ -1,0 +1,48 @@
+info:
+  name: Reject Semantically Redundant Variants
+  type: http
+  seq: 121
+  tags:
+    - olms
+    - negative
+http:
+  method: POST
+  url: "{{base_url}}/exams/{{sem_exam_id}}/generate"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "variant_count": 1,
+        "variant_code_start": "301",
+        "strict_topic_balance": false,
+        "similarity_threshold": 0.7
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["sem_exam_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 422 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(422);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(false);
+        });
+
+        test("response contract", () => {
+          expect(body.code).to.equal("SEMANTIC_POOL_INSUFFICIENT");
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 422. Requires runtime variables: sem_exam_id. Run the collection sequentially with Local environment."

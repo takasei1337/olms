@@ -1,0 +1,59 @@
+info:
+  name: Start Multi-Type Exam Session
+  type: http
+  seq: 143
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/me/exams/{{mt_exam_id}}/session"
+  auth:
+    type: bearer
+    token: "{{mt_student_token}}"
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["mt_student_token","mt_exam_id","mt_started"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 200) {
+          const captured = res.body?.data?.["submission_id"];
+          if (captured) {
+            bru.setVar("mt_submission_id", captured);
+          }
+        }
+
+        if (res.status === 200 && Array.isArray(res.body?.data?.questions)) {
+          for (const q of res.body.data.questions) {
+            const kind = q.render_spec?.kind;
+            if (kind === "MULTI_CHOICE") bru.setVar("mt_multi_evq_id", q.exam_variant_question_id);
+            if (kind === "DROPDOWN") bru.setVar("mt_dropdown_evq_id", q.exam_variant_question_id);
+            if (kind === "INPUT") bru.setVar("mt_input_evq_id", q.exam_variant_question_id);
+            if (kind === "MATCHING") bru.setVar("mt_matching_evq_id", q.exam_variant_question_id);
+          }
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.questions).to.have.lengthOf(4);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: mt_student_token, mt_exam_id, mt_started. Run the collection sequentially with Local environment."

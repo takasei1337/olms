@@ -1,7 +1,7 @@
 info:
   name: Reject Archive Before Results
   type: http
-  seq: 76
+  seq: 92
   tags:
     - olms
     - negative

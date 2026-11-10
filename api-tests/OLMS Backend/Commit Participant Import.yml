@@ -1,7 +1,7 @@
 info:
   name: Commit Participant Import
   type: http
-  seq: 58
+  seq: 74
   tags:
     - olms
     - positive

@@ -1,0 +1,45 @@
+info:
+  name: Reject Locked User Login
+  type: http
+  seq: 16
+  tags:
+    - olms
+    - negative
+http:
+  method: POST
+  url: "{{base_url}}/auth/login"
+  body:
+    type: json
+    data: |-
+      {
+        "username": "{{run_id}}_user",
+        "password": "{{api_user_password}}"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["user_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 401 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(401);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(false);
+        });
+
+        test("response contract", () => {
+          expect(body.code).to.equal("INVALID_CREDENTIALS");
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 401. Requires runtime variables: user_id. Run the collection sequentially with Local environment."

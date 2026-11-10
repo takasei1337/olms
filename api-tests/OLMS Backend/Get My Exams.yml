@@ -1,7 +1,7 @@
 info:
   name: Get My Exams
   type: http
-  seq: 65
+  seq: 81
   tags:
     - olms
     - positive

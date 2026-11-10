@@ -1,0 +1,56 @@
+info:
+  name: Enroll Multi-Type Student
+  type: http
+  seq: 140
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/exams/{{mt_exam_id}}/participants"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "student_code": "{{run_id}}_SV03",
+        "full_name": "Bruno {{run_id}} MultiType Student",
+        "email": "{{run_id}}_sv03@example.invalid"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["mt_exam_id","mt_published"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          const captured = res.body?.data?.["participant"]?.["id"];
+          if (captured) {
+            bru.setVar("sv03_participant_id", captured);
+          }
+        }
+
+        if (res.status === 201 && res.body?.data) {
+          bru.setVar("sv03_username", res.body.data.username);
+          bru.setVar("sv03_password", res.body.data.initial_password);
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 201 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: mt_exam_id, mt_published. Run the collection sequentially with Local environment."

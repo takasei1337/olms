@@ -1,0 +1,50 @@
+info:
+  name: Login Multi-Type Student
+  type: http
+  seq: 142
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/auth/login"
+  body:
+    type: json
+    data: |-
+      {
+        "username": "{{sv03_username}}",
+        "password": "{{sv03_password}}"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["sv03_username","sv03_password"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body?.data?.access_token) {
+          bru.setVar("mt_student_token", res.body.data.access_token);
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.user.role).to.equal("STUDENT");
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: sv03_username, sv03_password. Run the collection sequentially with Local environment."

@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const aiEmbeddingService = require('./ai-embedding.service');
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VALID_DELIVERY_MODES = ['ONLINE', 'PAPER', 'BOTH'];
@@ -983,6 +984,54 @@ function getOptionOrder(optionsSnapshot, shouldShuffle = false) {
     return [];
 }
 
+function getQuestionVersion(q) {
+    return Array.isArray(q.question_versions) ? q.question_versions[0] : q.question_versions;
+}
+
+async function resolveQuestionVector(question, embeddingCache) {
+    if (embeddingCache.has(question.id)) {
+        return embeddingCache.get(question.id);
+    }
+
+    const version = getQuestionVersion(question);
+    const content = typeof version?.content === 'string' ? version.content.trim() : '';
+    if (!content) {
+        embeddingCache.set(question.id, null);
+        return null;
+    }
+
+    try {
+        const vector = await aiEmbeddingService.embed(content, { timeoutMs: 10000 });
+        embeddingCache.set(question.id, vector);
+        return vector;
+    } catch (_) {
+        embeddingCache.set(question.id, null);
+        return null;
+    }
+}
+
+async function isSemanticallyDistinct(candidate, selectedQuestionObjects, embeddingCache, simThreshold) {
+    if (simThreshold >= 1 || selectedQuestionObjects.length === 0) {
+        return true;
+    }
+
+    const candidateVector = await resolveQuestionVector(candidate, embeddingCache);
+    if (!candidateVector) {
+        return true;
+    }
+
+    for (const selected of selectedQuestionObjects) {
+        const selectedVector = await resolveQuestionVector(selected, embeddingCache);
+        if (!selectedVector) continue;
+        const score = aiEmbeddingService.cosineSimilarity(candidateVector, selectedVector);
+        if (score >= simThreshold) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 async function generateExamVariants(examId, {
     variant_count,
     variant_code_start,
@@ -1084,6 +1133,8 @@ async function generateExamVariants(examId, {
 
     // Collect questions per matrix row applying ARC-02 Hybrid Balancing
     const selectedQuestions = [];
+    const selectedQuestionObjects = [];
+    const embeddingCache = new Map();
     const usedQuestionIds = new Set();
     const globalTopicCounts = new Map();
 
@@ -1101,6 +1152,7 @@ async function generateExamVariants(examId, {
                     id,
                     type_id,
                     difficulty_level,
+                    content,
                     options_snapshot,
                     is_current
                 )
@@ -1157,6 +1209,7 @@ async function generateExamVariants(examId, {
         const shuffledPool = shuffle(availablePool);
         const rowChosen = [];
         const overflowPool = [];
+        let semanticRejectedCount = 0;
 
         for (const candidate of shuffledPool) {
             if (rowChosen.length === row.num_questions) break;
@@ -1169,7 +1222,13 @@ async function generateExamVariants(examId, {
                 continue;
             }
 
+            if (!(await isSemanticallyDistinct(candidate, selectedQuestionObjects, embeddingCache, simThreshold))) {
+                semanticRejectedCount++;
+                continue;
+            }
+
             rowChosen.push(candidate);
+            selectedQuestionObjects.push(candidate);
             usedQuestionIds.add(candidate.id);
             if (topic !== 'UNTAGGED') {
                 globalTopicCounts.set(topic, currentTopicCount + 1);
@@ -1178,26 +1237,39 @@ async function generateExamVariants(examId, {
 
         // Check if enough questions were selected under ARC-02 topic cap
         if (rowChosen.length < row.num_questions) {
-            if (strict_topic_balance) {
+            if (strict_topic_balance && overflowPool.length > 0) {
                 const err = new Error(`ARC-02: Không đủ câu hỏi đa dạng theo topic (trần ${maxPerTopic} câu/topic) cho dòng ma trận ${rowIndex + 1}.`);
                 err.code = 'TOPIC_POOL_INSUFFICIENT';
                 err.status = 422;
                 throw err;
             }
 
-            // Fallback non-strict: take from overflowPool (TOPIC_CAP_RELAXED)
-            for (const candidate of overflowPool) {
-                if (rowChosen.length === row.num_questions) break;
-                rowChosen.push(candidate);
-                usedQuestionIds.add(candidate.id);
-                const topic = (candidate.topic_tag || '').trim() || 'UNTAGGED';
-                if (topic !== 'UNTAGGED') {
-                    globalTopicCounts.set(topic, (globalTopicCounts.get(topic) || 0) + 1);
+            // Fallback non-strict: take from overflowPool (TOPIC_CAP_RELAXED) while preserving semantic guard
+            if (!strict_topic_balance) {
+                for (const candidate of overflowPool) {
+                    if (rowChosen.length === row.num_questions) break;
+                    if (!(await isSemanticallyDistinct(candidate, selectedQuestionObjects, embeddingCache, simThreshold))) {
+                        semanticRejectedCount++;
+                        continue;
+                    }
+                    rowChosen.push(candidate);
+                    selectedQuestionObjects.push(candidate);
+                    usedQuestionIds.add(candidate.id);
+                    const topic = (candidate.topic_tag || '').trim() || 'UNTAGGED';
+                    if (topic !== 'UNTAGGED') {
+                        globalTopicCounts.set(topic, (globalTopicCounts.get(topic) || 0) + 1);
+                    }
                 }
             }
         }
 
         if (rowChosen.length < row.num_questions) {
+            if (semanticRejectedCount > 0) {
+                const err = new Error(`Không đủ câu hỏi khác biệt về mặt ngữ nghĩa (ngưỡng similarity_threshold = ${simThreshold}) cho dòng ma trận ${rowIndex + 1}.`);
+                err.code = 'SEMANTIC_POOL_INSUFFICIENT';
+                err.status = 422;
+                throw err;
+            }
             const err = new Error(`Thiếu câu hỏi khả dụng cho dòng ma trận ${rowIndex + 1}.`);
             err.code = 'EXAM_QUESTION_POOL_INSUFFICIENT';
             err.status = 422;
@@ -1210,7 +1282,7 @@ async function generateExamVariants(examId, {
             : parseFloat((exam.total_score / exam.total_questions).toFixed(2));
 
         for (const q of rowChosen) {
-            const version = Array.isArray(q.question_versions) ? q.question_versions[0] : q.question_versions;
+            const version = getQuestionVersion(q);
             selectedQuestions.push({
                 question_id: q.id,
                 version_id: version.id,

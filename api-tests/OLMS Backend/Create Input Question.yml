@@ -1,0 +1,62 @@
+info:
+  name: Create Input Question
+  type: http
+  seq: 129
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/questions"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "lesson_id": "{{lesson_id}}",
+        "type_id": "{{input_type_id}}",
+        "difficulty_level": "MEDIUM",
+        "topic_tag": "{{run_id}}_IN",
+        "content": "Bruno {{run_id}} INPUT: Viết tên thủ đô của Việt Nam?",
+        "explanation": "Đáp án là Hà Nội.",
+        "requested_status": "DRAFT",
+        "answer_spec": {
+          "schema_version": 1,
+          "kind": "INPUT",
+          "equivalent_answers": [
+            "Hà Nội"
+          ]
+        }
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["lesson_id","input_type_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          const captured = res.body?.data?.["id"];
+          if (captured) {
+            bru.setVar("mt_input_q_id", captured);
+          }
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 201 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: lesson_id, input_type_id. Run the collection sequentially with Local environment."

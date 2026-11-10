@@ -20,6 +20,11 @@ function applyRounding(value, rule) {
     return Number((Math.round((value + 1e-9) * factor) / factor).toFixed(2));
 }
 
+function normalizeInputText(text, caseSensitive) {
+    const normalized = String(text ?? '').normalize('NFC').trim().replace(/\s+/g, ' ');
+    return caseSensitive ? normalized : normalized.toLowerCase();
+}
+
 function clampScore(score, maxScore) {
     return Number(Math.max(0, Math.min(maxScore, score)).toFixed(2));
 }
@@ -178,7 +183,9 @@ function gradeQuestionItem(evq, qv, studentAnswer, rule) {
 
         case 'INPUT': {
             const equivalentAnswers = Array.isArray(snapshot.equivalent_answers) ? snapshot.equivalent_answers : [];
-            const rawText = typeof studentAnswer?.answer_text === 'string' ? studentAnswer.answer_text.trim() : '';
+            const rawText = typeof studentAnswer?.answer_text === 'string'
+                ? studentAnswer.answer_text.normalize('NFC').trim().replace(/\s+/g, ' ')
+                : '';
             const caseSensitive = Boolean(rule?.case_sensitive);
 
             studentResponse = {answer_text: rawText || null};
@@ -188,10 +195,8 @@ function gradeQuestionItem(evq, qv, studentAnswer, rule) {
                 gradingStatus = 'BLANK';
                 earnedScore = 0;
             } else {
-                const matched = equivalentAnswers.some(ans => {
-                    const target = String(ans).trim();
-                    return caseSensitive ? target === rawText : target.toLowerCase() === rawText.toLowerCase();
-                });
+                const candidateNorm = normalizeInputText(rawText, caseSensitive);
+                const matched = equivalentAnswers.some(ans => normalizeInputText(ans, caseSensitive) === candidateNorm);
                 if (matched) {
                     gradingStatus = 'CORRECT';
                     earnedScore = maxScore;

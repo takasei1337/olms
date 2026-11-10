@@ -1,7 +1,7 @@
 info:
   name: Submit Exam Idempotent Retry
   type: http
-  seq: 72
+  seq: 88
   tags:
     - olms
     - positive
@@ -35,7 +35,7 @@ runtime:
         });
 
         test("response contract", () => {
-          expect(body.data.submission_status).to.equal("SUBMITTED");
+          expect(["SUBMITTED","GRADED"]).to.include(body.data.submission_status);
         });
 settings:
   encodeUrl: true

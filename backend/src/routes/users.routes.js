@@ -2,7 +2,36 @@ const express = require('express');
 const router = express.Router();
 const authenticate = require('../middlewares/authenticate');
 const requireAdmin = require('../middlewares/require-admin');
-const {findUsers, findUserById, createUser, updateUser} = require('../services/users.service');
+const {findUsers, findUserById, createUser, updateUser, updateUserStatus, resetUserPassword, softDeleteUser} = require('../services/users.service');
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidPassword(password) {
+    return typeof password === 'string' &&
+        password.length >= 8 &&
+        /[A-Z]/.test(password) &&
+        /[a-z]/.test(password) &&
+        /[0-9]/.test(password) &&
+        /[^A-Za-z0-9]/.test(password);
+}
+
+function sendError(res, req, status, code, message) {
+    return res.status(status).json({
+        success: false,
+        code,
+        message,
+        data: null,
+        trace_id: req.traceId,
+        timestamp: new Date().toISOString()
+    });
+}
+
+function buildRequestMeta(req) {
+    return {
+        ip: req.ip || null,
+        userAgent: req.get('user-agent') || null
+    };
+}
 
 router.use(authenticate);
 router.use(requireAdmin);
@@ -24,14 +53,7 @@ function validateCreateUserInput(body) {
         return 'username must not exceed 50 characters.';
     }
 
-    const validPassword =
-        body.password.length >= 8 &&
-        /[A-Z]/.test(body.password) &&
-        /[a-z]/.test(body.password) &&
-        /[0-9]/.test(body.password) &&
-        /[^A-Za-z0-9]/.test(body.password);
-
-    if (!validPassword) {
+    if (!isValidPassword(body.password)) {
         return 'password must have at least 8 characters, including uppercase, lowercase, number and special character.';
     }
 
@@ -336,6 +358,111 @@ router.patch('/:id', async (req, res, next) => {
                 timestamp: new Date().toISOString()
             });
         }
+        next(error);
+    }
+});
+
+router.patch('/:id/status', async (req, res, next) => {
+    try {
+        const {id} = req.params;
+        if (!UUID_REGEX.test(id)) {
+            return sendError(res, req, 400, 'VALIDATION_ERROR', 'Invalid user ID format.');
+        }
+
+        if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+            return sendError(res, req, 400, 'VALIDATION_ERROR', 'Request body must be a JSON object.');
+        }
+
+        const keys = Object.keys(req.body);
+        if (keys.some(k => k !== 'status') || typeof req.body.status !== 'string' || !['ACTIVE', 'LOCKED'].includes(req.body.status)) {
+            return sendError(res, req, 400, 'VALIDATION_ERROR', 'Body must contain only status with value ACTIVE or LOCKED.');
+        }
+
+        if (id === req.auth.sub && req.body.status === 'LOCKED') {
+            return sendError(res, req, 409, 'CANNOT_LOCK_SELF', 'Administrators cannot lock their own account.');
+        }
+
+        const updated = await updateUserStatus(id, req.body.status, req.auth.sub, buildRequestMeta(req));
+        if (!updated) {
+            return sendError(res, req, 404, 'USER_NOT_FOUND', 'User not found.');
+        }
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'User status updated successfully.',
+            data: updated,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.post('/:id/reset-password', async (req, res, next) => {
+    try {
+        const {id} = req.params;
+        if (!UUID_REGEX.test(id)) {
+            return sendError(res, req, 400, 'VALIDATION_ERROR', 'Invalid user ID format.');
+        }
+
+        if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+            return sendError(res, req, 400, 'VALIDATION_ERROR', 'Request body must be a JSON object.');
+        }
+
+        const keys = Object.keys(req.body);
+        if (keys.some(k => k !== 'new_password') || !Object.prototype.hasOwnProperty.call(req.body, 'new_password')) {
+            return sendError(res, req, 400, 'VALIDATION_ERROR', 'Body must contain only new_password.');
+        }
+
+        if (!isValidPassword(req.body.new_password)) {
+            return sendError(res, req, 400, 'VALIDATION_ERROR', 'new_password must have at least 8 characters, including uppercase, lowercase, number and special character.');
+        }
+
+        const updated = await resetUserPassword(id, req.body.new_password, req.auth.sub, buildRequestMeta(req));
+        if (!updated) {
+            return sendError(res, req, 404, 'USER_NOT_FOUND', 'User not found.');
+        }
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'User password reset successfully.',
+            data: {},
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.delete('/:id', async (req, res, next) => {
+    try {
+        const {id} = req.params;
+        if (!UUID_REGEX.test(id)) {
+            return sendError(res, req, 400, 'VALIDATION_ERROR', 'Invalid user ID format.');
+        }
+
+        if (id === req.auth.sub) {
+            return sendError(res, req, 409, 'CANNOT_DELETE_SELF', 'Administrators cannot delete their own account.');
+        }
+
+        const deleted = await softDeleteUser(id, req.auth.sub, buildRequestMeta(req));
+        if (!deleted) {
+            return sendError(res, req, 404, 'USER_NOT_FOUND', 'User not found.');
+        }
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'User deleted successfully.',
+            data: {},
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
         next(error);
     }
 });

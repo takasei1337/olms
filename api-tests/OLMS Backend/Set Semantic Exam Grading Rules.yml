@@ -1,0 +1,51 @@
+info:
+  name: Set Semantic Exam Grading Rules
+  type: http
+  seq: 120
+  tags:
+    - olms
+    - positive
+http:
+  method: PUT
+  url: "{{base_url}}/exams/{{sem_exam_id}}/grading-rules"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "rules": [
+          {
+            "question_type_id": "{{single_choice_type_id}}",
+            "scoring_mode": "EXACT_MATCH",
+            "penalty_for_wrong": true,
+            "case_sensitive": false,
+            "rounding_precision": 2,
+            "rounding_rule": "ROUND_HALF_UP",
+            "allow_negative_marking": false
+          }
+        ]
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["sem_exam_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: sem_exam_id. Run the collection sequentially with Local environment."

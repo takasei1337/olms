@@ -1,7 +1,7 @@
 info:
   name: Update Lesson
   type: http
-  seq: 23
+  seq: 39
   tags:
     - olms
     - positive

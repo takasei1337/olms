@@ -11,7 +11,7 @@ const rules={rules:[{question_type_id:'{{single_choice_type_id}}',scoring_mode:'
 const login=(role)=>({username:`{{${role}_username}}`,password:`{{${role}_password}}`});
 add('Health Check','GET','@root/health',200,{...auth,check:'expect(body.status).to.equal("ok");'});
 add('Refresh - Missing Token','POST','/auth/refresh',401,{...auth,before:'await bru.cookies.remove("olms_refresh");',check:'expect(body.code).to.equal("REFRESH_TOKEN_MISSING");'});
-add('Login Admin','POST','/auth/login',200,{...auth,body:login('admin'),token:'admin_token',check:'expect(body.data.user.role).to.equal("ADMIN");'});
+add('Login Admin','POST','/auth/login',200,{...auth,body:login('admin'),token:'admin_token',capture:'admin_user_id',capturePath:'user.id',check:'expect(body.data.user.role).to.equal("ADMIN");'});
 add('Login','POST','/auth/login',200,{...auth,body:login('teacher'),token:'token',check:'expect(body.data.user.role).to.equal("TEACHER");expect(body.data.expires_in).to.equal(900);'});
 add('Auth','GET','/auth/me',200,{check:'expect(body.data.role).to.equal("TEACHER");'});
 add('Refresh Token','POST','/auth/refresh',200,{...auth,token:'token',check:'expect(body.data.expires_in).to.equal(900);'});
@@ -23,6 +23,18 @@ add('Login Password Test User','POST','/auth/login',200,{...auth,body:{username:
 add('Change Password','PUT','/auth/password',200,{auth:'password_token',deps:['password_token'],body:{current_password:'{{api_user_password}}',new_password:'{{api_user_new_password}}'}});
 add('Verify Changed Password','POST','/auth/login',200,{...auth,deps:['user_id'],body:{username:'{{run_id}}_user',password:'{{api_user_new_password}}'},token:'changed_password_token'});
 add('Restore Test Password','PUT','/auth/password',200,{auth:'changed_password_token',deps:['changed_password_token'],body:{current_password:'{{api_user_new_password}}',new_password:'{{api_user_password}}'}});
+add('Lock User','PATCH','/users/{{user_id}}/status',200,{...admin,deps:['user_id','admin_token'],body:{status:'LOCKED'},check:'expect(body.data.status).to.equal("LOCKED");'});
+add('Reject Locked User Login','POST','/auth/login',401,{...auth,deps:['user_id'],body:{username:'{{run_id}}_user',password:'{{api_user_password}}'},check:'expect(body.code).to.equal("INVALID_CREDENTIALS");'});
+add('Unlock User','PATCH','/users/{{user_id}}/status',200,{...admin,deps:['user_id','admin_token'],body:{status:'ACTIVE'},check:'expect(body.data.status).to.equal("ACTIVE");'});
+for(let i=1;i<=5;i++)add('Wrong Login Attempt '+i,'POST','/auth/login',401,{...auth,deps:['user_id'],body:{username:'{{run_id}}_user',password:'WrongPass!123'},check:'expect(body.code).to.equal("INVALID_CREDENTIALS");'});
+add('Reject Temp Locked Login','POST','/auth/login',429,{...auth,deps:['user_id'],body:{username:'{{run_id}}_user',password:'{{api_user_password}}'},check:'expect(body.code).to.equal("ACCOUNT_TEMPORARILY_LOCKED");expect(body.data.retry_after_seconds).to.be.greaterThan(0);'});
+add('Reset User Password','POST','/users/{{user_id}}/reset-password',200,{...admin,deps:['user_id','admin_token'],body:{new_password:'{{api_user_new_password}}'}});
+add('Login After Admin Password Reset','POST','/auth/login',200,{...auth,deps:['user_id'],body:{username:'{{run_id}}_user',password:'{{api_user_new_password}}'},check:'expect(body.data.access_token).to.be.a("string");'});
+add('Get Audit Logs','GET','/audit-logs?entity_name=users&page=1&page_size=20',200,{...admin,deps:['admin_token','user_id'],check:'expect(body.data).to.be.an("array");expect(body.data.some((row) => row.entity_id === bru.getVar("user_id") && row.action === "USER_PASSWORD_RESET")).to.equal(true);expect(body.data[0].old_value).to.equal(undefined);'});
+add('Teacher Cannot Read Audit Logs','GET','/audit-logs',403);
+add('Reject Self Delete Admin','DELETE','/users/{{admin_user_id}}',409,{...admin,deps:['admin_user_id','admin_token'],check:'expect(body.code).to.equal("CANNOT_DELETE_SELF");'});
+add('Delete User','DELETE','/users/{{user_id}}',200,{...admin,deps:['user_id','admin_token']});
+add('Reject Deleted User Login','POST','/auth/login',401,{...auth,deps:['user_id'],body:{username:'{{run_id}}_user',password:'{{api_user_new_password}}'},check:'expect(body.code).to.equal("INVALID_CREDENTIALS");'});
 add('Get Subjects','GET','/subjects?q={{run_id}}&page=1&page_size=100',200,{check:'expect(body.data).to.be.an("array");'});
 add('Create Subject','POST','/subjects',201,{body:{code:'{{run_id}}',name:'Bruno {{run_id}} subject',description:'Isolated API regression fixture'},capture:'subject_id'});
 add('Update Subject','PATCH','/subjects/{{subject_id}}',200,{deps:['subject_id'],body:{name:'Bruno {{run_id}} subject updated'}});
@@ -32,7 +44,13 @@ add('Update Chapter','PATCH','/chapters/{{chapter_id}}',200,{deps:['chapter_id']
 add('Get Lessons','GET','/chapters/{{chapter_id}}/lessons',200,{deps:['chapter_id'],check:'expect(body.data).to.be.an("array");'});
 add('Create Lesson','POST','/chapters/{{chapter_id}}/lessons',201,{deps:['chapter_id'],body:{code:'L1',name:'Bruno lesson',order_no:1},capture:'lesson_id'});
 add('Update Lesson','PATCH','/lessons/{{lesson_id}}',200,{deps:['lesson_id'],body:{name:'Bruno lesson updated',order_no:2}});
-add('Get Question Types','GET','/question-types',200,{check:'expect(body.data).to.be.an("array");'});
+add('Get Question Types','GET','/question-types',200,{after:`if (res.status === 200 && Array.isArray(res.body?.data)) {
+  for (const t of res.body.data) {
+    if (["MULTI_CHOICE", "DROPDOWN", "INPUT", "MATCHING"].includes(t.code)) {
+      bru.setVar(t.code.toLowerCase() + "_type_id", t.id);
+    }
+  }
+}`,check:'expect(body.data).to.be.an("array");'});
 add('Create Question Type','POST','/question-types',201,{...admin,body:{code:'{{run_id}}_TYPE',name:'Bruno temporary type',description:'Unused fixture for CRUD'},capture:'temporary_type_id'});
 add('Update Question Type','PATCH','/question-types/{{temporary_type_id}}',200,{...admin,deps:['temporary_type_id'],body:{name:'Bruno type updated'}});
 add('Delete Question Type','DELETE','/question-types/{{temporary_type_id}}',200,{...admin,deps:['temporary_type_id']});
@@ -92,7 +110,7 @@ const buildUuid = (suffix) => {
 };
 bru.setVar("submit_token", buildUuid("0001"));
 bru.setVar("submit_token_conflict", buildUuid("0002"));`,headers:{'Idempotency-Key':'{{submit_token}}'},check:'expect(body.data.submission_status).to.equal("SUBMITTED");expect(body.data.participant_status).to.equal("COMPLETED");'});
-add('Submit Exam Idempotent Retry','POST','/me/submissions/{{submission_id}}/submit',200,{auth:'enrolled_student_token',deps:['enrolled_student_token','submission_id','submit_token'],headers:{'Idempotency-Key':'{{submit_token}}'},check:'expect(body.data.submission_status).to.equal("SUBMITTED");'});
+add('Submit Exam Idempotent Retry','POST','/me/submissions/{{submission_id}}/submit',200,{auth:'enrolled_student_token',deps:['enrolled_student_token','submission_id','submit_token'],headers:{'Idempotency-Key':'{{submit_token}}'},check:'expect(["SUBMITTED","GRADED"]).to.include(body.data.submission_status);'});
 add('Reject Conflicting Submit Token','POST','/me/submissions/{{submission_id}}/submit',409,{auth:'enrolled_student_token',deps:['enrolled_student_token','submission_id','submit_token_conflict'],headers:{'Idempotency-Key':'{{submit_token_conflict}}'},check:'expect(body.code).to.equal("CONFLICTING_SUBMIT_TOKEN");'});
 add('Reject Autosave After Submit','PUT','/me/submissions/{{submission_id}}/answers/{{evq_id}}',409,{auth:'enrolled_student_token',deps:['enrolled_student_token','submission_id','evq_id'],body:{response_kind:'SINGLE_CHOICE',expected_client_sequence:1,client_sequence:2,edit_token:'11111111-1111-4111-8111-111111111103',selected_options:['B']},check:'expect(body.code).to.equal("SUBMISSION_LOCKED");'});
 add('End Exam','POST','/exams/{{exam_id}}/end',200,{deps:['exam_id','started'],flag:'ended',check:'expect(body.data.status).to.equal("ENDED");'});
@@ -119,6 +137,73 @@ add('Export Print Files','POST','/exams/{{exam_id}}/print-files',200,{deps:['exa
 add('Create Cancel Exam','POST','/exams',201,{deps:['subject_id'],body:exam('CANCEL'),capture:'cancel_exam_id'});
 add('Cancel Exam','POST','/exams/{{cancel_exam_id}}/cancel',200,{deps:['cancel_exam_id'],body:{reason:'Bruno isolated cancellation regression'},check:'expect(body.data.status).to.equal("CANCELLED");'});
 add('Create Delete Exam','POST','/exams',201,{deps:['subject_id'],body:exam('DELETE'),capture:'delete_exam_id'});
+add('Create Semantic Pool Question','POST','/questions',201,{deps:['lesson_id'],body:{...question('POOL_SIM'),content:'Bruno {{run_id}} POOL: 2 + 3 là bao nhiêu?'},capture:'pool_sim_question_id'});
+add('Override Semantic Pool Question','POST','/questions/{{pool_sim_question_id}}/ai-override',200,{deps:['pool_sim_question_id'],body:{reason:'Isolated Bruno fixture for semantic guard regression'}});
+add('Activate Semantic Pool Question','PATCH','/questions/{{pool_sim_question_id}}/status',200,{deps:['pool_sim_question_id'],body:{status:'ACTIVE'}});
+add('Create Semantic Guard Exam','POST','/exams',201,{deps:['subject_id','pool_sim_question_id'],body:{...exam('SEM'),total_questions:2,total_score:2},capture:'sem_exam_id'});
+add('Set Semantic Exam Matrix','PUT','/exams/{{sem_exam_id}}/matrix',200,{deps:['sem_exam_id','lesson_id'],body:{rows:[{chapter_id:'{{chapter_id}}',lesson_id:'{{lesson_id}}',question_type_id:'{{single_choice_type_id}}',difficulty_level:'EASY',num_questions:2,score_per_question:1,max_questions_per_topic:5}]}});
+add('Set Semantic Exam Grading Rules','PUT','/exams/{{sem_exam_id}}/grading-rules',200,{deps:['sem_exam_id'],body:rules});
+add('Reject Semantically Redundant Variants','POST','/exams/{{sem_exam_id}}/generate',422,{deps:['sem_exam_id'],body:{variant_count:1,variant_code_start:'301',strict_topic_balance:false,similarity_threshold:0.7},check:'expect(body.code).to.equal("SEMANTIC_POOL_INSUFFICIENT");'});
+add('Generate Variants At Threshold 1','POST','/exams/{{sem_exam_id}}/generate',201,{deps:['sem_exam_id'],body:{variant_count:1,variant_code_start:'301',strict_topic_balance:false,similarity_threshold:1},check:'expect(body.data.status).to.equal("GENERATED");'});
+add('Create Multi Choice Question','POST','/questions',201,{deps:['lesson_id','multi_choice_type_id'],body:{lesson_id:'{{lesson_id}}',type_id:'{{multi_choice_type_id}}',difficulty_level:'MEDIUM',topic_tag:'{{run_id}}_MC',content:'Bruno {{run_id}} MULTI: Chọn các số nguyên tố nhỏ hơn 6?',explanation:'2, 3, 5 là số nguyên tố.',requested_status:'DRAFT',answer_spec:{schema_version:1,kind:'MULTI_CHOICE',choices:[{id:'0199ac14-a9bc-7001-8000-000000000201',text:'2',order_no:1,is_correct:true},{id:'0199ac14-a9bc-7001-8000-000000000202',text:'3',order_no:2,is_correct:true},{id:'0199ac14-a9bc-7001-8000-000000000203',text:'5',order_no:3,is_correct:true},{id:'0199ac14-a9bc-7001-8000-000000000204',text:'4',order_no:4,is_correct:false}]}},capture:'mt_multi_q_id'});
+add('Override Multi Choice Question','POST','/questions/{{mt_multi_q_id}}/ai-override',200,{deps:['mt_multi_q_id'],body:{reason:'Multi-type grading test fixture'}});
+add('Activate Multi Choice Question','PATCH','/questions/{{mt_multi_q_id}}/status',200,{deps:['mt_multi_q_id'],body:{status:'ACTIVE'}});
+add('Create Dropdown Question','POST','/questions',201,{deps:['lesson_id','dropdown_type_id'],body:{lesson_id:'{{lesson_id}}',type_id:'{{dropdown_type_id}}',difficulty_level:'MEDIUM',topic_tag:'{{run_id}}_DD',content:'Bruno {{run_id}} DROPDOWN: Quốc gia {{b1}} có thủ đô là {{b2}}.',explanation:'Việt Nam - Hà Nội.',requested_status:'DRAFT',answer_spec:{schema_version:1,kind:'DROPDOWN',blanks:[{blank_id:'b1',choices:[{value_id:'v1',label:'Việt Nam'},{value_id:'v2',label:'Nhật Bản'}],correct_value_id:'v1'},{blank_id:'b2',choices:[{value_id:'v3',label:'Hà Nội'},{value_id:'v4',label:'Tokyo'}],correct_value_id:'v3'}]}},capture:'mt_dropdown_q_id'});
+add('Override Dropdown Question','POST','/questions/{{mt_dropdown_q_id}}/ai-override',200,{deps:['mt_dropdown_q_id'],body:{reason:'Multi-type grading test fixture'}});
+add('Activate Dropdown Question','PATCH','/questions/{{mt_dropdown_q_id}}/status',200,{deps:['mt_dropdown_q_id'],body:{status:'ACTIVE'}});
+add('Create Input Question','POST','/questions',201,{deps:['lesson_id','input_type_id'],body:{lesson_id:'{{lesson_id}}',type_id:'{{input_type_id}}',difficulty_level:'MEDIUM',topic_tag:'{{run_id}}_IN',content:'Bruno {{run_id}} INPUT: Viết tên thủ đô của Việt Nam?',explanation:'Đáp án là Hà Nội.',requested_status:'DRAFT',answer_spec:{schema_version:1,kind:'INPUT',equivalent_answers:['Hà Nội']}},capture:'mt_input_q_id'});
+add('Override Input Question','POST','/questions/{{mt_input_q_id}}/ai-override',200,{deps:['mt_input_q_id'],body:{reason:'Multi-type grading test fixture'}});
+add('Activate Input Question','PATCH','/questions/{{mt_input_q_id}}/status',200,{deps:['mt_input_q_id'],body:{status:'ACTIVE'}});
+add('Create Matching Question','POST','/questions',201,{deps:['lesson_id','matching_type_id'],body:{lesson_id:'{{lesson_id}}',type_id:'{{matching_type_id}}',difficulty_level:'MEDIUM',topic_tag:'{{run_id}}_MT',content:'Bruno {{run_id}} MATCHING: Nối biểu thức với giá trị tương ứng.',explanation:'1+1=2, 2+2=4.',requested_status:'DRAFT',answer_spec:{schema_version:1,kind:'MATCHING',left_items:[{id:'l1',label:'1 + 1'},{id:'l2',label:'2 + 2'}],right_items:[{id:'r1',label:'2'},{id:'r2',label:'4'}],pairs:[{left_id:'l1',right_id:'r1'},{left_id:'l2',right_id:'r2'}]}},capture:'mt_matching_q_id'});
+add('Override Matching Question','POST','/questions/{{mt_matching_q_id}}/ai-override',200,{deps:['mt_matching_q_id'],body:{reason:'Multi-type grading test fixture'}});
+add('Activate Matching Question','PATCH','/questions/{{mt_matching_q_id}}/status',200,{deps:['mt_matching_q_id'],body:{status:'ACTIVE'}});
+add('Create Multi-Type Grading Exam','POST','/exams',201,{deps:['subject_id','mt_multi_q_id','mt_dropdown_q_id','mt_input_q_id','mt_matching_q_id'],body:{...exam('MULTI'),total_questions:4,total_score:4},capture:'mt_exam_id'});
+add('Set Multi-Type Exam Matrix','PUT','/exams/{{mt_exam_id}}/matrix',200,{deps:['mt_exam_id','lesson_id'],body:{rows:[{chapter_id:'{{chapter_id}}',lesson_id:'{{lesson_id}}',question_type_id:'{{multi_choice_type_id}}',difficulty_level:'MEDIUM',num_questions:1,score_per_question:1,max_questions_per_topic:2},{chapter_id:'{{chapter_id}}',lesson_id:'{{lesson_id}}',question_type_id:'{{dropdown_type_id}}',difficulty_level:'MEDIUM',num_questions:1,score_per_question:1,max_questions_per_topic:2},{chapter_id:'{{chapter_id}}',lesson_id:'{{lesson_id}}',question_type_id:'{{input_type_id}}',difficulty_level:'MEDIUM',num_questions:1,score_per_question:1,max_questions_per_topic:2},{chapter_id:'{{chapter_id}}',lesson_id:'{{lesson_id}}',question_type_id:'{{matching_type_id}}',difficulty_level:'MEDIUM',num_questions:1,score_per_question:1,max_questions_per_topic:2}]}});
+add('Set Multi-Type Exam Grading Rules','PUT','/exams/{{mt_exam_id}}/grading-rules',200,{deps:['mt_exam_id'],body:{rules:[{question_type_id:'{{multi_choice_type_id}}',scoring_mode:'PARTIAL_CREDIT',penalty_for_wrong:true,case_sensitive:false,rounding_precision:2,rounding_rule:'ROUND_HALF_UP',allow_negative_marking:false},{question_type_id:'{{dropdown_type_id}}',scoring_mode:'EXACT_MATCH',penalty_for_wrong:false,case_sensitive:false,rounding_precision:2,rounding_rule:'ROUND_HALF_UP',allow_negative_marking:false},{question_type_id:'{{input_type_id}}',scoring_mode:'EXACT_MATCH',penalty_for_wrong:false,case_sensitive:false,rounding_precision:2,rounding_rule:'ROUND_HALF_UP',allow_negative_marking:false},{question_type_id:'{{matching_type_id}}',scoring_mode:'PARTIAL_CREDIT',penalty_for_wrong:false,case_sensitive:false,rounding_precision:2,rounding_rule:'ROUND_HALF_UP',allow_negative_marking:false}]}});
+add('Generate Multi-Type Exam Variants','POST','/exams/{{mt_exam_id}}/generate',201,{deps:['mt_exam_id'],body:{variant_count:1,variant_code_start:'401',strict_topic_balance:true,similarity_threshold:0.7},flag:'mt_generated',check:'expect(body.data.status).to.equal("GENERATED");expect(body.data.variants).to.have.lengthOf(1);'});
+add('Publish Multi-Type Exam','POST','/exams/{{mt_exam_id}}/publish',200,{deps:['mt_exam_id','mt_generated'],flag:'mt_published',check:'expect(body.data.status).to.equal("PUBLISHED");'});
+add('Enroll Multi-Type Student','POST','/exams/{{mt_exam_id}}/participants',201,{deps:['mt_exam_id','mt_published'],body:{student_code:'{{run_id}}_SV03',full_name:'Bruno {{run_id}} MultiType Student',email:'{{run_id}}_sv03@example.invalid'},capture:'sv03_participant_id',capturePath:'participant.id',after:`if (res.status === 201 && res.body?.data) {
+  bru.setVar("sv03_username", res.body.data.username);
+  bru.setVar("sv03_password", res.body.data.initial_password);
+}`});
+add('Start Multi-Type Exam','POST','/exams/{{mt_exam_id}}/start',200,{deps:['mt_exam_id','mt_published'],flag:'mt_started',check:'expect(body.data.status).to.equal("IN_PROGRESS");'});
+add('Login Multi-Type Student','POST','/auth/login',200,{...auth,deps:['sv03_username','sv03_password'],body:{username:'{{sv03_username}}',password:'{{sv03_password}}'},token:'mt_student_token',check:'expect(body.data.user.role).to.equal("STUDENT");'});
+add('Start Multi-Type Exam Session','POST','/me/exams/{{mt_exam_id}}/session',200,{auth:'mt_student_token',deps:['mt_student_token','mt_exam_id','mt_started'],capture:'mt_submission_id',capturePath:'submission_id',after:`if (res.status === 200 && Array.isArray(res.body?.data?.questions)) {
+  for (const q of res.body.data.questions) {
+    const kind = q.render_spec?.kind;
+    if (kind === "MULTI_CHOICE") bru.setVar("mt_multi_evq_id", q.exam_variant_question_id);
+    if (kind === "DROPDOWN") bru.setVar("mt_dropdown_evq_id", q.exam_variant_question_id);
+    if (kind === "INPUT") bru.setVar("mt_input_evq_id", q.exam_variant_question_id);
+    if (kind === "MATCHING") bru.setVar("mt_matching_evq_id", q.exam_variant_question_id);
+  }
+}`,check:'expect(body.data.questions).to.have.lengthOf(4);'});
+add('Autosave Multi-Choice Partial','PUT','/me/submissions/{{mt_submission_id}}/answers/{{mt_multi_evq_id}}',200,{auth:'mt_student_token',deps:['mt_student_token','mt_submission_id','mt_multi_evq_id'],body:{response_kind:'MULTI_CHOICE',expected_client_sequence:0,client_sequence:1,edit_token:'33333333-3333-4333-8333-333333333301',selected_options:['A','B']},check:'expect(body.data.accepted_sequence).to.equal(1);'});
+add('Autosave Dropdown Answer','PUT','/me/submissions/{{mt_submission_id}}/answers/{{mt_dropdown_evq_id}}',200,{auth:'mt_student_token',deps:['mt_student_token','mt_submission_id','mt_dropdown_evq_id'],body:{response_kind:'DROPDOWN',expected_client_sequence:0,client_sequence:1,edit_token:'33333333-3333-4333-8333-333333333302',response_data:{kind:'DROPDOWN',selections:[{blank_id:'b1',value_id:'v1'},{blank_id:'b2',value_id:'v3'}]}},check:'expect(body.data.accepted_sequence).to.equal(1);'});
+add('Autosave Input Answer NFC Casefold','PUT','/me/submissions/{{mt_submission_id}}/answers/{{mt_input_evq_id}}',200,{auth:'mt_student_token',deps:['mt_student_token','mt_submission_id','mt_input_evq_id'],body:{response_kind:'INPUT',expected_client_sequence:0,client_sequence:1,edit_token:'33333333-3333-4333-8333-333333333303',answer_text:'  HA\u0300   NO\u0302\u0323I  '},check:'expect(body.data.accepted_sequence).to.equal(1);'});
+add('Autosave Matching Answer','PUT','/me/submissions/{{mt_submission_id}}/answers/{{mt_matching_evq_id}}',200,{auth:'mt_student_token',deps:['mt_student_token','mt_submission_id','mt_matching_evq_id'],body:{response_kind:'MATCHING',expected_client_sequence:0,client_sequence:1,edit_token:'33333333-3333-4333-8333-333333333304',response_data:{kind:'MATCHING',pairs:[{left_id:'l1',right_id:'r1'},{left_id:'l2',right_id:'r2'}]}},check:'expect(body.data.accepted_sequence).to.equal(1);'});
+add('Submit Multi-Type Exam','POST','/me/submissions/{{mt_submission_id}}/submit',200,{auth:'mt_student_token',deps:['mt_student_token','mt_submission_id'],before:`const hex8 = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
+const buildUuid = (suffix) => {
+  const variant = (8 + Math.floor(Math.random() * 4)).toString(16);
+  return \`\${hex8()}-\${hex8().slice(0, 4)}-4\${hex8().slice(0, 3)}-\${variant}\${hex8().slice(0, 3)}-\${hex8()}\${suffix}\`;
+};
+bru.setVar("mt_submit_token", buildUuid("0003"));`,headers:{'Idempotency-Key':'{{mt_submit_token}}'},check:'expect(body.data.submission_status).to.equal("SUBMITTED");'});
+add('End Multi-Type Exam','POST','/exams/{{mt_exam_id}}/end',200,{deps:['mt_exam_id','mt_started'],flag:'mt_ended',check:'expect(body.data.status).to.equal("ENDED");'});
+add('Get Multi-Type Submission Result Detail','GET','/exams/{{mt_exam_id}}/results/{{mt_submission_id}}',200,{deps:['mt_exam_id','mt_submission_id','mt_ended'],check:`expect(body.data.summary.total_score).to.equal(3.67);
+expect(body.data.summary.max_score).to.equal(4);
+const mc = body.data.answers.find((a) => a.render_spec?.kind === "MULTI_CHOICE");
+const dd = body.data.answers.find((a) => a.render_spec?.kind === "DROPDOWN");
+const inp = body.data.answers.find((a) => a.render_spec?.kind === "INPUT");
+const mat = body.data.answers.find((a) => a.render_spec?.kind === "MATCHING");
+expect(mc.grading_status).to.equal("PARTIAL");
+expect(mc.earned_score).to.equal(0.67);
+expect(dd.grading_status).to.equal("CORRECT");
+expect(dd.earned_score).to.equal(1);
+expect(inp.grading_status).to.equal("CORRECT");
+expect(inp.earned_score).to.equal(1);
+expect(mat.grading_status).to.equal("CORRECT");
+expect(mat.earned_score).to.equal(1);`});
+add('Publish Multi-Type Results','POST','/exams/{{mt_exam_id}}/results/publish',200,{deps:['mt_exam_id','mt_ended'],body:{result_visibility_mode:'FULL_REVIEW'},flag:'mt_results_published',check:'expect(body.data.status).to.equal("RESULT_PUBLISHED");'});
+add('Student Review Multi-Type Results','GET','/me/results/{{mt_exam_id}}/review',200,{auth:'mt_student_token',deps:['mt_student_token','mt_exam_id','mt_results_published'],check:'expect(body.data.summary.total_score).to.equal(3.67);expect(body.data.answers).to.have.lengthOf(4);'});
 add('Delete Exam','DELETE','/exams/{{delete_exam_id}}',200,{deps:['delete_exam_id']});
 for(const action of ['publish','start','end','archive','print-files'])add('Reject Draft '+action,'POST',`/exams/{{delete_exam_id}}/${action}`,409,{deps:['delete_exam_id'],beforeDelete:true});
 add('Create Cleanup Subject','POST','/subjects',201,{body:{code:'{{run_id}}_C',name:'Bruno cleanup subject'},capture:'cleanup_subject_id'});

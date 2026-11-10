@@ -1,7 +1,7 @@
 info:
   name: Reject Stale Answer Revision
   type: http
-  seq: 70
+  seq: 86
   tags:
     - olms
     - negative

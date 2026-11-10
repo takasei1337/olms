@@ -1,7 +1,7 @@
 info:
   name: Start Exam Session
   type: http
-  seq: 66
+  seq: 82
   tags:
     - olms
     - positive

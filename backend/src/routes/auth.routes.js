@@ -24,6 +24,12 @@ const {
 } = require('../services/refresh-token.service');
 
 const authenticate = require('../middlewares/authenticate');
+const {
+   loginRateLimiter,
+   getAccountLockState,
+   recordFailedLogin,
+   clearLoginFailures
+} = require('../services/login-guard.service');
 
 const router = express.Router();
 const refreshCookieOptions = {
@@ -34,45 +40,73 @@ const refreshCookieOptions = {
    maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000
 };
 
-router.post('/login', validateLogin, async (req, res) => {
-   const {username, password} = req.body;
-   const user = await checkCredentials(username, password);
+router.post('/login', loginRateLimiter, validateLogin, async (req, res, next) => {
+   try {
+      const {username, password} = req.body;
+      const lockState = getAccountLockState(username);
 
-   if (!user) {
-      return res.status(401).json({
-         success: false,
-         code: 'INVALID_CREDENTIALS',
-         message: 'Tên đăng nhập hoặc mật khẩu không chính xác.',
+      if (lockState.locked) {
+         res.set('Retry-After', String(lockState.retryAfterSeconds));
+         return res.status(429).json({
+            success: false,
+            code: 'ACCOUNT_TEMPORARILY_LOCKED',
+            message: 'Account is temporarily locked due to too many failed login attempts.',
+            data: {
+               retry_after_seconds: lockState.retryAfterSeconds,
+               locked_until: lockState.lockedUntil
+            },
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+         });
+      }
+
+      const user = await checkCredentials(username, password);
+
+      if (!user) {
+         await recordFailedLogin(username, {
+            ip: req.ip || null,
+            userAgent: req.get('user-agent') || null
+         });
+
+         return res.status(401).json({
+            success: false,
+            code: 'INVALID_CREDENTIALS',
+            message: 'Tên đăng nhập hoặc mật khẩu không chính xác.',
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+         });
+      }
+
+      clearLoginFailures(username);
+
+      const safeUser = {
+         id: user.id,
+         username: user.username,
+         full_name: user.full_name,
+         role: user.role,
+         status: user.status
+      };
+
+      const accessToken = generateAccessToken(safeUser);
+      const refreshToken = await issueRefreshToken(safeUser.id);
+      res.cookie('olms_refresh', refreshToken, refreshCookieOptions);
+
+      return res.status(200).json({
+         success: true,
+         code: 'SUCCESS',
+         message: 'Login successful.',
+         data: {
+            access_token: accessToken,
+            token_type: 'Bearer',
+            expires_in: 900,
+            user: safeUser
+         },
          trace_id: req.traceId,
          timestamp: new Date().toISOString()
       });
+   } catch (error) {
+      return next(error);
    }
-
-   const safeUser = {
-      id: user.id,
-      username: user.username,
-      full_name: user.full_name,
-      role: user.role,
-      status: user.status
-   }
-
-   const accessToken = generateAccessToken(safeUser);
-   const refreshToken = await issueRefreshToken(safeUser.id);
-   res.cookie('olms_refresh', refreshToken, refreshCookieOptions);
-
-   res.status(200).json({
-      success: true,
-      code: 'SUCCESS',
-      message: 'Login successful.',
-      data: {
-         access_token: accessToken,
-         token_type: 'Bearer',
-         expires_in: 900,
-         user: safeUser
-      },
-      trace_id: req.traceId,
-      timestamp: new Date().toISOString()
-   });
 });
 
 router.post('/refresh', async (req, res) => {

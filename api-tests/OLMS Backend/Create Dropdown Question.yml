@@ -1,0 +1,89 @@
+info:
+  name: Create Dropdown Question
+  type: http
+  seq: 126
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/questions"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "lesson_id": "{{lesson_id}}",
+        "type_id": "{{dropdown_type_id}}",
+        "difficulty_level": "MEDIUM",
+        "topic_tag": "{{run_id}}_DD",
+        "content": "Bruno {{run_id}} DROPDOWN: Quốc gia {{b1}} có thủ đô là {{b2}}.",
+        "explanation": "Việt Nam - Hà Nội.",
+        "requested_status": "DRAFT",
+        "answer_spec": {
+          "schema_version": 1,
+          "kind": "DROPDOWN",
+          "blanks": [
+            {
+              "blank_id": "b1",
+              "choices": [
+                {
+                  "value_id": "v1",
+                  "label": "Việt Nam"
+                },
+                {
+                  "value_id": "v2",
+                  "label": "Nhật Bản"
+                }
+              ],
+              "correct_value_id": "v1"
+            },
+            {
+              "blank_id": "b2",
+              "choices": [
+                {
+                  "value_id": "v3",
+                  "label": "Hà Nội"
+                },
+                {
+                  "value_id": "v4",
+                  "label": "Tokyo"
+                }
+              ],
+              "correct_value_id": "v3"
+            }
+          ]
+        }
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["lesson_id","dropdown_type_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          const captured = res.body?.data?.["id"];
+          if (captured) {
+            bru.setVar("mt_dropdown_q_id", captured);
+          }
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 201 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: lesson_id, dropdown_type_id. Run the collection sequentially with Local environment."

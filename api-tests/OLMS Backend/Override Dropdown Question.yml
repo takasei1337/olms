@@ -1,0 +1,41 @@
+info:
+  name: Override Dropdown Question
+  type: http
+  seq: 127
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/questions/{{mt_dropdown_q_id}}/ai-override"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "reason": "Multi-type grading test fixture"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["mt_dropdown_q_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: mt_dropdown_q_id. Run the collection sequentially with Local environment."
