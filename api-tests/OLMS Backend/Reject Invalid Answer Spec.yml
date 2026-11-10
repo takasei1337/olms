@@ -1,7 +1,7 @@
 info:
   name: Reject Invalid Answer Spec
   type: http
-  seq: 103
+  seq: 119
   tags:
     - olms
     - negative

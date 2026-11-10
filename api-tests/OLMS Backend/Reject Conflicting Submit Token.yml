@@ -13,12 +13,12 @@ http:
     token: "{{enrolled_student_token}}"
   headers:
     - name: Idempotency-Key
-      value: 22222222-2222-4222-8222-222222222202
+      value: "{{submit_token_conflict}}"
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing=["enrolled_student_token","submission_id"].filter(key=>!bru.getVar(key));
+        const missing=["enrolled_student_token","submission_id","submit_token_conflict"].filter(key=>!bru.getVar(key));
         if(missing.length){bru.runner.skipRequest();}
     - type: tests
       code: |-
@@ -30,4 +30,4 @@ settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 409. Requires runtime variables: enrolled_student_token, submission_id. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 409. Requires runtime variables: enrolled_student_token, submission_id, submit_token_conflict. Run the collection sequentially with Local environment."

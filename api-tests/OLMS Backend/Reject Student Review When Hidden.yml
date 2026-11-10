@@ -1,0 +1,30 @@
+info:
+  name: Reject Student Review When Hidden
+  type: http
+  seq: 92
+  tags:
+    - olms
+    - negative
+http:
+  method: GET
+  url: "{{base_url}}/me/results/{{exam_id}}/review"
+  auth:
+    type: bearer
+    token: "{{enrolled_student_token}}"
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["enrolled_student_token","exam_id","results_published"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 403 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(403);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+        test("response contract",()=>{expect(body.code).to.equal("RESULT_HIDDEN");});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 403. Requires runtime variables: enrolled_student_token, exam_id, results_published. Run the collection sequentially with Local environment."

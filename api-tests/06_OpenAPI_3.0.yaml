@@ -3626,11 +3626,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 9
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/results.routes.js
+        line: 103
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp
         đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có.'
       x-target-roles: *id053
@@ -5108,11 +5107,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 22
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/results.routes.js
+        line: 52
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: ADMIN/TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có.'
       x-target-roles: *id069
@@ -5196,11 +5194,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 23
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/results.routes.js
+        line: 199
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: ADMIN/TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có.'
       x-target-roles: *id070
@@ -5275,11 +5272,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 24
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/results.routes.js
+        line: 225
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: ADMIN/TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có.'
       x-target-roles: *id071
@@ -6029,11 +6025,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 32
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/me.routes.js
+        line: 166
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: STUDENT. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có.
 
@@ -6104,11 +6099,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 33
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/me.routes.js
+        line: 184
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'HIDDEN trả score=null; chỉ lộ thông tin theo mức cho phép.
 
 
@@ -6180,11 +6174,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 34
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/me.routes.js
+        line: 207
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'SCORE_AND_STATUS chỉ có đúng/sai/chưa làm; FULL_REVIEW mới có correct_options và explanation.
 
 
@@ -6276,11 +6269,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 35
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/results.routes.js
+        line: 147
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: ADMIN or Teacher owner (P-02). Allowed when exams.status=RESULT_PUBLISHED, forbidden
         after ARCHIVED; audit old/new mode and reason; HIDDEN blocks future API responses even though result_published_at
         exists.

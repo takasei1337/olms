@@ -877,6 +877,11 @@ async function submitOnlineSubmission(submissionId, idempotencyKey, studentUserI
             err.code = 'CONFLICTING_SUBMIT_TOKEN';
             err.status = 409;
             throw err;
+        } else if (rpcErr.code === '23505' && msg.includes('uq_submissions_submit_token')) {
+            const err = new Error('Idempotency-Key was already used by another submission.');
+            err.code = 'CONFLICTING_SUBMIT_TOKEN';
+            err.status = 409;
+            throw err;
         } else if (msg.includes('submission already closed')) {
             const err = new Error('Submission has already been closed.');
             err.code = 'SUBMISSION_ALREADY_CLOSED';
@@ -916,6 +921,16 @@ async function submitOnlineSubmission(submissionId, idempotencyKey, studentUserI
 
     const partObj = Array.isArray(updatedSub.participants) ? updatedSub.participants[0] : updatedSub.participants;
 
+    // Trigger asynchronous grading in background without altering synchronous SUBMITTED ack
+    setImmediate(() => {
+        try {
+            const gradingService = require('./grading.service');
+            gradingService.gradeSubmission(submissionId).catch(() => {});
+        } catch (_) {
+            // Ignored: grading will also be ensured on publish/results read
+        }
+    });
+
     return {
         submission_id: updatedSub.id,
         submission_status: updatedSub.status,
@@ -933,5 +948,7 @@ module.exports = {
     getActiveSession,
     autosaveAnswer,
     submitOnlineSubmission,
-    buildStudentRenderSpec
+    buildStudentRenderSpec,
+    indexToDisplayLabel,
+    getOrderedChoices
 };

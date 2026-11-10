@@ -1,7 +1,7 @@
 info:
   name: Create Cleanup Lesson
   type: http
-  seq: 91
+  seq: 107
   tags:
     - olms
     - positive

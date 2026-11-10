@@ -10,6 +10,7 @@ const chaptersRoutes = require('./chapters.routes');
 const lessonsRoutes = require('./lessons.routes');
 const examsRoutes = require('./exams.routes');
 const participantsRoutes = require('./participants.routes');
+const resultsRoutes = require('./results.routes');
 const meRoutes = require('./me.routes');
 
 router.use('/auth', authRoutes);
@@ -20,6 +21,7 @@ router.use('/lessons', lessonsRoutes);
 router.use('/question-types', questionTypesRoutes);
 router.use('/questions', questionsRoutes);
 router.use('/exams/:examId/participants', participantsRoutes);
+router.use('/exams/:examId', resultsRoutes);
 router.use('/exams', examsRoutes);
 router.use('/me', meRoutes);
 

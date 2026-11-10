@@ -1,7 +1,7 @@
 info:
   name: Create Cancel Exam
   type: http
-  seq: 80
+  seq: 96
   tags:
     - olms
     - positive

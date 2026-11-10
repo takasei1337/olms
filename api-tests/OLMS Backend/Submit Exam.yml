@@ -13,13 +13,14 @@ http:
     token: "{{enrolled_student_token}}"
   headers:
     - name: Idempotency-Key
-      value: 22222222-2222-4222-8222-222222222201
+      value: "{{submit_token}}"
 runtime:
   scripts:
     - type: before-request
       code: |-
         const missing=["enrolled_student_token","submission_id"].filter(key=>!bru.getVar(key));
         if(missing.length){bru.runner.skipRequest();}
+        const h=()=>Math.floor(Math.random()*0xffffffff).toString(16).padStart(8,"0");const u=(s)=>`${h()}-${h().slice(0,4)}-4${h().slice(0,3)}-${(8+Math.floor(Math.random()*4)).toString(16)}${h().slice(0,3)}-${h()}${s}`;bru.setVar("submit_token",u("0001"));bru.setVar("submit_token_conflict",u("0002"));
     - type: tests
       code: |-
         const body=res.getBody();

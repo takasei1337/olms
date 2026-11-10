@@ -1,0 +1,30 @@
+info:
+  name: Student Result Hidden
+  type: http
+  seq: 91
+  tags:
+    - olms
+    - positive
+http:
+  method: GET
+  url: "{{base_url}}/me/results/{{exam_id}}"
+  auth:
+    type: bearer
+    token: "{{enrolled_student_token}}"
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["enrolled_student_token","exam_id","results_published"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.visibility).to.equal("HIDDEN");expect(body.data.result_available).to.equal(false);expect(body.data.total_score).to.equal(undefined);});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: enrolled_student_token, exam_id, results_published. Run the collection sequentially with Local environment."

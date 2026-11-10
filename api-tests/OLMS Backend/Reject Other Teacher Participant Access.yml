@@ -1,7 +1,7 @@
 info:
   name: Reject Other Teacher Participant Access
   type: http
-  seq: 101
+  seq: 117
   tags:
     - olms
     - negative

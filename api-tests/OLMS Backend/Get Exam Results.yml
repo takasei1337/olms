@@ -1,0 +1,28 @@
+info:
+  name: Get Exam Results
+  type: http
+  seq: 77
+  tags:
+    - olms
+    - positive
+http:
+  method: GET
+  url: "{{base_url}}/exams/{{exam_id}}/results"
+  auth: inherit
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id","ended","submission_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data).to.be.an("array");const row=body.data.find(r=>r.submission_id===bru.getVar("submission_id"));expect(row).to.be.an("object");expect(row.status).to.equal("GRADED");expect(row.score).to.be.a("number");});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: exam_id, ended, submission_id. Run the collection sequentially with Local environment."

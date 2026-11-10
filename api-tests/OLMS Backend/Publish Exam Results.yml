@@ -1,0 +1,36 @@
+info:
+  name: Publish Exam Results
+  type: http
+  seq: 82
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/exams/{{exam_id}}/results/publish"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "result_visibility_mode": "SCORE_ONLY"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id","ended"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: after-response
+      code: if(res.status===200)bru.setVar("results_published",true);
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.status).to.equal("RESULT_PUBLISHED");expect(body.data.result_visibility_mode).to.equal("SCORE_ONLY");});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: exam_id, ended. Run the collection sequentially with Local environment."

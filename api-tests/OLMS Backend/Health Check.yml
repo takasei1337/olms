@@ -11,7 +11,7 @@ http:
 runtime:
   scripts:
     - type: before-request
-      code: '["admin_token","token","user_id","password_token","changed_password_token","subject_id","chapter_id","lesson_id","temporary_type_id","question_id","clone_id","pool_question_id","exam_id","generated","published","participant_id","import_token","sv02_participant_id","started","enrolled_student_token","sv02_username","sv02_password","submission_id","evq_id","ended","cancel_exam_id","delete_exam_id","cleanup_subject_id","cleanup_chapter_id","cleanup_lesson_id","student_token","other_teacher_token"].forEach(key=>bru.deleteVar(key));'
+      code: '["admin_token","token","user_id","password_token","changed_password_token","subject_id","chapter_id","lesson_id","temporary_type_id","question_id","clone_id","pool_question_id","exam_id","generated","published","participant_id","import_token","sv02_participant_id","started","enrolled_student_token","sv02_username","sv02_password","submission_id","evq_id","submit_token","submit_token_conflict","ended","results_published","cancel_exam_id","delete_exam_id","cleanup_subject_id","cleanup_chapter_id","cleanup_lesson_id","student_token","other_teacher_token"].forEach(key=>bru.deleteVar(key));'
     - type: tests
       code: |-
         const body=res.getBody();

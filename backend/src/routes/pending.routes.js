@@ -6,10 +6,6 @@ const pendingEndpoints = [
     ['patch', '/users/:userId/status'],
     ['post', '/users/:userId/reset-password'],
     ['get', '/audit-logs'],
-    ['post', '/exams/:examId/results/publish'],
-    ['get', '/exams/:examId/results'],
-    ['get', '/exams/:examId/results/:submissionId'],
-    ['get', '/exams/:examId/statistics'],
     ['post', '/exams/:examId/omr/scans'],
     ['get', '/exams/:examId/omr/scans'],
     ['get', '/omr/scans/:scanId'],
@@ -17,10 +13,6 @@ const pendingEndpoints = [
     ['patch', '/omr/scans/:scanId/detected-answers/:detectedAnswerId'],
     ['post', '/omr/scans/:scanId/approve'],
     ['post', '/exams/:examId/omr/zipgrade/import'],
-    ['get', '/me/results'],
-    ['get', '/me/results/:examId'],
-    ['get', '/me/results/:examId/review'],
-    ['post', '/exams/:examId/results/visibility'],
     ['post', '/omr/scans/:scanId/resolve'],
 ];
 
