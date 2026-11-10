@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const aiCheckService = require('./ai-check.service');
 
 function formatQuestionResponse(row) {
     const version = Array.isArray(row.question_versions)
@@ -14,9 +15,11 @@ function formatQuestionResponse(row) {
         ai_similarity_score: row.ai_similarity_score !== null && row.ai_similarity_score !== undefined
             ? Number(row.ai_similarity_score)
             : null,
-        ai_review_state: (row.ai_similarity_score !== null && Number(row.ai_similarity_score) >= 0.85)
+        ai_review_state: (row.ai_similarity_score !== null && Number(row.ai_similarity_score) >= 0.80)
             ? 'NEEDS_TEACHER'
             : null,
+        is_duplicate_overridden: Boolean(row.is_duplicate_overridden),
+        ai_audit_metadata: row.ai_audit_metadata ?? null,
         current_version_no: version ? version.version_no : 1,
         version_id: version ? version.id : null,
         difficulty_level: version ? version.difficulty_level : null,
@@ -163,6 +166,8 @@ async function findQuestionById(questionId) {
             status,
             ai_check_status,
             ai_similarity_score,
+            is_duplicate_overridden,
+            ai_audit_metadata,
             created_by,
             created_at,
             updated_at,
@@ -188,6 +193,20 @@ async function findQuestionById(questionId) {
     if (!data) return null;
 
     return formatQuestionResponse(data);
+}
+
+async function recheckQuestionAi(questionId, options = {}) {
+    const updatedQuestion = await aiCheckService.processQuestionAiCheck(questionId, options);
+    const detail = await findQuestionById(questionId);
+    if (detail) {
+        delete detail._rawVersion;
+        if (updatedQuestion && updatedQuestion.ai_audit_metadata) {
+            detail.ai_audit_metadata = updatedQuestion.ai_audit_metadata;
+            detail.is_duplicate = Boolean(updatedQuestion.ai_audit_metadata.is_duplicate);
+            detail.duplicate_warning = updatedQuestion.ai_audit_metadata.warning || null;
+        }
+    }
+    return detail;
 }
 
 async function createQuestion({
@@ -420,6 +439,7 @@ module.exports = {
     updateQuestionStatus,
     isQuestionUsedInExams,
     softDeleteQuestion,
-    formatQuestionResponse
+    formatQuestionResponse,
+    recheckQuestionAi
 };
 

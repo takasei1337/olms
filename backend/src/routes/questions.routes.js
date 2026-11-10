@@ -651,5 +651,109 @@ router.delete('/:questionId', async (req, res, next) => {
     }
 });
 
+// 7. POST /api/v1/questions/:questionId/ai-recheck - Kiểm tra lại trùng lặp AI (MVP Extension)
+router.post('/:questionId/ai-recheck', async (req, res, next) => {
+    try {
+        const {questionId} = req.params;
+
+        if (!UUID_REGEX.test(questionId)) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid question ID format.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const existingQuestion = await questionsService.findQuestionById(questionId);
+        if (!existingQuestion) {
+            return res.status(404).json({
+                success: false,
+                code: 'QUESTION_NOT_FOUND',
+                message: 'Question not found.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Ownership check: TEACHER can only recheck their own question, ADMIN can recheck any
+        if (req.currentUser.role === 'TEACHER' && existingQuestion.created_by !== req.currentUser.id) {
+            return res.status(403).json({
+                success: false,
+                code: 'FORBIDDEN',
+                message: 'You do not have permission to recheck AI for this question.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Status check: Only questions in DRAFT status can be rechecked
+        if (existingQuestion.status !== 'DRAFT') {
+            return res.status(409).json({
+                success: false,
+                code: 'CONFLICT',
+                message: 'Only questions in DRAFT status can be rechecked for AI duplicates.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Override check: Cannot recheck questions that have already been overridden
+        if (existingQuestion.is_duplicate_overridden === true || existingQuestion.ai_check_status === 'OVERRIDDEN') {
+            return res.status(409).json({
+                success: false,
+                code: 'CONFLICT',
+                message: 'Cannot recheck question that has already been overridden.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const updated = await questionsService.recheckQuestionAi(questionId);
+
+        const isTimeout = updated.ai_check_status === 'SKIPPED_TIMEOUT';
+        const message = isTimeout
+            ? 'AI duplicate check timed out. Please try again later.'
+            : 'AI duplicate check completed successfully.';
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message,
+            data: updated,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        if (error.code === 'ERR_VERSION_MISMATCH_DISCARDED') {
+            return res.status(409).json({
+                success: false,
+                code: 'CONFLICT',
+                message: 'Question version was updated concurrently. AI check result discarded.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        if (error.code === 'ERR_OVERRIDE_PROTECTED') {
+            return res.status(409).json({
+                success: false,
+                code: 'CONFLICT',
+                message: 'Question has been overridden concurrently. Cannot overwrite override.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
 module.exports = router;
 

@@ -78,6 +78,7 @@ const originalUpdateQuestion = questionsService.updateQuestion;
 const originalUpdateQuestionStatus = questionsService.updateQuestionStatus;
 const originalIsQuestionUsedInExams = questionsService.isQuestionUsedInExams;
 const originalSoftDeleteQuestion = questionsService.softDeleteQuestion;
+const originalRecheckQuestionAi = questionsService.recheckQuestionAi;
 
 function setupMockUsers() {
     authService.findActiveUserById = async (id) => {
@@ -100,6 +101,7 @@ function restoreAllMocks() {
     questionsService.updateQuestionStatus = originalUpdateQuestionStatus;
     questionsService.isQuestionUsedInExams = originalIsQuestionUsedInExams;
     questionsService.softDeleteQuestion = originalSoftDeleteQuestion;
+    questionsService.recheckQuestionAi = originalRecheckQuestionAi;
 }
 
 test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
@@ -450,6 +452,166 @@ test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
         assert.equal(resDelete.status, 200);
         assert.deepEqual(resDelete.body.data, {});
         assert.equal(deletedActor, teacher1Id);
+    });
+
+    await t.test('9. POST /questions/:questionId/ai-recheck - Authentication, RBAC, Validation & Concurrency', async () => {
+        const questionId = '3efc4efc-a19b-4135-9cd9-bad26ca09101';
+
+        // 401 Unauthorized khi thiếu Token
+        const resNoAuth = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`);
+        assert.equal(resNoAuth.status, 401);
+
+        // 403 Forbidden khi Student cố gọi endpoint
+        const resStudent = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`, {
+            headers: {Authorization: `Bearer ${studentToken}`}
+        });
+        assert.equal(resStudent.status, 403);
+        assert.equal(resStudent.body.code, 'FORBIDDEN');
+
+        // 400 Bad Request khi questionId không đúng định dạng UUID
+        const resInvalidUuid = await request(app, 'POST', '/api/v1/questions/invalid-uuid/ai-recheck', {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resInvalidUuid.status, 400);
+        assert.equal(resInvalidUuid.body.code, 'VALIDATION_ERROR');
+
+        // 404 Not Found khi câu hỏi không tồn tại
+        questionsService.findQuestionById = async () => null;
+        const resNotFound = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resNotFound.status, 404);
+        assert.equal(resNotFound.body.code, 'QUESTION_NOT_FOUND');
+
+        // 403 Forbidden khi Giáo viên khác không sở hữu câu hỏi
+        questionsService.findQuestionById = async (id) => ({
+            id,
+            status: 'DRAFT',
+            ai_check_status: 'PENDING',
+            is_duplicate_overridden: false,
+            created_by: teacher2Id
+        });
+        const resForbiddenTeacher = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resForbiddenTeacher.status, 403);
+        assert.equal(resForbiddenTeacher.body.code, 'FORBIDDEN');
+
+        // 409 Conflict khi câu hỏi không ở trạng thái DRAFT (ví dụ ACTIVE)
+        questionsService.findQuestionById = async (id) => ({
+            id,
+            status: 'ACTIVE',
+            ai_check_status: 'PENDING',
+            is_duplicate_overridden: false,
+            created_by: teacher1Id
+        });
+        const resNotDraft = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resNotDraft.status, 409);
+        assert.equal(resNotDraft.body.code, 'CONFLICT');
+        assert.ok(resNotDraft.body.message.includes('DRAFT'));
+
+        // 409 Conflict khi câu hỏi đã được AI Override
+        questionsService.findQuestionById = async (id) => ({
+            id,
+            status: 'DRAFT',
+            ai_check_status: 'OVERRIDDEN',
+            is_duplicate_overridden: true,
+            created_by: teacher1Id
+        });
+        const resOverridden = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resOverridden.status, 409);
+        assert.equal(resOverridden.body.code, 'CONFLICT');
+        assert.ok(resOverridden.body.message.includes('overridden'));
+
+        // 409 Conflict khi gặp lỗi Concurrency phiên bản bị thay đổi
+        questionsService.findQuestionById = async (id) => ({
+            id,
+            status: 'DRAFT',
+            ai_check_status: 'PENDING',
+            is_duplicate_overridden: false,
+            created_by: teacher1Id
+        });
+        questionsService.recheckQuestionAi = async () => {
+            const err = new Error('Question version changed concurrently');
+            err.code = 'ERR_VERSION_MISMATCH_DISCARDED';
+            throw err;
+        };
+        const resVersionMismatch = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resVersionMismatch.status, 409);
+        assert.equal(resVersionMismatch.body.code, 'CONFLICT');
+        assert.ok(resVersionMismatch.body.message.includes('version was updated'));
+
+        // 200 Success - Điểm số an toàn (< 0.80)
+        questionsService.recheckQuestionAi = async (id) => ({
+            id,
+            status: 'DRAFT',
+            ai_check_status: 'CHECKED',
+            ai_similarity_score: 0.1500,
+            ai_review_state: null,
+            is_duplicate: false,
+            duplicate_warning: null,
+            created_by: teacher1Id
+        });
+        const resSuccessSafe = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resSuccessSafe.status, 200);
+        assert.equal(resSuccessSafe.body.code, 'SUCCESS');
+        assert.equal(resSuccessSafe.body.data.ai_check_status, 'CHECKED');
+        assert.equal(resSuccessSafe.body.data.ai_similarity_score, 0.1500);
+
+        // 200 Success - Cảnh báo trùng (>= 0.80)
+        questionsService.recheckQuestionAi = async (id) => ({
+            id,
+            status: 'DRAFT',
+            ai_check_status: 'CHECKED',
+            ai_similarity_score: 0.8800,
+            ai_review_state: 'NEEDS_TEACHER',
+            is_duplicate: true,
+            duplicate_warning: 'POTENTIAL_DUPLICATE',
+            created_by: teacher1Id
+        });
+        const resSuccessDup = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resSuccessDup.status, 200);
+        assert.equal(resSuccessDup.body.code, 'SUCCESS');
+        assert.equal(resSuccessDup.body.data.ai_check_status, 'CHECKED');
+        assert.equal(resSuccessDup.body.data.ai_similarity_score, 0.8800);
+        assert.equal(resSuccessDup.body.data.is_duplicate, true);
+        assert.equal(resSuccessDup.body.data.duplicate_warning, 'POTENTIAL_DUPLICATE');
+
+        // 200 Success - Timeout (SKIPPED_TIMEOUT)
+        questionsService.recheckQuestionAi = async (id) => ({
+            id,
+            status: 'DRAFT',
+            ai_check_status: 'SKIPPED_TIMEOUT',
+            ai_similarity_score: null,
+            ai_review_state: null,
+            is_duplicate: false,
+            duplicate_warning: null,
+            created_by: teacher1Id
+        });
+        const resTimeout = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resTimeout.status, 200);
+        assert.equal(resTimeout.body.code, 'SUCCESS');
+        assert.equal(resTimeout.body.data.ai_check_status, 'SKIPPED_TIMEOUT');
+        assert.equal(resTimeout.body.data.ai_similarity_score, null);
+        assert.ok(resTimeout.body.message.includes('timed out'));
+
+        // Admin có thể recheck câu hỏi của bất kỳ giáo viên nào
+        const resAdmin = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-recheck`, {
+            headers: {Authorization: `Bearer ${adminToken}`}
+        });
+        assert.equal(resAdmin.status, 200);
     });
 });
 
