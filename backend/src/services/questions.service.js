@@ -203,6 +203,52 @@ async function findQuestionById(questionId) {
     return formatQuestionResponse(data);
 }
 
+async function runSafeAiCheck(questionId, options = {}) {
+    try {
+        return await aiCheckService.processQuestionAiCheck(questionId, options);
+    } catch (err) {
+        // Fallback per SRS 5.9 / README 2.1: if AI service fails unexpectedly, mark SKIPPED_TIMEOUT and keep DRAFT
+        const now = new Date().toISOString();
+        try {
+            await supabase
+                .from('questions')
+                .update({
+                    ai_check_status: 'SKIPPED_TIMEOUT',
+                    ai_similarity_score: null,
+                    ai_audit_metadata: {
+                        error: err.message,
+                        error_code: err.code || 'ERR_AI_SERVICE_UNAVAILABLE',
+                        failed_at: now,
+                        retry_needed: true
+                    },
+                    updated_at: now
+                })
+                .eq('id', questionId)
+                .eq('is_duplicate_overridden', false)
+                .neq('ai_check_status', 'OVERRIDDEN');
+        } catch (_) {
+            // Ignore fallback persistence error
+        }
+        return null;
+    }
+}
+
+function isDuplicateBlocked(question) {
+    if (!question) return false;
+    if (question.is_duplicate_overridden === true || question.ai_check_status === 'OVERRIDDEN') {
+        return false;
+    }
+    return question.ai_similarity_score !== null &&
+        question.ai_similarity_score !== undefined &&
+        Number(question.ai_similarity_score) >= 0.80;
+}
+
+function canAutoActivateAfterAiCheck(question) {
+    if (!question) return false;
+    if (question.ai_check_status !== 'CHECKED') return false;
+    return !isDuplicateBlocked(question);
+}
+
 async function recheckQuestionAi(questionId, options = {}) {
     const updatedQuestion = await aiCheckService.processQuestionAiCheck(questionId, options);
     const detail = await findQuestionById(questionId);
@@ -225,6 +271,7 @@ async function createQuestion({
     content,
     media_url,
     explanation,
+    requested_status = 'DRAFT',
     answer_spec,
     created_by
 }) {
@@ -232,7 +279,6 @@ async function createQuestion({
     const questionId = require('node:crypto').randomUUID();
     const versionId = require('node:crypto').randomUUID();
 
-    // Fallback: When AI check service is not integrated yet, set SKIPPED_TIMEOUT and status DRAFT
     const {data: qData, error: qErr} = await supabase
         .from('questions')
         .insert({
@@ -241,7 +287,7 @@ async function createQuestion({
             type_id,
             topic_tag: topic_tag ?? null,
             status: 'DRAFT',
-            ai_check_status: 'SKIPPED_TIMEOUT',
+            ai_check_status: 'PENDING',
             ai_similarity_score: null,
             is_duplicate_overridden: false,
             created_by,
@@ -275,12 +321,23 @@ async function createQuestion({
 
     if (vErr) throw vErr;
 
-    const res = formatQuestionResponse({
-        ...qData,
-        question_versions: [vData]
-    });
-    delete res._rawVersion;
-    return res;
+    const aiUpdated = await runSafeAiCheck(questionId);
+    let detail = await findQuestionById(questionId);
+
+    if (!detail) {
+        detail = formatQuestionResponse({
+            ...qData,
+            ...(aiUpdated || {}),
+            question_versions: [vData]
+        });
+    }
+
+    if (requested_status === 'ACTIVE' && canAutoActivateAfterAiCheck(detail)) {
+        return await updateQuestionStatus(questionId, 'ACTIVE');
+    }
+
+    delete detail._rawVersion;
+    return detail;
 }
 
 async function updateQuestion(questionId, updates, existingQuestion, userId) {
@@ -362,6 +419,15 @@ async function updateQuestion(questionId, updates, existingQuestion, userId) {
         }
     }
 
+    // Determine whether AI duplicate check must re-run due to content/classification changes
+    const contentChanged = Object.prototype.hasOwnProperty.call(updates, 'content') &&
+        updates.content.trim() !== existingQuestion.content;
+    const typeChanged = Object.prototype.hasOwnProperty.call(updates, 'type_id') &&
+        updates.type_id !== existingQuestion.type_id;
+    const lessonChanged = Object.prototype.hasOwnProperty.call(updates, 'lesson_id') &&
+        updates.lesson_id !== existingQuestion.lesson_id;
+    const shouldRecheckAi = contentChanged || typeChanged || lessonChanged;
+
     // Update parent question table
     const questionUpdates = {updated_at: now};
     if (Object.prototype.hasOwnProperty.call(updates, 'lesson_id')) {
@@ -375,6 +441,13 @@ async function updateQuestion(questionId, updates, existingQuestion, userId) {
             ? (updates.topic_tag.trim() || null)
             : null;
     }
+    if (shouldRecheckAi) {
+        questionUpdates.status = 'DRAFT';
+        questionUpdates.ai_check_status = 'PENDING';
+        questionUpdates.ai_similarity_score = null;
+        questionUpdates.is_duplicate_overridden = false;
+        questionUpdates.ai_audit_metadata = null;
+    }
 
     const {error: qUpdateErr} = await supabase
         .from('questions')
@@ -383,9 +456,122 @@ async function updateQuestion(questionId, updates, existingQuestion, userId) {
 
     if (qUpdateErr) throw qUpdateErr;
 
+    if (shouldRecheckAi) {
+        await runSafeAiCheck(questionId);
+    }
+
+    const updated = await findQuestionById(questionId);
+    if (!updated) return null;
+
+    if (updates.requested_status === 'ACTIVE') {
+        const canActivate = shouldRecheckAi
+            ? canAutoActivateAfterAiCheck(updated)
+            : (updated.status === 'ACTIVE' || !isDuplicateBlocked(updated));
+        if (canActivate && updated.status !== 'ACTIVE') {
+            return await updateQuestionStatus(questionId, 'ACTIVE');
+        }
+    }
+
+    delete updated._rawVersion;
+    return updated;
+}
+
+async function overrideQuestionAi(questionId, {reason, overriddenBy, existingQuestion, requestMeta = {}}) {
+    const now = new Date().toISOString();
+    const trimmedReason = reason.trim();
+    const existingMeta = (existingQuestion.ai_audit_metadata && typeof existingQuestion.ai_audit_metadata === 'object')
+        ? existingQuestion.ai_audit_metadata
+        : {};
+
+    const updatedMetadata = {
+        ...existingMeta,
+        review_state: 'OVERRIDDEN',
+        override: {
+            reason: trimmedReason,
+            overridden_by: overriddenBy,
+            overridden_at: now,
+            previous_ai_check_status: existingQuestion.ai_check_status ?? null,
+            previous_similarity_score: existingQuestion.ai_similarity_score ?? null
+        }
+    };
+
+    const {error: updateErr} = await supabase
+        .from('questions')
+        .update({
+            ai_check_status: 'OVERRIDDEN',
+            is_duplicate_overridden: true,
+            ai_audit_metadata: updatedMetadata,
+            updated_at: now
+        })
+        .eq('id', questionId)
+        .is('deleted_at', null);
+
+    if (updateErr) throw updateErr;
+
+    // Best-effort append-only audit log entry
+    try {
+        await supabase
+            .from('audit_logs')
+            .insert({
+                actor_user_id: overriddenBy,
+                action: 'AI_DUPLICATE_OVERRIDE',
+                entity_name: 'questions',
+                entity_id: questionId,
+                old_value: {
+                    ai_check_status: existingQuestion.ai_check_status ?? null,
+                    ai_similarity_score: existingQuestion.ai_similarity_score ?? null,
+                    is_duplicate_overridden: Boolean(existingQuestion.is_duplicate_overridden)
+                },
+                new_value: {
+                    ai_check_status: 'OVERRIDDEN',
+                    is_duplicate_overridden: true,
+                    reason: trimmedReason
+                },
+                ip_address: requestMeta.ip || null,
+                user_agent: requestMeta.userAgent ? String(requestMeta.userAgent).slice(0, 255) : null,
+                created_at: now
+            });
+    } catch (_) {
+        // Non-blocking audit log fallback
+    }
+
     const updated = await findQuestionById(questionId);
     if (updated) delete updated._rawVersion;
     return updated;
+}
+
+async function cloneQuestion(existingQuestion, createdBy) {
+    return await createQuestion({
+        lesson_id: existingQuestion.lesson_id ?? null,
+        type_id: existingQuestion.type_id,
+        difficulty_level: existingQuestion.difficulty_level,
+        topic_tag: existingQuestion.topic_tag ?? null,
+        content: existingQuestion.content,
+        media_url: existingQuestion.media_url ?? null,
+        explanation: existingQuestion.explanation ?? null,
+        requested_status: 'DRAFT',
+        answer_spec: existingQuestion.answer_spec,
+        created_by: createdBy
+    });
+}
+
+async function findQuestionVersions(questionId) {
+    const {data, error} = await supabase
+        .from('question_versions')
+        .select('id, question_id, version_no, frozen_at, is_current, options_snapshot')
+        .eq('question_id', questionId)
+        .order('version_no', {ascending: true});
+
+    if (error) throw error;
+
+    return (data ?? []).map(row => ({
+        id: row.id,
+        question_id: row.question_id,
+        version_no: row.version_no,
+        frozen_at: row.frozen_at ?? null,
+        is_current: Boolean(row.is_current),
+        answer_spec: row.options_snapshot ?? null
+    }));
 }
 
 async function updateQuestionStatus(questionId, newStatus) {
@@ -451,10 +637,14 @@ module.exports = {
     findQuestionById,
     createQuestion,
     updateQuestion,
+    overrideQuestionAi,
+    cloneQuestion,
+    findQuestionVersions,
     updateQuestionStatus,
     isQuestionUsedInExams,
     softDeleteQuestion,
     formatQuestionResponse,
-    recheckQuestionAi
+    recheckQuestionAi,
+    isDuplicateBlocked
 };
 

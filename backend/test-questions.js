@@ -16,6 +16,8 @@ const questionsRoutes = require('./src/routes/questions.routes');
 const questionTypesService = require('./src/services/question-types.service');
 const questionsService = require('./src/services/questions.service');
 const authService = require('./src/services/auth.service');
+const aiCheckService = require('./src/services/ai-check.service');
+const supabase = require('./src/config/supabase');
 
 function createTestApp() {
     const app = express();
@@ -74,14 +76,24 @@ async function request(app, method, path, {headers = {}, body = null} = {}) {
 const originalFindActiveUserById = authService.findActiveUserById;
 const originalFindQuestionTypes = questionTypesService.findQuestionTypes;
 const originalFindQuestionTypeById = questionTypesService.findQuestionTypeById;
+const originalFindQuestionTypeByCode = questionTypesService.findQuestionTypeByCode;
+const originalCreateQuestionType = questionTypesService.createQuestionType;
+const originalUpdateQuestionType = questionTypesService.updateQuestionType;
+const originalIsQuestionTypeInUse = questionTypesService.isQuestionTypeInUse;
+const originalSoftDeleteQuestionType = questionTypesService.softDeleteQuestionType;
 const originalFindQuestions = questionsService.findQuestions;
 const originalFindQuestionById = questionsService.findQuestionById;
 const originalCreateQuestion = questionsService.createQuestion;
 const originalUpdateQuestion = questionsService.updateQuestion;
+const originalOverrideQuestionAi = questionsService.overrideQuestionAi;
+const originalCloneQuestion = questionsService.cloneQuestion;
+const originalFindQuestionVersions = questionsService.findQuestionVersions;
 const originalUpdateQuestionStatus = questionsService.updateQuestionStatus;
 const originalIsQuestionUsedInExams = questionsService.isQuestionUsedInExams;
 const originalSoftDeleteQuestion = questionsService.softDeleteQuestion;
 const originalRecheckQuestionAi = questionsService.recheckQuestionAi;
+const originalProcessQuestionAiCheck = aiCheckService.processQuestionAiCheck;
+const originalSupabaseFrom = supabase.from;
 
 function setupMockUsers() {
     authService.findActiveUserById = async (id) => {
@@ -97,14 +109,24 @@ function restoreAllMocks() {
     authService.findActiveUserById = originalFindActiveUserById;
     questionTypesService.findQuestionTypes = originalFindQuestionTypes;
     questionTypesService.findQuestionTypeById = originalFindQuestionTypeById;
+    questionTypesService.findQuestionTypeByCode = originalFindQuestionTypeByCode;
+    questionTypesService.createQuestionType = originalCreateQuestionType;
+    questionTypesService.updateQuestionType = originalUpdateQuestionType;
+    questionTypesService.isQuestionTypeInUse = originalIsQuestionTypeInUse;
+    questionTypesService.softDeleteQuestionType = originalSoftDeleteQuestionType;
     questionsService.findQuestions = originalFindQuestions;
     questionsService.findQuestionById = originalFindQuestionById;
     questionsService.createQuestion = originalCreateQuestion;
     questionsService.updateQuestion = originalUpdateQuestion;
+    questionsService.overrideQuestionAi = originalOverrideQuestionAi;
+    questionsService.cloneQuestion = originalCloneQuestion;
+    questionsService.findQuestionVersions = originalFindQuestionVersions;
     questionsService.updateQuestionStatus = originalUpdateQuestionStatus;
     questionsService.isQuestionUsedInExams = originalIsQuestionUsedInExams;
     questionsService.softDeleteQuestion = originalSoftDeleteQuestion;
     questionsService.recheckQuestionAi = originalRecheckQuestionAi;
+    aiCheckService.processQuestionAiCheck = originalProcessQuestionAiCheck;
+    supabase.from = originalSupabaseFrom;
 }
 
 test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
@@ -647,6 +669,341 @@ test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
             headers: {Authorization: `Bearer ${adminToken}`}
         });
         assert.equal(resAdmin.status, 200);
+    });
+
+    await t.test('10. POST/PATCH/DELETE /question-types - Admin RBAC, Validation & CRUD', async () => {
+        const typeId = '0199ac14-a9bc-7001-8000-000000000077';
+
+        // Teacher cannot create question type (403)
+        const resTeacherCreate = await request(app, 'POST', '/api/v1/question-types', {
+            headers: {Authorization: `Bearer ${teacher1Token}`},
+            body: {code: 'TRUE_FALSE', name: 'Đúng / Sai'}
+        });
+        assert.equal(resTeacherCreate.status, 403);
+
+        // Duplicate code conflict (409)
+        questionTypesService.findQuestionTypeByCode = async (code) =>
+            code === 'SINGLE_CHOICE' ? {id: typeId, code} : null;
+
+        const resConflict = await request(app, 'POST', '/api/v1/question-types', {
+            headers: {Authorization: `Bearer ${adminToken}`},
+            body: {code: 'single_choice', name: 'Trắc nghiệm đơn'}
+        });
+        assert.equal(resConflict.status, 409);
+
+        // Admin creates successfully (201)
+        questionTypesService.createQuestionType = async ({code, name, description}) => ({
+            id: typeId,
+            code,
+            name,
+            description
+        });
+        const resCreate = await request(app, 'POST', '/api/v1/question-types', {
+            headers: {Authorization: `Bearer ${adminToken}`},
+            body: {code: 'true_false', name: 'Đúng / Sai', description: 'Câu hỏi 2 lựa chọn'}
+        });
+        assert.equal(resCreate.status, 201);
+        assert.equal(resCreate.body.data.code, 'TRUE_FALSE');
+
+        // Admin updates successfully (200)
+        questionTypesService.findQuestionTypeById = async (id) =>
+            id === typeId ? {id: typeId, code: 'TRUE_FALSE', name: 'Đúng / Sai', description: null} : null;
+        questionTypesService.updateQuestionType = async (id, updates) => ({
+            id,
+            code: 'TRUE_FALSE',
+            name: updates.name,
+            description: null
+        });
+        const resPatch = await request(app, 'PATCH', `/api/v1/question-types/${typeId}`, {
+            headers: {Authorization: `Bearer ${adminToken}`},
+            body: {name: 'Đúng hoặc Sai'}
+        });
+        assert.equal(resPatch.status, 200);
+        assert.equal(resPatch.body.data.name, 'Đúng hoặc Sai');
+
+        // Delete conflict when in use (409)
+        questionTypesService.isQuestionTypeInUse = async () => true;
+        const resDeleteInUse = await request(app, 'DELETE', `/api/v1/question-types/${typeId}`, {
+            headers: {Authorization: `Bearer ${adminToken}`}
+        });
+        assert.equal(resDeleteInUse.status, 409);
+
+        // Delete success (200)
+        questionTypesService.isQuestionTypeInUse = async () => false;
+        let deletedByActor = null;
+        questionTypesService.softDeleteQuestionType = async (id, actor) => {
+            deletedByActor = actor;
+            return {id};
+        };
+        const resDeleteOk = await request(app, 'DELETE', `/api/v1/question-types/${typeId}`, {
+            headers: {Authorization: `Bearer ${adminToken}`}
+        });
+        assert.equal(resDeleteOk.status, 200);
+        assert.equal(deletedByActor, adminId);
+    });
+
+    await t.test('11. POST /questions/:questionId/ai-override & Duplicate Status Guard', async () => {
+        const questionId = '0199ac14-a9bc-7001-8000-000000000088';
+
+        // Blank reason -> 400
+        const resBadReason = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-override`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`},
+            body: {reason: '   '}
+        });
+        assert.equal(resBadReason.status, 400);
+
+        // Non-owner teacher -> 403
+        questionsService.findQuestionById = async (id) => ({
+            id,
+            created_by: teacher2Id,
+            status: 'DRAFT',
+            ai_check_status: 'CHECKED',
+            ai_similarity_score: 0.91,
+            is_duplicate_overridden: false
+        });
+        const resForbidden = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-override`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`},
+            body: {reason: 'Khác bối cảnh bài học'}
+        });
+        assert.equal(resForbidden.status, 403);
+
+        // Un-overridden duplicate cannot be activated via PATCH /status -> 409
+        questionsService.findQuestionById = async (id) => ({
+            id,
+            created_by: teacher1Id,
+            status: 'DRAFT',
+            ai_check_status: 'CHECKED',
+            ai_similarity_score: 0.91,
+            is_duplicate_overridden: false
+        });
+        const resBlockedActivate = await request(app, 'PATCH', `/api/v1/questions/${questionId}/status`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`},
+            body: {status: 'ACTIVE'}
+        });
+        assert.equal(resBlockedActivate.status, 409);
+
+        // Already overridden -> 409
+        questionsService.findQuestionById = async (id) => ({
+            id,
+            created_by: teacher1Id,
+            status: 'DRAFT',
+            ai_check_status: 'OVERRIDDEN',
+            is_duplicate_overridden: true
+        });
+        const resAlreadyOverridden = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-override`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`},
+            body: {reason: 'Lý do khác'}
+        });
+        assert.equal(resAlreadyOverridden.status, 409);
+
+        // Success override -> 200
+        questionsService.findQuestionById = async (id) => ({
+            id,
+            created_by: teacher1Id,
+            status: 'DRAFT',
+            ai_check_status: 'CHECKED',
+            ai_similarity_score: 0.91,
+            is_duplicate_overridden: false,
+            ai_audit_metadata: {is_duplicate: true}
+        });
+        questionsService.overrideQuestionAi = async (id, {reason, overriddenBy}) => {
+            assert.equal(overriddenBy, teacher1Id);
+            assert.equal(reason, 'Dạng bài khác tham số');
+            return {
+                id,
+                created_by: teacher1Id,
+                status: 'DRAFT',
+                ai_check_status: 'OVERRIDDEN',
+                is_duplicate_overridden: true
+            };
+        };
+        const resOk = await request(app, 'POST', `/api/v1/questions/${questionId}/ai-override`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`},
+            body: {reason: 'Dạng bài khác tham số'}
+        });
+        assert.equal(resOk.status, 200);
+        assert.equal(resOk.body.data.ai_check_status, 'OVERRIDDEN');
+        assert.equal(resOk.body.data.is_duplicate_overridden, true);
+    });
+
+    await t.test('12. POST /questions/:questionId/clone & GET /questions/:questionId/versions', async () => {
+        const questionId = '0199ac14-a9bc-7001-8000-000000000066';
+        const clonedId = '0199ac14-a9bc-7001-8000-000000000067';
+
+        // Clone: non-owner teacher -> 403
+        questionsService.findQuestionById = async (id) => ({
+            id,
+            created_by: teacher2Id,
+            type_id: '0199ac14-a9bc-7001-8000-000000000001',
+            difficulty_level: 'MEDIUM',
+            content: 'Original question',
+            answer_spec: {schema_version: 1, kind: 'INPUT', equivalent_answers: ['42']}
+        });
+        const resCloneForbidden = await request(app, 'POST', `/api/v1/questions/${questionId}/clone`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resCloneForbidden.status, 403);
+
+        // Clone: owner -> 201 DRAFT copy
+        questionsService.findQuestionById = async (id) => ({
+            id,
+            created_by: teacher1Id,
+            type_id: '0199ac14-a9bc-7001-8000-000000000001',
+            difficulty_level: 'MEDIUM',
+            content: 'Original question',
+            answer_spec: {schema_version: 1, kind: 'INPUT', equivalent_answers: ['42']}
+        });
+        questionsService.cloneQuestion = async (existing, actorId) => {
+            assert.equal(existing.id, questionId);
+            assert.equal(actorId, teacher1Id);
+            return {
+                id: clonedId,
+                status: 'DRAFT',
+                ai_check_status: 'CHECKED',
+                current_version_no: 1,
+                content: existing.content,
+                created_by: actorId
+            };
+        };
+        const resCloneOk = await request(app, 'POST', `/api/v1/questions/${questionId}/clone`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resCloneOk.status, 201);
+        assert.equal(resCloneOk.body.data.id, clonedId);
+        assert.equal(resCloneOk.body.data.status, 'DRAFT');
+
+        // Versions: invalid UUID -> 400
+        const resBadVerId = await request(app, 'GET', '/api/v1/questions/not-a-uuid/versions', {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resBadVerId.status, 400);
+
+        // Versions: 200 list
+        questionsService.findQuestionVersions = async () => [
+            {id: 'v1', question_id: questionId, version_no: 1, frozen_at: '2026-10-15T00:00:00Z', is_current: false, answer_spec: {kind: 'INPUT'}},
+            {id: 'v2', question_id: questionId, version_no: 2, frozen_at: null, is_current: true, answer_spec: {kind: 'INPUT'}}
+        ];
+        const resVersions = await request(app, 'GET', `/api/v1/questions/${questionId}/versions`, {
+            headers: {Authorization: `Bearer ${teacher1Token}`}
+        });
+        assert.equal(resVersions.status, 200);
+        assert.equal(resVersions.body.data.length, 2);
+        assert.equal(resVersions.body.data[1].is_current, true);
+    });
+
+    await t.test('13. Service Integration: createQuestion & updateQuestion invoke AI Duplicate Check', async () => {
+        restoreAllMocks();
+        setupMockUsers();
+
+        let storedQuestion = null;
+        let storedVersion = null;
+        let aiCalls = 0;
+
+        supabase.from = (table) => {
+            if (table === 'questions') {
+                return {
+                    insert(payload) {
+                        storedQuestion = {...payload};
+                        return {select: () => ({single: async () => ({data: storedQuestion, error: null})})};
+                    },
+                    update(payload) {
+                        storedQuestion = {...storedQuestion, ...payload};
+                        return {
+                            eq() { return this; },
+                            neq() { return this; },
+                            is() { return Promise.resolve({data: storedQuestion, error: null}); },
+                            then(resolve) { return Promise.resolve({data: storedQuestion, error: null}).then(resolve); }
+                        };
+                    },
+                    select() {
+                        return {
+                            eq() { return this; },
+                            is() { return this; },
+                            maybeSingle: async () => ({
+                                data: storedQuestion ? {...storedQuestion, question_versions: [storedVersion]} : null,
+                                error: null
+                            })
+                        };
+                    }
+                };
+            }
+            if (table === 'question_versions') {
+                return {
+                    insert(payload) {
+                        storedVersion = {...payload};
+                        return {select: () => ({single: async () => ({data: storedVersion, error: null})})};
+                    },
+                    update(payload) {
+                        storedVersion = {...storedVersion, ...payload};
+                        return {eq: async () => ({data: storedVersion, error: null})};
+                    }
+                };
+            }
+            if (table === 'exam_variant_questions') {
+                return {
+                    select() {
+                        return {eq: async () => ({count: 0, error: null})};
+                    }
+                };
+            }
+            throw new Error(`Unexpected table: ${table}`);
+        };
+
+        // Case A: Safe score (<0.80) + requested_status=ACTIVE -> auto-activates to ACTIVE
+        aiCheckService.processQuestionAiCheck = async (qId) => {
+            aiCalls++;
+            storedQuestion.ai_check_status = 'CHECKED';
+            storedQuestion.ai_similarity_score = 0.25;
+            storedQuestion.ai_audit_metadata = {is_duplicate: false};
+            return storedQuestion;
+        };
+
+        const createdSafe = await questionsService.createQuestion({
+            type_id: '0199ac14-a9bc-7001-8000-000000000001',
+            difficulty_level: 'EASY',
+            content: 'Thủ đô của Việt Nam là gì?',
+            requested_status: 'ACTIVE',
+            answer_spec: {schema_version: 1, kind: 'INPUT', equivalent_answers: ['Hà Nội']},
+            created_by: teacher1Id
+        });
+        assert.equal(aiCalls, 1);
+        assert.equal(createdSafe.ai_check_status, 'CHECKED');
+        assert.equal(createdSafe.status, 'ACTIVE');
+
+        // Case B: Update content -> triggers re-check, duplicate >= 0.80 forces DRAFT
+        aiCheckService.processQuestionAiCheck = async () => {
+            aiCalls++;
+            storedQuestion.ai_check_status = 'CHECKED';
+            storedQuestion.ai_similarity_score = 0.91;
+            storedQuestion.ai_audit_metadata = {is_duplicate: true, warning: 'POTENTIAL_DUPLICATE'};
+            return storedQuestion;
+        };
+
+        const updatedDup = await questionsService.updateQuestion(
+            storedQuestion.id,
+            {content: 'Thành phố nào là thủ đô Việt Nam?', requested_status: 'ACTIVE'},
+            {...storedQuestion, content: storedVersion.content, _rawVersion: storedVersion},
+            teacher1Id
+        );
+        assert.equal(aiCalls, 2);
+        assert.equal(updatedDup.ai_check_status, 'CHECKED');
+        assert.equal(updatedDup.status, 'DRAFT');
+        assert.equal(updatedDup.ai_review_state, 'NEEDS_TEACHER');
+
+        // Case C: AI throws unexpected error -> fallback to SKIPPED_TIMEOUT & DRAFT
+        aiCheckService.processQuestionAiCheck = async () => {
+            throw new Error('ONNX runtime error');
+        };
+        const createdFallback = await questionsService.createQuestion({
+            type_id: '0199ac14-a9bc-7001-8000-000000000001',
+            difficulty_level: 'EASY',
+            content: 'Câu hỏi khi AI gặp sự cố',
+            requested_status: 'ACTIVE',
+            answer_spec: {schema_version: 1, kind: 'INPUT', equivalent_answers: ['OK']},
+            created_by: teacher1Id
+        });
+        assert.equal(createdFallback.ai_check_status, 'SKIPPED_TIMEOUT');
+        assert.equal(createdFallback.status, 'DRAFT');
     });
 });
 

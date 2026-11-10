@@ -608,6 +608,18 @@ router.patch('/:questionId/status', async (req, res, next) => {
             });
         }
 
+        // Prevent activating a question flagged as potential duplicate unless overridden
+        if (req.body.status === 'ACTIVE' && questionsService.isDuplicateBlocked(existingQuestion)) {
+            return res.status(409).json({
+                success: false,
+                code: 'CONFLICT',
+                message: 'Cannot activate question flagged as potential duplicate without AI override.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
         const updated = await questionsService.updateQuestionStatus(questionId, req.body.status);
 
         return res.status(200).json({
@@ -790,6 +802,185 @@ router.post('/:questionId/ai-recheck', async (req, res, next) => {
                 timestamp: new Date().toISOString()
             });
         }
+        next(error);
+    }
+});
+
+async function resolveQuestionForMutation(req, res, actionLabel) {
+    const {questionId} = req.params;
+    if (!UUID_REGEX.test(questionId)) {
+        res.status(400).json({
+            success: false,
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid question ID format.',
+            data: null,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+        return null;
+    }
+
+    const existingQuestion = await questionsService.findQuestionById(questionId);
+    if (!existingQuestion) {
+        res.status(404).json({
+            success: false,
+            code: 'QUESTION_NOT_FOUND',
+            message: 'Question not found.',
+            data: null,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+        return null;
+    }
+
+    if (req.currentUser.role === 'TEACHER' && existingQuestion.created_by !== req.currentUser.id) {
+        res.status(403).json({
+            success: false,
+            code: 'FORBIDDEN',
+            message: `You do not have permission to ${actionLabel} this question.`,
+            data: null,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+        return null;
+    }
+
+    return existingQuestion;
+}
+
+// 8. POST /api/v1/questions/:questionId/ai-override - Duyệt bỏ qua cảnh báo trùng AI
+router.post('/:questionId/ai-override', async (req, res, next) => {
+    try {
+        if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Request body must be a JSON object.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const unsupported = Object.keys(req.body).filter(k => k !== 'reason');
+        if (unsupported.length > 0) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Request contains unsupported fields.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        if (typeof req.body.reason !== 'string' || !req.body.reason.trim()) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'reason is required and must be a non-empty string.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const existingQuestion = await resolveQuestionForMutation(req, res, 'override AI warning for');
+        if (!existingQuestion) return;
+
+        if (existingQuestion.is_duplicate_overridden === true || existingQuestion.ai_check_status === 'OVERRIDDEN') {
+            return res.status(409).json({
+                success: false,
+                code: 'CONFLICT',
+                message: 'Question AI warning has already been overridden.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const updated = await questionsService.overrideQuestionAi(req.params.questionId, {
+            reason: req.body.reason,
+            overriddenBy: req.currentUser.id,
+            existingQuestion,
+            requestMeta: {
+                ip: req.ip,
+                userAgent: req.get('user-agent')
+            }
+        });
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Question AI warning overridden successfully.',
+            data: updated,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// 9. POST /api/v1/questions/:questionId/clone - Nhân bản câu hỏi thành câu mới DRAFT
+router.post('/:questionId/clone', async (req, res, next) => {
+    try {
+        const existingQuestion = await resolveQuestionForMutation(req, res, 'clone');
+        if (!existingQuestion) return;
+
+        const cloned = await questionsService.cloneQuestion(existingQuestion, req.currentUser.id);
+
+        return res.status(201).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Question cloned successfully.',
+            data: cloned,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// 10. GET /api/v1/questions/:questionId/versions - Tra cứu các phiên bản câu hỏi
+router.get('/:questionId/versions', async (req, res, next) => {
+    try {
+        const {questionId} = req.params;
+        if (!UUID_REGEX.test(questionId)) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid question ID format.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const existingQuestion = await questionsService.findQuestionById(questionId);
+        if (!existingQuestion) {
+            return res.status(404).json({
+                success: false,
+                code: 'QUESTION_NOT_FOUND',
+                message: 'Question not found.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const versions = await questionsService.findQuestionVersions(questionId);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Question versions retrieved successfully.',
+            data: versions,
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
         next(error);
     }
 });
