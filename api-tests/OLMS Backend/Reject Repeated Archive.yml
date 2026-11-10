@@ -1,0 +1,24 @@
+info:
+  name: Reject Repeated Archive
+  type: http
+  seq: 58
+  tags:
+    - olms
+    - negative
+http:
+  method: POST
+  url: "{{base_url}}/exams/{{archive_ready_exam_id}}/archive"
+  auth: inherit
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 409 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(409);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+        test("response contract",()=>{expect(body.code).to.equal("INVALID_EXAM_STATUS");});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 409. Run the collection sequentially with Local environment.

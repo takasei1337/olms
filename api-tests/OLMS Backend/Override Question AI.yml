@@ -1,0 +1,34 @@
+info:
+  name: Override Question AI
+  type: http
+  seq: 33
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/questions/{{question_id}}/ai-override"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "reason": "Isolated Bruno fixture explicitly accepted for regression testing"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["question_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.ai_check_status).to.equal("OVERRIDDEN");});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: question_id. Run the collection sequentially with Local environment."

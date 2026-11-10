@@ -1,0 +1,31 @@
+info:
+  name: Login Before Logout
+  type: http
+  seq: 82
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/auth/login"
+  body:
+    type: json
+    data: |-
+      {
+        "username": "{{teacher_username}}",
+        "password": "{{teacher_password}}"
+      }
+runtime:
+  scripts:
+    - type: after-response
+      code: if(res.status===200 && res.body?.data?.access_token)bru.setVar("token",res.body.data.access_token);
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 200. Run the collection sequentially with Local environment.

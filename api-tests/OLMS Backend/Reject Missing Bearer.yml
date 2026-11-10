@@ -1,0 +1,22 @@
+info:
+  name: Reject Missing Bearer
+  type: http
+  seq: 85
+  tags:
+    - olms
+    - negative
+http:
+  method: GET
+  url: "{{base_url}}/questions"
+runtime:
+  scripts:
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 401 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(401);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 401. Run the collection sequentially with Local environment.

@@ -28,6 +28,9 @@ Chứa các file migration gia tăng áp dụng trên môi trường Supabase/Po
 - `001_create_refresh_tokens.sql`: Tạo bảng `public.refresh_tokens` phục vụ xoay vòng phiên đăng nhập (IAM) kèm RLS.
 - `002_rotate_refresh_token.sql`: Hàm `public.rotate_refresh_token` xử lý xoay vòng refresh token an toàn chống race condition.
 - `003_arc02_topic_balancing.sql`: Migration bổ sung `questions.topic_tag`, `exam_matrices.max_questions_per_topic` và cập nhật hàm `get_exam_publish_readiness` theo ARC-02.
+- `004_generate_exam_variants.sql`: Định nghĩa hàm sinh mã đề nguyên tử. Service Express hiện chưa gọi RPC này; luồng JavaScript vẫn ghi nhiều request riêng và cần kiểm thử atomicity/rollback.
+
+Bộ fresh schema có 23 bảng nghiệp vụ; migration 001 bổ sung `refresh_tokens`, tổng cộng 24 bảng. `00_apply_fresh.sql` không tự chạy các migration 001–004 hoặc file `07_security_postcheck.sql`; phải đối chiếu môi trường và chạy postcheck riêng. Các cột ARC-02 đã nằm trong fresh schema, migration 003 phục vụ nâng cấp database cũ.
 
 ## Môi trường phát triển
 

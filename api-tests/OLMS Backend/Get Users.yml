@@ -1,26 +1,26 @@
 info:
   name: Get Users
   type: http
-  seq: 6
-
+  seq: 7
+  tags:
+    - olms
+    - positive
 http:
   method: GET
-  url: http://localhost:3000/api/v1/users?page=1&page_size=100
-  params:
-    - name: page
-      value: "1"
-      type: query
-    - name: page_size
-      value: "100"
-      type: query
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
-  auth: inherit
-
+  url: "{{base_url}}/users?q=olms_bru_&page=1&page_size=100"
+  auth:
+    type: bearer
+    token: "{{admin_token}}"
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data).to.be.an("array");});
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 200. Run the collection sequentially with Local environment.

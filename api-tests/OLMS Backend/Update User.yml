@@ -1,25 +1,36 @@
 info:
   name: Update User
   type: http
-  seq: 9
-
+  seq: 10
+  tags:
+    - olms
+    - positive
 http:
   method: PATCH
-  url: http://localhost:3000/api/v1/users/34b637d7-bba1-4d55-b61e-f59493fdc2e8
+  url: "{{base_url}}/users/{{user_id}}"
+  auth:
+    type: bearer
+    token: "{{admin_token}}"
   body:
     type: json
     data: |-
       {
-        "phone": null
+        "full_name": "Bruno {{run_id}} user updated"
       }
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
-  auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["user_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.full_name).to.include("updated");});
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: user_id. Run the collection sequentially with Local environment."

@@ -1,0 +1,36 @@
+name: Local
+variables:
+  - name: base_url
+    value: "{{process.env.OLMS_TEST_BASE_URL}}"
+  - name: root_url
+    value: "{{process.env.OLMS_TEST_ROOT_URL}}"
+  - name: run_id
+    value: "{{process.env.OLMS_TEST_RUN_ID}}"
+  - name: single_choice_type_id
+    value: "{{process.env.OLMS_TEST_SINGLE_CHOICE_TYPE_ID}}"
+  - name: archive_ready_exam_id
+    value: "{{process.env.OLMS_TEST_ARCHIVE_READY_EXAM_ID}}"
+  - name: opens_at
+    value: "{{process.env.OLMS_TEST_OPENS_AT}}"
+  - name: closes_at
+    value: "{{process.env.OLMS_TEST_CLOSES_AT}}"
+  - name: api_user_password
+    value: "{{process.env.OLMS_TEST_API_USER_PASSWORD}}"
+  - name: api_user_new_password
+    value: "{{process.env.OLMS_TEST_API_USER_NEW_PASSWORD}}"
+  - name: admin_username
+    value: "{{process.env.OLMS_TEST_ADMIN_USERNAME}}"
+  - name: admin_password
+    value: "{{process.env.OLMS_TEST_ADMIN_PASSWORD}}"
+  - name: teacher_username
+    value: "{{process.env.OLMS_TEST_TEACHER_USERNAME}}"
+  - name: teacher_password
+    value: "{{process.env.OLMS_TEST_TEACHER_PASSWORD}}"
+  - name: other_teacher_username
+    value: "{{process.env.OLMS_TEST_OTHER_TEACHER_USERNAME}}"
+  - name: other_teacher_password
+    value: "{{process.env.OLMS_TEST_OTHER_TEACHER_PASSWORD}}"
+  - name: student_username
+    value: "{{process.env.OLMS_TEST_STUDENT_USERNAME}}"
+  - name: student_password
+    value: "{{process.env.OLMS_TEST_STUDENT_PASSWORD}}"

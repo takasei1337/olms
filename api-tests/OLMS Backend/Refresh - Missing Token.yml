@@ -2,15 +2,24 @@ info:
   name: Refresh - Missing Token
   type: http
   seq: 2
-
+  tags:
+    - olms
+    - negative
 http:
   method: POST
-  url: http://localhost:3000/api/v1/auth/refresh
-  auth: inherit
-
+  url: "{{base_url}}/auth/refresh"
+runtime:
+  scripts:
+    - type: before-request
+      code: await bru.cookies.remove("olms_refresh");
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 401 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(401);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+        test("response contract",()=>{expect(body.code).to.equal("REFRESH_TOKEN_MISSING");});
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 401. Run the collection sequentially with Local environment.

@@ -1,23 +1,30 @@
 info:
   name: End Exam
   type: http
-  seq: 40
-
+  seq: 55
+  tags:
+    - olms
+    - positive
 http:
   method: POST
-  url: http://localhost:3000/api/v1/exams/:examId/end
-  params:
-    - name: examId
-      value: 1011995d-3179-4667-8ee3-f6a2d6ff1ceb
-      type: path
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
+  url: "{{base_url}}/exams/{{exam_id}}/end"
   auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id","started"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: after-response
+      code: if(res.status===200)bru.setVar("ended",true);
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.status).to.equal("ENDED");});
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: exam_id, started. Run the collection sequentially with Local environment."

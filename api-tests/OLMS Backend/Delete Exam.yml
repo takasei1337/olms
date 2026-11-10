@@ -1,23 +1,27 @@
 info:
   name: Delete Exam
   type: http
-  seq: 32
-
+  seq: 68
+  tags:
+    - olms
+    - positive
 http:
   method: DELETE
-  url: http://localhost:3000/api/v1/exams/:examId
-  params:
-    - name: examId
-      value: 0199ac14-a9bc-7001-8000-000000000004
-      type: path
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
+  url: "{{base_url}}/exams/{{delete_exam_id}}"
   auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["delete_exam_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: delete_exam_id. Run the collection sequentially with Local environment."

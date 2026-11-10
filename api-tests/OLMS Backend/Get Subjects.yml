@@ -1,19 +1,24 @@
 info:
   name: Get Subjects
   type: http
-  seq: 10
-
+  seq: 15
+  tags:
+    - olms
+    - positive
 http:
   method: GET
-  url: http://localhost:3000/api/v1/subjects
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
+  url: "{{base_url}}/subjects?q={{run_id}}&page=1&page_size=100"
   auth: inherit
-
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data).to.be.an("array");});
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 200. Run the collection sequentially with Local environment.

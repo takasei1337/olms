@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node --test test-auth.js test-token.js test-subjects.js test-chapters.js test-lessons.js test-questions.js test-exams.js test-ai-embedding.js test-ai-candidate.js test-ai-duplicate-check.js test-ai-check.js",
-    "test:security": "node test-security-audit.js"
+    "test": "npm --prefix ../api-tests test"
   },
   "keywords": [],
   "author": "",

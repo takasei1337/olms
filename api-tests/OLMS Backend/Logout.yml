@@ -1,16 +1,22 @@
 info:
   name: Logout
   type: http
-  seq: 3
-
+  seq: 83
+  tags:
+    - olms
+    - positive
 http:
   method: POST
-  url: http://localhost:3000/api/v1/auth/logout
-  auth: inherit
-
+  url: "{{base_url}}/auth/logout"
+runtime:
+  scripts:
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 200. Run the collection sequentially with Local environment.

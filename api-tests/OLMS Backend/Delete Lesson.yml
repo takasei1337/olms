@@ -1,23 +1,27 @@
 info:
   name: Delete Lesson
   type: http
-  seq: 28
-
+  seq: 72
+  tags:
+    - olms
+    - positive
 http:
   method: DELETE
-  url: http://localhost:3000/api/v1/lessons/:lessonId
-  params:
-    - name: lessonId
-      value: 0199ac14-a9bc-7001-8000-000000000100
-      type: path
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
+  url: "{{base_url}}/lessons/{{cleanup_lesson_id}}"
   auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["cleanup_lesson_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: cleanup_lesson_id. Run the collection sequentially with Local environment."

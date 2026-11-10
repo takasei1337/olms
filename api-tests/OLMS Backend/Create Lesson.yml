@@ -1,31 +1,37 @@
 info:
   name: Create Lesson
   type: http
-  seq: 25
-
+  seq: 22
+  tags:
+    - olms
+    - positive
 http:
   method: POST
-  url: http://localhost:3000/api/v1/chapters/:chapterId/lessons
-  params:
-    - name: chapterId
-      value: 7b952c7e-aa35-401c-8819-056f8aee78e7
-      type: path
+  url: "{{base_url}}/chapters/{{chapter_id}}/lessons"
+  auth: inherit
   body:
     type: json
     data: |-
       {
-        "code": "LES_BRUNO_2816",
-        "name": "Bài 1: Giới hạn của dãy số",
+        "code": "L1",
+        "name": "Bruno lesson",
         "order_no": 1
       }
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
-  auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["chapter_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: after-response
+      code: if(res.status===201 && res.body?.data?.id)bru.setVar("lesson_id",res.body.data.id);
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 201 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(201);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: chapter_id. Run the collection sequentially with Local environment."

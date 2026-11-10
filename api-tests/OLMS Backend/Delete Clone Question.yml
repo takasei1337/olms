@@ -1,0 +1,27 @@
+info:
+  name: Delete Clone Question
+  type: http
+  seq: 37
+  tags:
+    - olms
+    - positive
+http:
+  method: DELETE
+  url: "{{base_url}}/questions/{{clone_id}}"
+  auth: inherit
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["clone_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: clone_id. Run the collection sequentially with Local environment."

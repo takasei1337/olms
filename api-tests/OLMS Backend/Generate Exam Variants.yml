@@ -1,32 +1,39 @@
 info:
   name: Generate Exam Variants
   type: http
-  seq: 36
-
+  seq: 51
+  tags:
+    - olms
+    - positive
 http:
   method: POST
-  url: http://localhost:3000/api/v1/exams/:examId/generate
-  params:
-    - name: examId
-      value: 1011995d-3179-4667-8ee3-f6a2d6ff1ceb
-      type: path
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
+  url: "{{base_url}}/exams/{{exam_id}}/generate"
+  auth: inherit
   body:
     type: json
     data: |-
       {
         "variant_count": 2,
         "variant_code_start": "101",
-        "strict_topic_balance": false,
+        "strict_topic_balance": true,
         "similarity_threshold": 0.7
       }
-  auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: after-response
+      code: if(res.status===201)bru.setVar("generated",true);
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 201 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(201);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.variants).to.have.lengthOf(2);expect(body.data.status).to.equal("GENERATED");});
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: exam_id. Run the collection sequentially with Local environment."

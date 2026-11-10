@@ -1,0 +1,22 @@
+info:
+  name: Refresh After Logout
+  type: http
+  seq: 84
+  tags:
+    - olms
+    - negative
+http:
+  method: POST
+  url: "{{base_url}}/auth/refresh"
+runtime:
+  scripts:
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 401 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(401);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 401. Run the collection sequentially with Local environment.

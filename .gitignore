@@ -1,15 +1,65 @@
-# Dependencies & Environment
+# Dependencies and generated output
 node_modules/
+dist/
+coverage/
+.cache/
+__pycache__/
+*.pyc
+
+# Local environment and credentials (templates remain public)
 .env
 .env.*
 !.env.example
+*.local.json
+*.local.yml
+*.local.yaml
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+credentials.json
+service-account*.json
+.aws/
+.codex/
+
+# Local database data, uploaded files and backups; keep schema SQL in Git
+*.dump
+*.backup
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.db
+/backup/
+/backups/
+/database/dumps/
+/uploads/
+/storage/
+/tmp/
+/temp/
+/supabase/.temp/
+/supabase/.branches/
 
 # Logs
 *.log
 npm-debug.log*
 
-# Documentation
-docs
+# Public docs: keep Markdown, OpenAPI, ERD, JSON schemas and sanitized reports.
+# Word/PDF/ZIP exports and the recovered historical bundle remain local.
+/docs/**/*.docx
+/docs/**/*.pdf
+/docs/**/*.zip
+/docs/OLMS_Nguon_*/
+/docs/MANIFEST_SHA256.json
+/docs/rendered*/
+/docs/.render*/
+/docs/previews/
+~$*
+
+# Raw Bruno reports and generated fixture credentials
+/api-tests/reports/
+/api-tests/.bruno*.json
 
 # Agent configuration files
 agents.md
@@ -18,6 +68,13 @@ AGENTS.md
 GEMINI.md
 .agents/
 .gemini/
+
+# Editor and OS files
+*.code-workspace
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
 
 # Explicitly ensure README.md is never ignored
 !README.md

@@ -1,23 +1,30 @@
 info:
   name: Publish Exam
   type: http
-  seq: 38
-
+  seq: 53
+  tags:
+    - olms
+    - positive
 http:
   method: POST
-  url: http://localhost:3000/api/v1/exams/:examId/publish
-  params:
-    - name: examId
-      value: 1011995d-3179-4667-8ee3-f6a2d6ff1ceb
-      type: path
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
+  url: "{{base_url}}/exams/{{exam_id}}/publish"
   auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id","generated"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: after-response
+      code: if(res.status===200)bru.setVar("published",true);
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.status).to.equal("PUBLISHED");});
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: exam_id, generated. Run the collection sequentially with Local environment."

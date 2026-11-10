@@ -1,0 +1,44 @@
+info:
+  name: Create Delete Exam
+  type: http
+  seq: 62
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/exams"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "code": "{{run_id}}_DELETE",
+        "name": "Bruno {{run_id}} DELETE",
+        "subject_id": "{{subject_id}}",
+        "delivery_mode": "ONLINE",
+        "total_questions": 1,
+        "duration_minutes": 30,
+        "opens_at": "{{opens_at}}",
+        "closes_at": "{{closes_at}}",
+        "total_score": 1,
+        "result_visibility_mode": "HIDDEN"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["subject_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: after-response
+      code: if(res.status===201 && res.body?.data?.id)bru.setVar("delete_exam_id",res.body.data.id);
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 201 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(201);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: subject_id. Run the collection sequentially with Local environment."

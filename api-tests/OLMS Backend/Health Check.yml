@@ -1,20 +1,25 @@
 info:
   name: Health Check
   type: http
-  seq: 0
-
+  seq: 1
+  tags:
+    - olms
+    - positive
 http:
   method: GET
-  url: http://localhost:3000/health
+  url: "{{root_url}}/health"
+runtime:
+  scripts:
+    - type: before-request
+      code: '["admin_token","token","user_id","password_token","changed_password_token","subject_id","chapter_id","lesson_id","temporary_type_id","question_id","clone_id","pool_question_id","exam_id","generated","published","started","ended","cancel_exam_id","delete_exam_id","cleanup_subject_id","cleanup_chapter_id","cleanup_lesson_id","student_token","other_teacher_token"].forEach(key=>bru.deleteVar(key));'
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
 
-assert:
-  - expr: res.status
-    operator: eq
-    value: 200
-
+        test("response contract",()=>{expect(body.status).to.equal("ok");});
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 200. Run the collection sequentially with Local environment.

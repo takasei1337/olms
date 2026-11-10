@@ -1,19 +1,23 @@
 info:
   name: Create Question
   type: http
-  seq: 17
-
+  seq: 28
+  tags:
+    - olms
+    - positive
 http:
   method: POST
-  url: http://localhost:3000/api/v1/questions
+  url: "{{base_url}}/questions"
+  auth: inherit
   body:
     type: json
     data: |-
       {
-        "type_id": "02dc896b-51c3-4add-a369-40c817c9f0f5",
-        "lesson_id": "7b75cc0a-01e9-46dc-8732-6bba75de9e10",
+        "lesson_id": "{{lesson_id}}",
+        "type_id": "{{single_choice_type_id}}",
         "difficulty_level": "EASY",
-        "content": "Kết quả của phép tính 2 + 3 là bao nhiêu?",
+        "topic_tag": "{{run_id}}",
+        "content": "Bruno {{run_id}} CRUD: 2 + 3 bằng bao nhiêu?",
         "explanation": "2 + 3 = 5.",
         "requested_status": "DRAFT",
         "answer_spec": {
@@ -35,15 +39,22 @@ http:
           ]
         }
       }
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
-  auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["lesson_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: after-response
+      code: if(res.status===201 && res.body?.data?.id)bru.setVar("question_id",res.body.data.id);
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 201 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(201);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.answer_spec.kind).to.equal("SINGLE_CHOICE");});
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
-
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: lesson_id. Run the collection sequentially with Local environment."

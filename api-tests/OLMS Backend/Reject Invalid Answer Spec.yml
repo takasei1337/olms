@@ -1,0 +1,44 @@
+info:
+  name: Reject Invalid Answer Spec
+  type: http
+  seq: 81
+  tags:
+    - olms
+    - negative
+http:
+  method: POST
+  url: "{{base_url}}/questions"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "lesson_id": "{{lesson_id}}",
+        "type_id": "{{single_choice_type_id}}",
+        "difficulty_level": "EASY",
+        "topic_tag": "{{run_id}}",
+        "content": "Bruno {{run_id}} INVALID: 2 + 3 bằng bao nhiêu?",
+        "explanation": "2 + 3 = 5.",
+        "requested_status": "DRAFT",
+        "answer_spec": {
+          "schema_version": 1,
+          "kind": "SINGLE_CHOICE",
+          "choices": []
+        }
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["lesson_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 400 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(400);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 400. Requires runtime variables: lesson_id. Run the collection sequentially with Local environment."

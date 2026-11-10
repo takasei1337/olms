@@ -1,30 +1,34 @@
 info:
   name: Update Lesson
   type: http
-  seq: 27
-
+  seq: 23
+  tags:
+    - olms
+    - positive
 http:
   method: PATCH
-  url: http://localhost:3000/api/v1/lessons/:lessonId
-  params:
-    - name: lessonId
-      value: 7b75cc0a-01e9-46dc-8732-6bba75de9e10
-      type: path
+  url: "{{base_url}}/lessons/{{lesson_id}}"
+  auth: inherit
   body:
     type: json
     data: |-
       {
-        "name": "Bài 1: Giới hạn của dãy số và hàm số (Cập nhật)",
-        "order_no": 1
+        "name": "Bruno lesson updated",
+        "order_no": 2
       }
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
-  auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["lesson_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: lesson_id. Run the collection sequentially with Local environment."

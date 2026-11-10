@@ -1449,7 +1449,9 @@ async function endExam(examId, currentUser) {
 }
 
 async function archiveExam(examId, currentUser) {
-    return updateExamStatus(examId, 'ARCHIVED', ['ENDED', 'RESULT_PUBLISHED'], currentUser);
+    // Keep the API guard aligned with the canonical database state machine.
+    // ENDED exams must publish results before they can become immutable archives.
+    return updateExamStatus(examId, 'ARCHIVED', ['RESULT_PUBLISHED'], currentUser);
 }
 
 async function cancelExam(examId, { reason } = {}, currentUser) {

@@ -1,0 +1,23 @@
+info:
+  name: Reject Malformed Question ID
+  type: http
+  seq: 80
+  tags:
+    - olms
+    - negative
+http:
+  method: GET
+  url: "{{base_url}}/questions/not-a-uuid"
+  auth: inherit
+runtime:
+  scripts:
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 400 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(400);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 400. Run the collection sequentially with Local environment.

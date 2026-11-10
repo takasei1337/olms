@@ -2,28 +2,36 @@ info:
   name: Create User
   type: http
   seq: 8
-
+  tags:
+    - olms
+    - positive
 http:
   method: POST
-  url: http://localhost:3000/api/v1/users
+  url: "{{base_url}}/users"
+  auth:
+    type: bearer
+    token: "{{admin_token}}"
   body:
     type: json
     data: |-
       {
-        "username": "teacher_bruno_auto",
-        "password": "Iroha1337@",
-        "full_name": "Teacher Bruno Auto",
-        "email": "teacher_bruno_auto@olms.edu.vn",
+        "username": "{{run_id}}_user",
+        "password": "{{api_user_password}}",
+        "full_name": "Bruno {{run_id}} user",
+        "email": "{{run_id}}@example.invalid",
         "role": "TEACHER"
       }
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
-  auth: inherit
-
+runtime:
+  scripts:
+    - type: after-response
+      code: if(res.status===201 && res.body?.data?.id)bru.setVar("user_id",res.body.data.id);
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 201 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(201);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 201. Run the collection sequentially with Local environment.

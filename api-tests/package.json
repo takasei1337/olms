@@ -1,0 +1,13 @@
+{
+  "name": "olms-api-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "setup": "node scripts/setup-bruno.cjs",
+    "test": "node scripts/run-bruno.cjs"
+  },
+  "devDependencies": {
+    "@usebruno/cli": "4.3.0",
+    "yaml": "2.3.4"
+  }
+}

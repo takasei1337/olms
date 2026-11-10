@@ -1,23 +1,28 @@
 info:
   name: Get Exam Variants
   type: http
-  seq: 37
-
+  seq: 52
+  tags:
+    - olms
+    - positive
 http:
   method: GET
-  url: http://localhost:3000/api/v1/exams/:examId/variants
-  params:
-    - name: examId
-      value: 1011995d-3179-4667-8ee3-f6a2d6ff1ceb
-      type: path
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
+  url: "{{base_url}}/exams/{{exam_id}}/variants"
   auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data).to.be.an("array");expect(body.data).to.have.lengthOf(2);});
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: exam_id. Run the collection sequentially with Local environment."

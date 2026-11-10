@@ -1,31 +1,33 @@
 info:
   name: Update Subject
   type: http
-  seq: 12
-
+  seq: 17
+  tags:
+    - olms
+    - positive
 http:
   method: PATCH
-  url: http://localhost:3000/api/v1/subjects/:subjectId
-  params:
-    - name: subjectId
-      value: d1d03215-0882-46fa-a112-e0d9725a3882
-      type: path
+  url: "{{base_url}}/subjects/{{subject_id}}"
+  auth: inherit
   body:
     type: json
     data: |-
       {
-        "name": "Toán cao cấp 1 (Cập nhật)",
-        "description": "Giải tích và hình học giải tích"
+        "name": "Bruno {{run_id}} subject updated"
       }
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
-  auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["subject_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
-
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: subject_id. Run the collection sequentially with Local environment."

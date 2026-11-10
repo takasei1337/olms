@@ -1,44 +1,43 @@
 info:
   name: Set Exam Matrix
   type: http
-  seq: 33
-
+  seq: 46
+  tags:
+    - olms
+    - positive
 http:
   method: PUT
-  url: http://localhost:3000/api/v1/exams/:examId/matrix
-  params:
-    - name: examId
-      value: 1011995d-3179-4667-8ee3-f6a2d6ff1ceb
-      type: path
+  url: "{{base_url}}/exams/{{exam_id}}/matrix"
+  auth: inherit
   body:
     type: json
     data: |-
       {
         "rows": [
           {
-            "chapter_id": "7b952c7e-aa35-401c-8819-056f8aee78e7",
-            "question_type_id": "02dc896b-51c3-4add-a369-40c817c9f0f5",
+            "chapter_id": "{{chapter_id}}",
+            "lesson_id": "{{lesson_id}}",
+            "question_type_id": "{{single_choice_type_id}}",
             "difficulty_level": "EASY",
-            "num_questions": 20,
-            "score_per_question": 0.25
-          },
-          {
-            "chapter_id": "7b952c7e-aa35-401c-8819-056f8aee78e7",
-            "question_type_id": "02dc896b-51c3-4add-a369-40c817c9f0f5",
-            "difficulty_level": "MEDIUM",
-            "num_questions": 20,
-            "score_per_question": 0.25
+            "num_questions": 1,
+            "score_per_question": 1,
+            "max_questions_per_topic": 2
           }
         ]
       }
-  headers:
-    - name: Authorization
-      value: Bearer {{token}}
-  auth: inherit
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id","lesson_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: exam_id, lesson_id. Run the collection sequentially with Local environment."

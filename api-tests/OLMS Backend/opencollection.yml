@@ -1,14 +1,16 @@
 opencollection: 1.0.0
-
 info:
   name: OLMS Backend
-bundled: false
-auth:
-  mode: bearer
-  bearer:
+request:
+  auth:
+    type: bearer
     token: "{{token}}"
+bundled: false
 extensions:
   bruno:
     ignore:
       - node_modules
       - .git
+      - API.yml
+    scripts:
+      flow: sequential

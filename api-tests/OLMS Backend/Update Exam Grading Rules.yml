@@ -1,34 +1,43 @@
 info:
   name: Update Exam Grading Rules
   type: http
-  seq: 27
-
+  seq: 49
+  tags:
+    - olms
+    - positive
 http:
   method: PUT
-  url: http://localhost:3000/api/v1/exams/1011995d-3179-4667-8ee3-f6a2d6ff1ceb/grading-rules
+  url: "{{base_url}}/exams/{{exam_id}}/grading-rules"
+  auth: inherit
   body:
     type: json
     data: |-
       {
         "rules": [
           {
-            "question_type_id": "02dc896b-51c3-4add-a369-40c817c9f0f5",
+            "question_type_id": "{{single_choice_type_id}}",
             "scoring_mode": "EXACT_MATCH",
-            "penalty_for_wrong": false,
+            "penalty_for_wrong": true,
             "case_sensitive": false,
-            "rounding_precision": 0,
-            "rounding_rule": "NONE",
+            "rounding_precision": 2,
+            "rounding_rule": "ROUND_HALF_UP",
             "allow_negative_marking": false
           }
         ]
       }
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
-
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
 settings:
   encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: false
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: exam_id. Run the collection sequentially with Local environment."
