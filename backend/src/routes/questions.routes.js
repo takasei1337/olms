@@ -21,6 +21,7 @@ function validateCreateQuestionBody(body) {
         'lesson_id',
         'type_id',
         'difficulty_level',
+        'topic_tag',
         'content',
         'media_url',
         'explanation',
@@ -45,6 +46,15 @@ function validateCreateQuestionBody(body) {
 
     if (typeof body.difficulty_level !== 'string' || !VALID_DIFFICULTY_LEVELS.includes(body.difficulty_level)) {
         return `difficulty_level is required and must be one of: ${VALID_DIFFICULTY_LEVELS.join(', ')}.`;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'topic_tag') && body.topic_tag !== null) {
+        if (typeof body.topic_tag !== 'string') {
+            return 'topic_tag must be a string or null.';
+        }
+        if (body.topic_tag.trim().length > 100) {
+            return 'topic_tag must not exceed 100 characters.';
+        }
     }
 
     if (typeof body.content !== 'string' || !body.content.trim()) {
@@ -85,6 +95,7 @@ function validatePatchQuestionBody(body) {
         'lesson_id',
         'type_id',
         'difficulty_level',
+        'topic_tag',
         'content',
         'media_url',
         'explanation',
@@ -116,6 +127,15 @@ function validatePatchQuestionBody(body) {
     if (Object.prototype.hasOwnProperty.call(body, 'difficulty_level')) {
         if (typeof body.difficulty_level !== 'string' || !VALID_DIFFICULTY_LEVELS.includes(body.difficulty_level)) {
             return `difficulty_level must be one of: ${VALID_DIFFICULTY_LEVELS.join(', ')}.`;
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'topic_tag') && body.topic_tag !== null) {
+        if (typeof body.topic_tag !== 'string') {
+            return 'topic_tag must be a string or null.';
+        }
+        if (body.topic_tag.trim().length > 100) {
+            return 'topic_tag must not exceed 100 characters.';
         }
     }
 
@@ -160,6 +180,7 @@ router.get('/', async (req, res, next) => {
             subject_id,
             chapter_id,
             lesson_id,
+            topic_tag,
             type_id,
             difficulty_level,
             status,
@@ -192,6 +213,16 @@ router.get('/', async (req, res, next) => {
                 success: false,
                 code: 'VALIDATION_ERROR',
                 message: 'Invalid lesson_id format.',
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        if (topic_tag !== undefined && (typeof topic_tag !== 'string' || topic_tag.trim().length > 100)) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'topic_tag must be a string with at most 100 characters.',
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
@@ -242,6 +273,9 @@ router.get('/', async (req, res, next) => {
 
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
+        const normalizedTopicTag = typeof topic_tag === 'string' && topic_tag.trim()
+            ? topic_tag.trim()
+            : null;
 
         const {questions, total} = await questionsService.findQuestions({
             from,
@@ -250,6 +284,7 @@ router.get('/', async (req, res, next) => {
             subject_id,
             chapter_id,
             lesson_id,
+            topic_tag: normalizedTopicTag,
             type_id,
             difficulty_level,
             status
@@ -261,12 +296,10 @@ router.get('/', async (req, res, next) => {
             message: 'Questions retrieved successfully.',
             data: questions,
             meta: {
-                pagination: {
-                    page,
-                    page_size: pageSize,
-                    total,
-                    total_pages: Math.ceil(total / pageSize)
-                }
+                page,
+                page_size: pageSize,
+                total_items: total,
+                total_pages: Math.ceil(total / pageSize)
             },
             trace_id: req.traceId,
             timestamp: new Date().toISOString()
@@ -295,6 +328,7 @@ router.post('/', async (req, res, next) => {
             lesson_id,
             type_id,
             difficulty_level,
+            topic_tag,
             content,
             media_url,
             explanation,
@@ -326,10 +360,15 @@ router.post('/', async (req, res, next) => {
             });
         }
 
+        const normalizedTopicTag = typeof topic_tag === 'string' && topic_tag.trim()
+            ? topic_tag.trim()
+            : null;
+
         const createdQuestion = await questionsService.createQuestion({
             lesson_id: lesson_id ?? null,
             type_id,
             difficulty_level,
+            topic_tag: normalizedTopicTag,
             content: content.trim(),
             media_url: media_url ?? null,
             explanation: explanation ?? null,

@@ -1,7 +1,7 @@
 info:
   name: Create Exam
   type: http
-  seq: 22
+  seq: 29
 
 http:
   method: POST
@@ -10,20 +10,21 @@ http:
     type: json
     data: |-
       {
-        "code": "OLMS_EXAM_MVP_001",
-        "name": "Kỳ thi kiểm thử MVP OLMS",
+        "code": "EXAM_BRUNO_2826",
+        "name": "Thi Giữa kỳ Cơ sở dữ liệu 2026.1",
         "subject_id": "d1d03215-0882-46fa-a112-e0d9725a3882",
         "delivery_mode": "ONLINE",
-        "total_questions": 1,
-        "duration_minutes": 15,
-        "opens_at": "2026-12-01T01:00:00Z",
-        "closes_at": "2026-12-01T03:00:00Z",
+        "total_questions": 40,
+        "duration_minutes": 60,
+        "opens_at": "2026-11-20T08:00:00.000Z",
+        "closes_at": "2026-11-20T10:00:00.000Z",
         "total_score": 10,
         "result_visibility_mode": "HIDDEN"
       }
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true

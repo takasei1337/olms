@@ -12,9 +12,10 @@ http:
       {
         "phone": null
       }
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true

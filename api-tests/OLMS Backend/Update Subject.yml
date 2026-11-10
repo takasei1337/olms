@@ -5,17 +5,22 @@ info:
 
 http:
   method: PATCH
-  url: http://localhost:3000/api/v1/subjects/e70795b1-8d12-4387-8de7-30fd36182e37
+  url: http://localhost:3000/api/v1/subjects/:subjectId
+  params:
+    - name: subjectId
+      value: d1d03215-0882-46fa-a112-e0d9725a3882
+      type: path
   body:
     type: json
     data: |-
       {
-        "name": "Môn học kiểm thử MVP - Đã cập nhật",
-        "description": "Kiểm thử chức năng PATCH Subjects"
+        "name": "Toán cao cấp 1 (Cập nhật)",
+        "description": "Giải tích và hình học giải tích"
       }
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true
@@ -23,3 +28,4 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
+

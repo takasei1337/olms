@@ -1,4 +1,7 @@
 require('dotenv').config({quiet: true});
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'mock-key';
+process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'test-secret-key-12345';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -212,11 +215,12 @@ test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
     });
 
     await t.test('3. GET /questions - Filter, Search & Pagination', async () => {
-        questionsService.findQuestions = async ({from, to, difficulty_level, status}) => {
+        questionsService.findQuestions = async ({from, to, difficulty_level, status, topic_tag}) => {
             assert.equal(from, 0);
             assert.equal(to, 19);
             assert.equal(difficulty_level, 'EASY');
             assert.equal(status, 'DRAFT');
+            assert.equal(topic_tag, 'dao_ham');
             return {
                 questions: [
                     {
@@ -224,6 +228,7 @@ test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
                         type_id: '0199ac14-a9bc-7001-8000-000000000001',
                         status: 'DRAFT',
                         ai_check_status: 'SKIPPED_TIMEOUT',
+                        topic_tag: 'dao_ham',
                         content: '2 + 3 = ?',
                         difficulty_level: 'EASY'
                     }
@@ -232,7 +237,7 @@ test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
             };
         };
 
-        const res = await request(app, 'GET', '/api/v1/questions?page=1&page_size=20&difficulty_level=EASY&status=DRAFT', {
+        const res = await request(app, 'GET', '/api/v1/questions?page=1&page_size=20&difficulty_level=EASY&status=DRAFT&topic_tag=dao_ham', {
             headers: {Authorization: `Bearer ${teacher1Token}`}
         });
 
@@ -240,8 +245,13 @@ test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
         assert.equal(res.body.success, true);
         assert.equal(res.body.data.length, 1);
         assert.equal(res.body.data[0].content, '2 + 3 = ?');
-        assert.equal(res.body.meta.pagination.page, 1);
-        assert.equal(res.body.meta.pagination.total, 1);
+        assert.equal(res.body.data[0].topic_tag, 'dao_ham');
+        assert.deepEqual(res.body.meta, {
+            page: 1,
+            page_size: 20,
+            total_items: 1,
+            total_pages: 1
+        });
     });
 
     await t.test('4. POST /questions - Validation, AnswerSpec matching, & Creation', async () => {
@@ -258,6 +268,27 @@ test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
         });
         assert.equal(resMissing.status, 400);
         assert.match(resMissing.body.message, /type_id is required/);
+
+        // Invalid topic_tag > 100 chars
+        const resLongTopic = await request(app, 'POST', '/api/v1/questions', {
+            headers: {Authorization: `Bearer ${teacher1Token}`},
+            body: {
+                type_id: typeId,
+                difficulty_level: 'EASY',
+                topic_tag: 'x'.repeat(101),
+                content: 'Test topic length',
+                answer_spec: {
+                    schema_version: 1,
+                    kind: 'SINGLE_CHOICE',
+                    choices: [
+                        {id: '0199ac14-a9bc-7001-8000-000000000101', text: '5', order_no: 1, is_correct: true},
+                        {id: '0199ac14-a9bc-7001-8000-000000000102', text: '6', order_no: 2, is_correct: false}
+                    ]
+                }
+            }
+        });
+        assert.equal(resLongTopic.status, 400);
+        assert.match(resLongTopic.body.message, /topic_tag must not exceed 100/);
 
         // Mismatched answer_spec kind vs question_type
         const resMismatch = await request(app, 'POST', '/api/v1/questions', {
@@ -276,14 +307,16 @@ test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
         assert.equal(resMismatch.status, 400);
         assert.match(resMismatch.body.message, /does not match question_type code/);
 
-        // Success creation
-        questionsService.createQuestion = async ({content, difficulty_level, type_id, created_by}) => {
+        // Success creation with topic_tag
+        questionsService.createQuestion = async ({content, difficulty_level, type_id, topic_tag, created_by}) => {
             assert.equal(created_by, teacher1Id);
+            assert.equal(topic_tag, 'toan_co_ban');
             return {
                 id: '0199ac14-a9bc-7001-8000-000000000099',
                 type_id,
                 status: 'DRAFT',
                 ai_check_status: 'SKIPPED_TIMEOUT',
+                topic_tag,
                 content,
                 difficulty_level,
                 current_version_no: 1,
@@ -296,6 +329,7 @@ test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
             body: {
                 type_id: typeId,
                 difficulty_level: 'EASY',
+                topic_tag: '  toan_co_ban  ',
                 content: 'Kết quả 2 + 3 là?',
                 answer_spec: {
                     schema_version: 1,
@@ -313,6 +347,7 @@ test('QUESTIONS & QUESTION TYPES MODULE TESTS (MOCK)', async (t) => {
         assert.equal(resCreated.body.data.id, '0199ac14-a9bc-7001-8000-000000000099');
         assert.equal(resCreated.body.data.status, 'DRAFT');
         assert.equal(resCreated.body.data.ai_check_status, 'SKIPPED_TIMEOUT');
+        assert.equal(resCreated.body.data.topic_tag, 'toan_co_ban');
     });
 
     await t.test('5. GET /questions/:questionId - Detail & 404', async () => {

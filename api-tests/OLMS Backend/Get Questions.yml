@@ -13,9 +13,10 @@ http:
     - name: page_size
       value: "20"
       type: query
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true
@@ -23,3 +24,4 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
+

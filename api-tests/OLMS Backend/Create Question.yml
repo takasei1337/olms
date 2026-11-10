@@ -11,32 +11,34 @@ http:
     data: |-
       {
         "type_id": "02dc896b-51c3-4add-a369-40c817c9f0f5",
-        "difficulty_level": "MEDIUM",
-        "content": "Kết quả của phép tính 7 + 5 là bao nhiêu?",
-        "explanation": "7 + 5 = 12.",
+        "lesson_id": "7b75cc0a-01e9-46dc-8732-6bba75de9e10",
+        "difficulty_level": "EASY",
+        "content": "Kết quả của phép tính 2 + 3 là bao nhiêu?",
+        "explanation": "2 + 3 = 5.",
         "requested_status": "DRAFT",
         "answer_spec": {
           "schema_version": 1,
           "kind": "SINGLE_CHOICE",
           "choices": [
             {
-              "id": "0199ac14-a9bc-7001-8000-000000000201",
-              "text": "12",
+              "id": "0199ac14-a9bc-7001-8000-000000000101",
+              "text": "4",
               "order_no": 1,
-              "is_correct": true
+              "is_correct": false
             },
             {
-              "id": "0199ac14-a9bc-7001-8000-000000000202",
-              "text": "13",
+              "id": "0199ac14-a9bc-7001-8000-000000000102",
+              "text": "5",
               "order_no": 2,
-              "is_correct": false
+              "is_correct": true
             }
           ]
         }
       }
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true
@@ -44,3 +46,4 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
+

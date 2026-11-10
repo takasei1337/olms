@@ -1,0 +1,192 @@
+/**
+ * OLMS Design System - 3-Layer Tokens (CSS Variables)
+ * Standardized single source of truth aligned with tokens.json & tailwind.tokens.js
+ */
+
+:root {
+  /* ========================================================
+     1. PRIMITIVE TOKENS
+     ======================================================== */
+  --olms-color-blue-50: #eff6ff;
+  --olms-color-blue-100: #dbeafe;
+  --olms-color-blue-200: #bfdbfe;
+  --olms-color-blue-300: #93c5fd;
+  --olms-color-blue-400: #60a5fa;
+  --olms-color-blue-500: #3b82f6;
+  --olms-color-blue-600: #2563eb;
+  --olms-color-blue-700: #1d4ed8;
+  --olms-color-blue-800: #1e40af;
+  --olms-color-blue-900: #1e3a8a;
+  --olms-color-blue-950: #172554;
+
+  --olms-color-slate-50: #f8fafc;
+  --olms-color-slate-100: #f1f5f9;
+  --olms-color-slate-200: #e2e8f0;
+  --olms-color-slate-300: #cbd5e1;
+  --olms-color-slate-400: #94a3b8;
+  --olms-color-slate-500: #64748b;
+  --olms-color-slate-600: #475569;
+  --olms-color-slate-700: #334155;
+  --olms-color-slate-800: #1e293b;
+  --olms-color-slate-900: #0f172a;
+  --olms-color-slate-950: #020617;
+
+  --olms-color-emerald-50: #ecfdf5;
+  --olms-color-emerald-100: #d1fae5;
+  --olms-color-emerald-500: #10b981;
+  --olms-color-emerald-600: #059669;
+  --olms-color-emerald-700: #047857;
+
+  --olms-color-amber-50: #fffbeb;
+  --olms-color-amber-100: #fef3c7;
+  --olms-color-amber-500: #f59e0b;
+  --olms-color-amber-600: #d97706;
+  --olms-color-amber-700: #b45309;
+
+  --olms-color-rose-50: #fff1f2;
+  --olms-color-rose-100: #ffe4e6;
+  --olms-color-rose-500: #f43f5e;
+  --olms-color-rose-600: #e11d48;
+  --olms-color-rose-700: #be123c;
+
+  --olms-color-violet-50: #f5f3ff;
+  --olms-color-violet-100: #ede9fe;
+  --olms-color-violet-500: #8b5cf6;
+  --olms-color-violet-600: #7c3aed;
+  --olms-color-violet-700: #6d28d9;
+
+  /* Typography */
+  --olms-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --olms-font-mono: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', monospace;
+  --olms-font-math: 'KaTeX_Main', 'Times New Roman', serif;
+
+  /* Radii & Shadows */
+  --olms-radius-none: 0px;
+  --olms-radius-sm: 0.25rem;
+  --olms-radius-md: 0.375rem;
+  --olms-radius-lg: 0.5rem;
+  --olms-radius-xl: 0.75rem;
+  --olms-radius-full: 9999px;
+
+  --olms-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --olms-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --olms-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --olms-shadow-exam-focus: 0 0 0 3px rgba(37, 99, 235, 0.2);
+
+  /* Transitions */
+  --olms-transition-fast: 150ms;
+  --olms-transition-normal: 250ms;
+
+  /* ========================================================
+     2. SEMANTIC TOKENS
+     ======================================================== */
+  --olms-brand-50: var(--olms-color-blue-50);
+  --olms-brand-100: var(--olms-color-blue-100);
+  --olms-brand-200: var(--olms-color-blue-200);
+  --olms-brand-500: var(--olms-color-blue-500);
+  --olms-brand-600: var(--olms-color-blue-600);
+  --olms-brand-700: var(--olms-color-blue-700);
+  --olms-brand-900: var(--olms-color-blue-900);
+  --olms-brand-primary: var(--olms-color-blue-600);
+  --olms-brand-primary-hover: var(--olms-color-blue-700);
+  --olms-brand-primary-light: var(--olms-color-blue-50);
+
+  --olms-surface-bg: var(--olms-color-slate-50);
+  --olms-surface-canvas: var(--olms-surface-bg);
+  --olms-surface-card: #ffffff;
+  --olms-surface-overlay: rgba(15, 23, 42, 0.6);
+  --olms-surface-muted: var(--olms-color-slate-100);
+  --olms-surface-border: var(--olms-color-slate-200);
+
+  --olms-text-primary: var(--olms-color-slate-900);
+  --olms-text-secondary: var(--olms-color-slate-600);
+  --olms-text-muted: var(--olms-color-slate-400);
+  --olms-text-tertiary: var(--olms-text-muted);
+  --olms-text-inverse: #ffffff;
+
+  --olms-semantic-success: var(--olms-color-emerald-600);
+  --olms-semantic-success-bg: var(--olms-color-emerald-50);
+  --olms-semantic-warning: var(--olms-color-amber-600);
+  --olms-semantic-warning-bg: var(--olms-color-amber-50);
+  --olms-semantic-error: var(--olms-color-rose-600);
+  --olms-semantic-error-bg: var(--olms-color-rose-50);
+  --olms-semantic-info: var(--olms-color-blue-600);
+  --olms-semantic-info-bg: var(--olms-color-blue-50);
+
+  /* Nghiệp vụ Khảo thí (Examination Semantics) */
+  --olms-timer-normal: var(--olms-color-emerald-600);
+  --olms-timer-warning: var(--olms-color-amber-500);
+  --olms-timer-critical: var(--olms-color-rose-600);
+  --olms-timer-danger: var(--olms-timer-critical);
+
+  --olms-exam-status-saved: var(--olms-color-emerald-600);
+  --olms-exam-status-saving: var(--olms-color-amber-500);
+  --olms-exam-status-unanswered: var(--olms-color-slate-300);
+  --olms-exam-status-flagged: var(--olms-color-violet-600);
+
+  --olms-answer-unanswered: var(--olms-color-slate-300);
+  --olms-answer-answered: var(--olms-color-blue-600);
+  --olms-answer-flagged: var(--olms-color-violet-600);
+  --olms-answer-confirmed: var(--olms-color-emerald-600);
+
+  --olms-diff-easy: var(--olms-color-emerald-600);
+  --olms-diff-easy-bg: var(--olms-color-emerald-50);
+  --olms-diff-medium: var(--olms-color-amber-600);
+  --olms-diff-medium-bg: var(--olms-color-amber-50);
+  --olms-diff-hard: var(--olms-color-rose-600);
+  --olms-diff-hard-bg: var(--olms-color-rose-50);
+
+  --olms-ai-pending: var(--olms-color-slate-500);
+  --olms-ai-checked: var(--olms-color-emerald-600);
+  --olms-ai-duplicate: var(--olms-color-amber-600);
+  --olms-ai-overridden: var(--olms-color-violet-600);
+  --olms-ai-similarity-badge: var(--olms-color-amber-600);
+  --olms-ai-similarity-badge-bg: var(--olms-color-amber-50);
+  --olms-ai-override-notice: var(--olms-color-violet-600);
+
+  --olms-omr-valid: var(--olms-color-emerald-600);
+  --olms-omr-ambiguous: var(--olms-color-amber-500);
+  --olms-omr-invalid: var(--olms-color-rose-600);
+
+  /* ========================================================
+     3. COMPONENT TOKENS
+     ======================================================== */
+  --olms-question-card-bg: var(--olms-surface-card);
+  --olms-question-card-border: var(--olms-surface-border);
+  --olms-question-card-radius: var(--olms-radius-lg);
+
+  --olms-timer-font: var(--olms-font-mono);
+  --olms-timer-bg: var(--olms-surface-card);
+
+  --olms-omr-bubble-size: 24px;
+  --olms-omr-ambiguous-glow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+
+/* Dark Mode Tokens */
+.dark {
+  --olms-surface-bg: #090d16;
+  --olms-surface-canvas: var(--olms-surface-bg);
+  --olms-surface-card: #0f172a;
+  --olms-surface-overlay: rgba(2, 6, 23, 0.75);
+  --olms-surface-muted: #1e293b;
+  --olms-surface-border: #1e293b;
+
+  --olms-text-primary: #f8fafc;
+  --olms-text-secondary: #cbd5e1;
+  --olms-text-muted: #64748b;
+  --olms-text-tertiary: var(--olms-text-muted);
+  --olms-text-inverse: #0f172a;
+
+  --olms-semantic-success-bg: rgba(5, 150, 105, 0.15);
+  --olms-semantic-warning-bg: rgba(217, 119, 6, 0.15);
+  --olms-semantic-error-bg: rgba(225, 29, 72, 0.15);
+  --olms-semantic-info-bg: rgba(37, 99, 235, 0.15);
+
+  --olms-exam-status-unanswered: var(--olms-color-slate-600);
+
+  --olms-diff-easy-bg: rgba(5, 150, 105, 0.15);
+  --olms-diff-medium-bg: rgba(217, 119, 6, 0.15);
+  --olms-diff-hard-bg: rgba(225, 29, 72, 0.15);
+
+  --olms-ai-similarity-badge-bg: rgba(217, 119, 6, 0.15);
+}

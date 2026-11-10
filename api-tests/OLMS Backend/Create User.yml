@@ -10,15 +10,16 @@ http:
     type: json
     data: |-
       {
-        "username": "admin",
+        "username": "teacher_bruno_auto",
         "password": "Iroha1337@",
-        "full_name": "OLMS ADMIN",
-        "email": "admin@olms.com",
-        "role": "ADMIN"
+        "full_name": "Teacher Bruno Auto",
+        "email": "teacher_bruno_auto@olms.edu.vn",
+        "role": "TEACHER"
       }
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true

@@ -1,0 +1,30 @@
+info:
+  name: Update Chapter
+  type: http
+  seq: 23
+
+http:
+  method: PATCH
+  url: http://localhost:3000/api/v1/chapters/:chapterId
+  params:
+    - name: chapterId
+      value: 7b952c7e-aa35-401c-8819-056f8aee78e7
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Chương 1: Giới hạn và Hàm số liên tục (Cập nhật)",
+        "order_no": 1
+      }
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

@@ -1,21 +1,28 @@
 info:
   name: Generate Exam Variants
   type: http
-  seq: 29
+  seq: 36
 
 http:
   method: POST
-  url: http://localhost:3000/api/v1/exams/1011995d-3179-4667-8ee3-f6a2d6ff1ceb/generate
+  url: http://localhost:3000/api/v1/exams/:examId/generate
+  params:
+    - name: examId
+      value: 1011995d-3179-4667-8ee3-f6a2d6ff1ceb
+      type: path
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   body:
     type: json
     data: |-
       {
-        "variant_count": 1,
-        "variant_code_start": "101"
+        "variant_count": 2,
+        "variant_code_start": "101",
+        "strict_topic_balance": false,
+        "similarity_threshold": 0.7
       }
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  auth: inherit
 
 settings:
   encodeUrl: true

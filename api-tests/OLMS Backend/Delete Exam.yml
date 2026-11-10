@@ -1,14 +1,19 @@
 info:
   name: Delete Exam
   type: http
-  seq: 25
+  seq: 32
 
 http:
   method: DELETE
-  url: http://localhost:3000/api/v1/exams/0199ac14-a9bc-7001-8000-000000000001
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  url: http://localhost:3000/api/v1/exams/:examId
+  params:
+    - name: examId
+      value: 0199ac14-a9bc-7001-8000-000000000004
+      type: path
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true
@@ -16,4 +21,3 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
-

@@ -255,6 +255,7 @@ CREATE INDEX idx_questions_active ON questions (type_id) WHERE deleted_at IS NUL
 
 -- Ho tro hang doi tien trinh AI check va danh sach can phe duyet ngoai le
 CREATE INDEX idx_questions_ai_check_pending ON questions (ai_check_status) WHERE deleted_at IS NULL AND ai_check_status = 'PENDING';
+CREATE INDEX idx_questions_topic_active ON questions (lesson_id, topic_tag, status) WHERE deleted_at IS NULL;
 
 -- Bo sung: tra cuu nguoi dung con hoat dong theo vai tro (man hinh quan tri)
 CREATE INDEX idx_users_active_role ON users (role) WHERE deleted_at IS NULL AND status = 'ACTIVE';

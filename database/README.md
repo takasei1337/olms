@@ -12,13 +12,22 @@ Không chỉnh sửa trực tiếp các file trong thư mục này khi cần tha
 
 ### `schema-pg17/`
 
-Chứa bộ SQL đã điều chỉnh để triển khai trên PostgreSQL 17 thông qua Supabase.
+Chứa bộ SQL đã điều chỉnh để triển khai trên PostgreSQL 17 thông qua Supabase (bao gồm cả cập nhật ARC-02 chống lệch tủ đề thi).
 
 Các điều chỉnh hiện tại bao gồm:
 
-- Sử dụng `gen_random_uuid()` thay cho `uuidv7()` để tương thích với môi trường PostgreSQL hiện tại.
+- Sử dụng `gen_random_uuid()` thay cho `uuidv7()` để tương thích với PostgreSQL 17.
+- Bổ sung cột `questions.topic_tag`, `exam_matrices.max_questions_per_topic` và index/constraint đi kèm (`ARC-02`).
 - Bổ sung cấu hình thu hồi quyền thực thi routine trực tiếp của `anon` và `authenticated`.
 - Giữ các cấu hình phân quyền dành cho API, Worker và Readonly.
+
+### `migrations/`
+
+Chứa các file migration gia tăng áp dụng trên môi trường Supabase/PostgreSQL 17:
+
+- `001_create_refresh_tokens.sql`: Tạo bảng `public.refresh_tokens` phục vụ xoay vòng phiên đăng nhập (IAM) kèm RLS.
+- `002_rotate_refresh_token.sql`: Hàm `public.rotate_refresh_token` xử lý xoay vòng refresh token an toàn chống race condition.
+- `003_arc02_topic_balancing.sql`: Migration bổ sung `questions.topic_tag`, `exam_matrices.max_questions_per_topic` và cập nhật hàm `get_exam_publish_readiness` theo ARC-02.
 
 ## Môi trường phát triển
 

@@ -1,4 +1,7 @@
 require('dotenv').config({quiet: true});
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'mock-key';
+process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'test-secret-key-12345';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -151,9 +154,12 @@ test('SUBJECTS MODULE UNIT & INTEGRATION TESTS (MOCK)', async (t) => {
         assert.equal(resSuccess.body.success, true);
         assert.equal(resSuccess.body.data.length, 1);
         assert.equal(resSuccess.body.data[0].code, 'MATH101');
-        assert.equal(resSuccess.body.meta.pagination.page, 1);
-        assert.equal(resSuccess.body.meta.pagination.total, 1);
-        assert.equal(resSuccess.body.meta.pagination.total_pages, 1);
+        assert.deepEqual(resSuccess.body.meta, {
+            page: 1,
+            page_size: 20,
+            total_items: 1,
+            total_pages: 1
+        });
     });
 
     await t.test('3. POST /subjects - Validation, Creation & Conflict', async () => {

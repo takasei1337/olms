@@ -1,14 +1,19 @@
 info:
   name: Validate Exam Matrix
   type: http
-  seq: 28
+  seq: 35
 
 http:
   method: POST
-  url: http://localhost:3000/api/v1/exams/1011995d-3179-4667-8ee3-f6a2d6ff1ceb/matrix/validate
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  url: http://localhost:3000/api/v1/exams/:examId/matrix/validate
+  params:
+    - name: examId
+      value: 1011995d-3179-4667-8ee3-f6a2d6ff1ceb
+      type: path
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true

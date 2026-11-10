@@ -5,7 +5,10 @@ info:
 
 http:
   method: GET
-  url: " http://localhost:3000/api/v1/auth/me"
+  url: http://localhost:3000/api/v1/auth/me
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

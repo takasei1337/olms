@@ -1,4 +1,5 @@
 require('dotenv').config({quiet: true});
+process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'test-secret-key-12345';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');

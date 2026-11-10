@@ -11,7 +11,7 @@
 -- PHAN VUNG 1: XAC THUC & NGUOI DUNG (Identity & Access Management)
 -- =====================================================================
  
--- PostgreSQL 18 native uuidv7() is used for all primary keys.
+-- Canonical design uses uuidv7() on PostgreSQL 18; PG17 Supabase deployment uses gen_random_uuid().
 CREATE TABLE users (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username        VARCHAR(50)  NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE lessons (
  
 CREATE TABLE question_types (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code            VARCHAR(30)  NOT NULL,  -- vd: SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, FILL_BLANK
+  code            VARCHAR(30)  NOT NULL,  -- canonical: SINGLE_CHOICE, MULTI_CHOICE, DROPDOWN, INPUT, MATCHING
   name            VARCHAR(100) NOT NULL,
   description     TEXT,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -111,6 +111,7 @@ CREATE TABLE questions (
   id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lesson_id               UUID,
   type_id                 UUID NOT NULL,
+  topic_tag               VARCHAR(100),
   status                  VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
   ai_similarity_score     NUMERIC(5,4),
   ai_check_status         VARCHAR(20) NOT NULL DEFAULT 'PENDING',
@@ -229,13 +230,15 @@ CREATE TABLE exam_matrices (
   difficulty_level    difficulty_level_enum NOT NULL,
   num_questions       SMALLINT NOT NULL,
   score_per_question  NUMERIC(5,2) NOT NULL DEFAULT 0,
+  max_questions_per_topic SMALLINT DEFAULT 2,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at          TIMESTAMPTZ,
   deleted_by          UUID,
 CONSTRAINT chk_exam_matrices_num_questions CHECK (num_questions > 0), 
 CONSTRAINT chk_exam_matrices_lesson_chapter CHECK (lesson_id IS NULL OR chapter_id IS NOT NULL),
-  CONSTRAINT chk_exam_matrices_score_per_question CHECK (score_per_question > 0)
+  CONSTRAINT chk_exam_matrices_score_per_question CHECK (score_per_question > 0),
+  CONSTRAINT chk_exam_matrices_topic_cap CHECK (max_questions_per_topic IS NULL OR max_questions_per_topic > 0)
 );
  
 CREATE TABLE exam_grading_rules (

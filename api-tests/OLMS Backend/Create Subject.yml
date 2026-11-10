@@ -10,13 +10,14 @@ http:
     type: json
     data: |-
       {
-        "code": "OLMS_EXAM_001",
-        "name": "Môn học kiểm thử kỳ thi MVP",
-        "description": "Dữ liệu kiểm thử module Exams và quy trình sinh đề OLMS"
+        "code": "SUB_BRUNO_01",
+        "name": "Môn học kiểm thử Bruno",
+        "description": "Dữ liệu kiểm thử tự động Bruno"
       }
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true

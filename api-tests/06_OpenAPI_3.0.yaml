@@ -31,12 +31,13 @@ info:
     idempotency: submission submit_token immutable and unique
     note: Contract only; PostgreSQL migration and QA execution are deployment gates.
   x-decisions:
-    P-05: HIDDEN absolute; other modes after final Grade; Teacher owner audited change after RESULT_PUBLISHED
+    P-05: HIDDEN absolute; other modes after final Grade; ADMIN or Teacher owner audited change after RESULT_PUBLISHED
     P-06: Canonical answer_spec schema_version 1; oneOf for 5 types; snapshot frozen
+    ARC-02: Hybrid topic balancing (max_questions_per_topic <= 2 default + AI similarity_threshold 0.70 guardrail)
   x-contract-phase: IMPLEMENTATION_BASELINE_NOT_RUNTIME_VERIFIED
   x-po-approval: P01_PENDING_PO_SIGNOFF
 servers:
-  - url: http://localhost:8080/api/v1
+  - url: http://localhost:3000/api/v1
     description: Local development — thay theo môi trường triển khai
 tags:
   - name: Auth
@@ -98,7 +99,7 @@ paths:
                 data:
                   access_token: eyJhbGciOi...
                   token_type: Bearer
-                  expires_in: 1200
+                  expires_in: 900
                   user:
                     id: 0199ac14-a9bc-7001-8000-000000000001
                     username: teacher01
@@ -156,7 +157,7 @@ paths:
                 data:
                   access_token: eyJhbGciOi...
                   token_type: Bearer
-                  expires_in: 1200
+                  expires_in: 900
                 meta:
                 timestamp: '2026-10-10T01:15:12Z'
                 trace_id: req_01HW0Y6RP5
@@ -897,7 +898,7 @@ paths:
       summary: Tạo môn học
       operationId: post_subjects
       description: 'P-02 đã chốt: ADMIN và TEACHER được tạo môn học. Backend tự gán created_by từ tài khoản đã xác thực. Không
-        chấp nhận created_by do client tự khai. Vai trò: TEACHER*. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
+        chấp nhận created_by do client tự khai. Vai trò: ADMIN/TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có.'
       x-roles:
         - ADMIN
@@ -1011,10 +1012,11 @@ paths:
         - Catalog
       summary: Xóa mềm môn học
       operationId: delete_subjects__subjectId
-      description: 'Vai trò: TEACHER*. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải
         endpoint sẵn có.'
       x-roles:
-        - TEACHER*
+        - ADMIN
+        - TEACHER
       x-use-case: Catalog
       parameters:
         - in: path
@@ -1116,9 +1118,10 @@ paths:
         - Catalog
       summary: Thêm chương
       operationId: post_subjects__subjectId__chapters
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Catalog
       parameters:
@@ -1176,9 +1179,10 @@ paths:
         - Catalog
       summary: Sửa chương
       operationId: patch_chapters__chapterId
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Catalog
       parameters:
@@ -1235,9 +1239,10 @@ paths:
         - Catalog
       summary: Xóa mềm chương
       operationId: delete_chapters__chapterId
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Catalog
       parameters:
@@ -1340,9 +1345,10 @@ paths:
         - Catalog
       summary: Thêm bài học
       operationId: post_chapters__chapterId__lessons
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Catalog
       parameters:
@@ -1400,9 +1406,10 @@ paths:
         - Catalog
       summary: Sửa bài học
       operationId: patch_lessons__lessonId
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Catalog
       parameters:
@@ -1459,9 +1466,10 @@ paths:
         - Catalog
       summary: Xóa mềm bài học
       operationId: delete_lessons__lessonId
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Catalog
       parameters:
@@ -1557,7 +1565,7 @@ paths:
       summary: Thêm dạng câu hỏi
       operationId: post_question_types
       description: 'P-02 đã chốt: Chỉ ADMIN được tạo question_types dùng chung toàn hệ thống. TEACHER chỉ có quyền đọc và
-        sử dụng các dạng câu hỏi. Vai trò: TEACHER*. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
+        sử dụng các dạng câu hỏi. Vai trò: ADMIN. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có.'
       x-roles:
         - ADMIN
@@ -1609,10 +1617,10 @@ paths:
         - Catalog
       summary: Cập nhật dạng câu hỏi
       operationId: patch_question_types__typeId
-      description: 'Vai trò: TEACHER*. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải
+      description: 'Vai trò: ADMIN (P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải
         endpoint sẵn có.'
       x-roles:
-        - TEACHER*
+        - ADMIN
       x-use-case: Catalog
       parameters:
         - in: path
@@ -1668,10 +1676,10 @@ paths:
         - Catalog
       summary: Ngưng dạng câu hỏi
       operationId: delete_question_types__typeId
-      description: 'Vai trò: TEACHER*. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải
+      description: 'Vai trò: ADMIN (P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải
         endpoint sẵn có.'
       x-roles:
-        - TEACHER*
+        - ADMIN
       x-use-case: Catalog
       parameters:
         - in: path
@@ -1747,6 +1755,13 @@ paths:
           schema:
             type: string
         - in: query
+          name: topic_tag
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+          description: 'ARC-02: Lọc câu hỏi theo nhãn tiểu chủ đề chuẩn hóa'
+        - in: query
           name: type_id
           required: false
           schema:
@@ -1817,9 +1832,10 @@ paths:
       summary: Tạo câu hỏi và khởi chạy kiểm tra AI
       operationId: post_questions
       description: "AI timeout: vẫn lưu bản nháp với SKIPPED_TIMEOUT. AI phát hiện trùng: trạng thái PENDING, review_state
-        NEEDS_TEACHER.\n\nVai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không
+        NEEDS_TEACHER.\n\nVai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không
         phải endpoint sẵn có."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Questions
       requestBody:
@@ -1927,9 +1943,10 @@ paths:
         - Questions
       summary: Sửa câu hỏi; tạo version mới nếu bản cũ đóng băng
       operationId: patch_questions__questionId
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Questions
       parameters:
@@ -1989,9 +2006,10 @@ paths:
         - Questions
       summary: Xóa mềm câu chưa sử dụng
       operationId: delete_questions__questionId
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Questions
       parameters:
@@ -2040,9 +2058,10 @@ paths:
         - Questions
       summary: Chuyển trạng thái câu hỏi
       operationId: patch_questions__questionId__status
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Questions
       parameters:
@@ -2146,9 +2165,10 @@ paths:
         - Questions
       summary: Duyệt bỏ qua cảnh báo trùng AI
       operationId: post_questions__questionId__ai_override
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Questions
       parameters:
@@ -2209,9 +2229,10 @@ paths:
         - Questions
       summary: Nhân bản câu hỏi lịch sử
       operationId: post_questions__questionId__clone
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Questions
       parameters:
@@ -2405,9 +2426,10 @@ paths:
         - Exams
       summary: Tạo kỳ thi trạng thái DRAFT
       operationId: post_exams
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       requestBody:
@@ -2527,9 +2549,10 @@ paths:
         - Exams
       summary: Sửa kỳ thi trước khi sinh đề
       operationId: patch_exams__examId
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -2595,9 +2618,10 @@ paths:
         - Exams
       summary: Xóa mềm kỳ thi DRAFT chưa có bài
       operationId: delete_exams__examId
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -2648,9 +2672,10 @@ paths:
         - Exams
       summary: Thay thế toàn bộ ma trận đề DRAFT
       operationId: put_exams__examId__matrix
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -2707,9 +2732,10 @@ paths:
         - Exams
       summary: Thay thế bộ rule chấm DRAFT
       operationId: put_exams__examId__grading_rules
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -2766,9 +2792,10 @@ paths:
         - Exams
       summary: Kiểm tra sâu khả dụng ma trận theo AI
       operationId: post_exams__examId__matrix_validate
-      description: "Validation trả 200 valid=false để hiện từng dòng; generate trả 422 khi không hợp lệ.\n\nVai trò: TEACHER.
+      description: "Validation trả 200 valid=false để hiện từng dòng (bao gồm cảnh báo thiếu đa dạng chủ đề EXAM_TOPIC_DIVERSITY_LOW theo ARC-02); generate trả 422 khi không hợp lệ.\n\nVai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02).
         Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -2830,9 +2857,10 @@ paths:
         - Exams
       summary: Sinh đề gốc + mã đề, đóng băng transaction
       operationId: post_exams__examId__generate
-      description: "DRAFT → GENERATED; rollback toàn bộ nếu bất kỳ dòng ma trận thiếu câu/rule/variant/snapshot.\n\nVai trò:
-        TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có."
+      description: "DRAFT → GENERATED; rollback toàn bộ nếu bất kỳ dòng ma trận thiếu câu/rule/variant/snapshot. Áp dụng chống lệch tủ Hybrid ARC-02 (Lớp 1 trần max_questions_per_topic mặc định 2 + Lớp 2 AI Cosine Similarity <= similarity_threshold); nếu strict_topic_balance=true và thiếu câu đa dạng trả 422 TOPIC_POOL_INSUFFICIENT, ngược lại fallback có log audit TOPIC_CAP_RELAXED.\n\nVai trò:
+        ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -2897,9 +2925,10 @@ paths:
         - Exams
       summary: Liệt kê mã đề để in/đối chiếu
       operationId: get_exams__examId__variants
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -2953,9 +2982,10 @@ paths:
         - Exams
       summary: Phát hành đề và mở cấp phát tài khoản
       operationId: post_exams__examId__publish
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -3016,9 +3046,10 @@ paths:
         - Exams
       summary: Đánh dấu bắt đầu kỳ thi
       operationId: post_exams__examId__start
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -3079,9 +3110,10 @@ paths:
         - Exams
       summary: Kết thúc kỳ thi, thu bài chưa nộp
       operationId: post_exams__examId__end
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -3142,9 +3174,10 @@ paths:
         - Exams
       summary: Duyệt và công bố bảng điểm
       operationId: post_exams__examId__results_publish
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -3211,9 +3244,10 @@ paths:
         - Exams
       summary: Đóng băng kỳ thi vào lưu trữ
       operationId: post_exams__examId__archive
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -3274,9 +3308,10 @@ paths:
         - Exams
       summary: Hủy kỳ thi trước giờ diễn ra
       operationId: post_exams__examId__cancel
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -3343,9 +3378,10 @@ paths:
         - Exams
       summary: Tạo link tải PDF đề/phiếu giấy
       operationId: post_exams__examId__print_files
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -3399,9 +3435,10 @@ paths:
         - Participants
       summary: Danh sách thí sinh và trạng thái
       operationId: get_exams__examId__participants
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Participants
       parameters:
@@ -3476,10 +3513,11 @@ paths:
         - Participants
       summary: Thêm thí sinh thủ công và cấp tài khoản riêng
       operationId: post_exams__examId__participants
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có. P-03: Backend tìm/tạo student_profiles theo student_code, ghi participants.student_profile_id; không lấy profile
         ID tùy ý từ frontend.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Participants
       parameters:
@@ -3542,9 +3580,10 @@ paths:
         - Participants
       summary: Tải Excel, kiểm tra và xem trước
       operationId: post_exams__examId__participants_import_preview
-      description: "Accept .xls/.xlsx; không tạo tài khoản trong bước preview.\n\nVai trò: TEACHER. Các URI/payload là hợp
+      description: "Accept .xls/.xlsx; không tạo tài khoản trong bước preview.\n\nVai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp
         đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Participants
       parameters:
@@ -3611,9 +3650,10 @@ paths:
         - Participants
       summary: Xác nhận nạp file từ import_token
       operationId: post_exams__examId__participants_import_commit
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Participants
       parameters:
@@ -3671,9 +3711,10 @@ paths:
         - Participants
       summary: Xóa mềm ghi danh trước khi bắt đầu
       operationId: delete_exams__examId__participants__participantId
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Participants
       parameters:
@@ -3730,9 +3771,10 @@ paths:
       summary: Xuất danh sách tài khoản không chứa mật khẩu (P-01)
       operationId: post_exams__examId__participants_credentials_export
       description: 'P-01 QA decision: chỉ xuất username, student_code, seat_no, variant_code, status; không xuất password/hash
-        hoặc khôi phục mật khẩu cũ. Teacher phải sở hữu kỳ thi, file có URL ký thời hạn ngắn, private/no-store, bắt buộc audit.
+        hoặc khôi phục mật khẩu cũ. ADMIN hoặc Teacher sở hữu kỳ thi (P-02), file có URL ký thời hạn ngắn, private/no-store, bắt buộc audit.
         Mất mật khẩu dùng reset để phát mới trước giờ thi. Đây là thiết kế API, không phải endpoint đã triển khai.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Participants
       parameters:
@@ -3786,17 +3828,18 @@ paths:
           $ref: '#/components/responses/InternalError'
       x-sensitive-data-policy: Never export password/hash; signed link to username list only, short TTL, audit logged
       x-p01-policy: Export username/SBD/room/variant only; reset issues new random credential once, never reprint old 
-        password. Requires owner Teacher and audit. Pending PO sign-off.
+        password. Requires ADMIN or owner Teacher and audit. Pending PO sign-off.
   /exams/{examId}/participants/{participantId}/credentials/reset:
     post:
       tags:
         - Participants
       summary: Cấp lại mật khẩu trước giờ thi
       operationId: post_exams__examId__participants__participantId__credentials_reset
-      description: 'P-01: chỉ Teacher chủ kỳ thi và trước giờ thi; tạo mật khẩu mới ngẫu nhiên, trả plaintext một lần qua
+      description: 'P-01: ADMIN hoặc Teacher chủ kỳ thi (P-02) và trước giờ thi; tạo mật khẩu mới ngẫu nhiên, trả plaintext một lần qua
         TLS cho người được cấp quyền, không log/cache/DB plaintext; vô hiệu mật khẩu cũ và ghi audit metadata không chứa mật
         khẩu. Không thể lấy lại mật khẩu cũ từ hash.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Participants
       parameters:
@@ -3861,7 +3904,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
       x-p01-policy: Export username/SBD/room/variant only; reset issues new random credential once, never reprint old 
-        password. Requires owner Teacher and audit. Pending PO sign-off.
+        password. Requires ADMIN or owner Teacher and audit. Pending PO sign-off.
   /me/exams:
     get:
       tags:
@@ -4454,10 +4497,11 @@ paths:
         - OMR
       summary: 'P-07: upload ảnh OMR chưa biết thí sinh/mã đề (staging)'
       operationId: post_exams__examId__omr_scans
-      description: "P-07: chỉ cần quyền Teacher trên exam PAPER/BOTH và file hợp lệ; tạo scan_images UNMATCHED/QUEUED, submission_id=null;
+      description: "P-07: quyền ADMIN hoặc Teacher chủ exam (P-02) PAPER/BOTH và file hợp lệ; tạo scan_images UNMATCHED/QUEUED, submission_id=null;
         không tạo bài/Grade. Không yêu cầu SBD/mã đề hoặc participant_id khi upload.\nARC-03: resumable DB scan queue, lease_until/image_revision
         CAS; retain UNMATCHED staging; no grading before LINKED+approved."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: OMR
       parameters:
@@ -4533,10 +4577,11 @@ paths:
         - OMR
       summary: Danh sách ảnh trong hàng đợi theo trạng thái DB
       operationId: get_exams__examId__omr_scans
-      description: "Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: "Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.\nARC-03: resumable DB scan queue, lease_until/image_revision CAS; retain UNMATCHED staging; no grading before
         LINKED+approved."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: OMR
       parameters:
@@ -4624,9 +4669,10 @@ paths:
         - OMR
       summary: Chi tiết nhận diện và các ô nghi vấn
       operationId: get_omr_scans__scanId
-      description: 'Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.'
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: OMR
       parameters:
@@ -4690,10 +4736,11 @@ paths:
       summary: Thay ảnh quét, tăng image_revision
       operationId: post_omr_scans__scanId__rescan
       description: "Chỉ cho trạng thái REJECTED/NEEDS_RESCAN; giữ cùng submission_id,page_no và audit ảnh cũ.\n\nVai trò:
-        TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có.\nP-07:
+        ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có.\nP-07:
         tăng image_revision và vô hiệu kết quả worker cũ. Nếu đã LINKED không tự ý thay participant/variant; phải qua quy
         trình đối soát riêng."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: OMR
       parameters:
@@ -4766,9 +4813,10 @@ paths:
         - OMR
       summary: Teacher sửa đáp án OMR nghi vấn
       operationId: patch_omr_scans__scanId__detected_answers__detectedAnswerId
-      description: "Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: "Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.\nP-07: không cho thao tác đối soát chính thức hoặc chấm khi scan chưa LINKED."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: OMR
       parameters:
@@ -4839,9 +4887,10 @@ paths:
         - OMR
       summary: Xác nhận hoàn tất đối soát ảnh
       operationId: post_omr_scans__scanId__approve
-      description: "Vai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+      description: "Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có.\nP-07: bắt buộc association_status=LINKED và không có unresolved errors, otherwise 409; không chấm scan staging."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: OMR
       parameters:
@@ -4903,9 +4952,10 @@ paths:
       summary: Yêu cầu đồng bộ dữ liệu từ adapter ZipGrade
       operationId: post_exams__examId__omr_zipgrade_import
       description: "Điểm tích hợp dự kiến; credential & callback nội bộ cần chốt, chưa khẳng định ZipGrade hỗ trợ API công
-        khai.\n\nVai trò: TEACHER. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
+        khai.\n\nVai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
         sẵn có."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: OMR
       parameters:
@@ -5122,9 +5172,10 @@ paths:
         - Exams
       summary: 'P-05: Đổi mode hiển thị sau công bố (Teacher owner, audit)'
       operationId: post_exams_examId_results_visibility
-      description: Only Teacher owner. Allowed when exams.status=RESULT_PUBLISHED, forbidden after ARCHIVED; audit 
+      description: ADMIN or Teacher owner (P-02). Allowed when exams.status=RESULT_PUBLISHED, forbidden after ARCHIVED; audit 
         old/new mode and reason; HIDDEN blocks future API responses even though result_published_at exists.
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: Exams
       parameters:
@@ -5192,11 +5243,12 @@ paths:
         - OMR
       summary: 'P-07: xác minh SBD/mã đề và liên kết ảnh vào PAPER submission'
       operationId: post_omr_scans__scanId__resolve
-      description: "Chỉ Teacher sở hữu kỳ thi; transaction khóa scan/participant/submission, xác minh exam/variant và no duplicate
+      description: "ADMIN hoặc Teacher sở hữu kỳ thi (P-02); transaction khóa scan/participant/submission, xác minh exam/variant và no duplicate
         page; tạo hoặc dùng PAPER submission; chuyển association_status=LINKED; không chấm trong bước gán. 409 nếu scan đã
         gán khác hoặc mã đề/sinh viên không khớp. Audit actor/reason/time.\nARC-03: resumable DB scan queue, lease_until/image_revision
         CAS; retain UNMATCHED staging; no grading before LINKED+approved."
       x-roles:
+        - ADMIN
         - TEACHER
       x-use-case: UC-01
       parameters:
@@ -5405,6 +5457,7 @@ components:
           maxLength: 150
         email:
           type: string
+          maxLength: 150
         role:
           type: string
           enum:
@@ -5422,8 +5475,10 @@ components:
       properties:
         full_name:
           type: string
+          maxLength: 150
         email:
           type: string
+          maxLength: 150
         phone:
           type: string
         role:
@@ -5554,6 +5609,12 @@ components:
           type: string
         order_no:
           type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
       required:
         - id
         - subject_id
@@ -5588,6 +5649,12 @@ components:
           type: string
         order_no:
           type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
       required:
         - id
         - chapter_id
@@ -5667,8 +5734,14 @@ components:
         explanation:
           type: string
           nullable: true
+        topic_tag:
+          type: string
+          maxLength: 100
+          nullable: true
+          description: 'ARC-02: Nhãn tiểu chủ đề chuẩn hóa chống lệch tủ khi sinh đề'
         requested_status:
           type: string
+          default: DRAFT
           description: Yêu cầu kích hoạt; trạng thái thực tế phụ thuộc AI
           enum:
             - DRAFT
@@ -5679,7 +5752,6 @@ components:
         - type_id
         - difficulty_level
         - content
-        - requested_status
         - answer_spec
       additionalProperties: false
     QuestionStatusRequest:
@@ -5753,6 +5825,11 @@ components:
             - EASY
             - MEDIUM
             - HARD
+        topic_tag:
+          type: string
+          maxLength: 100
+          nullable: true
+          description: 'ARC-02: Nhãn tiểu chủ đề chuẩn hóa chống lệch tủ'
         content:
           type: string
         media_url:
@@ -5815,6 +5892,7 @@ components:
           format: uuid
         delivery_mode:
           type: string
+          default: ONLINE
           enum:
             - ONLINE
             - PAPER
@@ -5835,6 +5913,7 @@ components:
           format: date-time
         total_score:
           type: number
+          default: 10
           minimum: 0.01
         result_visibility_mode:
           type: string
@@ -5851,12 +5930,10 @@ components:
         - code
         - name
         - subject_id
-        - delivery_mode
         - total_questions
         - duration_minutes
         - opens_at
         - closes_at
-        - total_score
       additionalProperties: false
     Exam:
       type: object
@@ -5923,6 +6000,27 @@ components:
         created_by:
           type: string
           format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        subjects:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            code:
+              type: string
+            name:
+              type: string
+            created_by:
+              type: string
+              format: uuid
+          additionalProperties: false
       required:
         - id
         - code
@@ -5956,6 +6054,12 @@ components:
         score_per_question:
           type: number
           minimum: 0.01
+        max_questions_per_topic:
+          type: integer
+          minimum: 1
+          default: 2
+          nullable: true
+          description: 'ARC-02: Trần tối đa số câu cùng topic_tag trên một mã đề (mặc định 2)'
       required:
         - question_type_id
         - difficulty_level
@@ -6065,6 +6169,16 @@ components:
           type: string
           pattern: '^[0-9]{3,10}$'
           description: Mã đề đầu gồm 3 đến 10 chữ số, ví dụ 101
+        strict_topic_balance:
+          type: boolean
+          default: false
+          description: 'ARC-02: Nếu true, từ chối sinh đề (422) khi không đủ câu đa dạng Topic thay vì fallback'
+        similarity_threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.7
+          description: 'ARC-02: Ngưỡng độ tương đồng Cosine Similarity tối đa cho phép giữa 2 câu trong cùng đề'
       required:
         - variant_count
         - variant_code_start
@@ -6822,6 +6936,7 @@ components:
       properties:
         code:
           type: string
+          nullable: true
         name:
           type: string
         order_no:
@@ -6833,6 +6948,7 @@ components:
       properties:
         code:
           type: string
+          nullable: true
         name:
           type: string
         order_no:
@@ -6875,6 +6991,11 @@ components:
         explanation:
           type: string
           nullable: true
+        topic_tag:
+          type: string
+          maxLength: 100
+          nullable: true
+          description: 'ARC-02: Nhãn tiểu chủ đề chuẩn hóa chống lệch tủ khi sinh đề'
         requested_status:
           type: string
           description: Yêu cầu kích hoạt; trạng thái thực tế phụ thuộc AI

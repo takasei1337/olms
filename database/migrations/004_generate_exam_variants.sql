@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration: 003_generate_exam_variants.sql
+-- Migration: 004_generate_exam_variants.sql
 -- Module: Exams - Atomic Generation of Exam Variants & Shuffled Options
 -- Target: PostgreSQL 17 / Supabase
 -- Description: Sinh đề gốc và các mã đề hoán vị bằng một transaction

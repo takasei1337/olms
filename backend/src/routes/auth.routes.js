@@ -62,6 +62,8 @@ router.post('/login', validateLogin, async (req, res) => {
 
    res.status(200).json({
       success: true,
+      code: 'SUCCESS',
+      message: 'Login successful.',
       data: {
          access_token: accessToken,
          token_type: 'Bearer',
@@ -165,6 +167,8 @@ router.post('/refresh', async (req, res) => {
 
    return res.status(200).json({
       success: true,
+      code: 'SUCCESS',
+      message: 'Token refreshed successfully.',
       data: {
          access_token: accessToken,
          token_type: 'Bearer',
@@ -188,7 +192,9 @@ router.post('/logout', async (req, res) => {
    if (!refreshToken) {
       return res.status(200).json({
          success: true,
+         code: 'SUCCESS',
          message: 'Logged out successfully.',
+         data: {},
          trace_id: req.traceId,
          timestamp: new Date().toISOString()
       });
@@ -197,7 +203,9 @@ router.post('/logout', async (req, res) => {
    if (!/^[0-9a-f]{64}$/.test(refreshToken)) {
       return res.status(200).json({
          success: true,
+         code: 'SUCCESS',
          message: 'Logged out successfully.',
+         data: {},
          trace_id: req.traceId,
          timestamp: new Date().toISOString()
       });
@@ -209,7 +217,9 @@ router.post('/logout', async (req, res) => {
    if (!storedToken || storedToken.revoked_at !== null) {
       return res.status(200).json({
          success: true,
+         code: 'SUCCESS',
          message: 'Logged out successfully.',
+         data: {},
          trace_id: req.traceId,
          timestamp: new Date().toISOString()
       });
@@ -219,7 +229,9 @@ router.post('/logout', async (req, res) => {
 
    return res.status(200).json({
       success: true,
+      code: 'SUCCESS',
       message: 'Logged out successfully.',
+      data: {},
       trace_id: req.traceId,
       timestamp: new Date().toISOString()
    });
@@ -241,6 +253,8 @@ router.get('/me', authenticate, async(req, res) => {
 
    return res.status(200).json({
       success: true,
+      code: 'SUCCESS',
+      message: 'User retrieved successfully.',
       data: {
          id: user.id,
          username: user.username,

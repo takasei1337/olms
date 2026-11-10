@@ -5,16 +5,21 @@ info:
 
 http:
   method: PATCH
-  url: http://localhost:3000/api/v1/questions/c3e7b35f-62b5-4ff4-9274-4b400ba40798/status
+  url: http://localhost:3000/api/v1/questions/:questionId/status
+  params:
+    - name: questionId
+      value: 3efc4efc-a19b-4135-9cd9-bad26ca09101
+      type: path
   body:
     type: json
     data: |-
       {
         "status": "ACTIVE"
       }
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true
@@ -22,3 +27,4 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
+

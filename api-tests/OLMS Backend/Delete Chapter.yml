@@ -1,0 +1,23 @@
+info:
+  name: Delete Chapter
+  type: http
+  seq: 24
+
+http:
+  method: DELETE
+  url: http://localhost:3000/api/v1/chapters/:chapterId
+  params:
+    - name: chapterId
+      value: 0199ac14-a9bc-7001-8000-000000000010
+      type: path
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

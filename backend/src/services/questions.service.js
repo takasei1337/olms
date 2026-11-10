@@ -23,6 +23,7 @@ function formatQuestionResponse(row) {
         current_version_no: version ? version.version_no : 1,
         version_id: version ? version.id : null,
         difficulty_level: version ? version.difficulty_level : null,
+        topic_tag: row.topic_tag ?? null,
         content: version ? version.content : '',
         media_url: version ? version.media_url ?? null : null,
         explanation: version ? version.explanation ?? null : null,
@@ -40,6 +41,7 @@ async function findQuestions({
     subject_id = null,
     chapter_id = null,
     lesson_id = null,
+    topic_tag = null,
     type_id = null,
     difficulty_level = null,
     status = null
@@ -93,6 +95,7 @@ async function findQuestions({
             id,
             lesson_id,
             type_id,
+            topic_tag,
             status,
             ai_check_status,
             ai_similarity_score,
@@ -119,6 +122,10 @@ async function findQuestions({
         query = query.eq('lesson_id', lesson_id);
     } else if (targetLessonIds) {
         query = query.in('lesson_id', targetLessonIds);
+    }
+
+    if (topic_tag) {
+        query = query.eq('topic_tag', topic_tag);
     }
 
     if (type_id) {
@@ -163,6 +170,7 @@ async function findQuestionById(questionId) {
             id,
             lesson_id,
             type_id,
+            topic_tag,
             status,
             ai_check_status,
             ai_similarity_score,
@@ -213,6 +221,7 @@ async function createQuestion({
     lesson_id,
     type_id,
     difficulty_level,
+    topic_tag = null,
     content,
     media_url,
     explanation,
@@ -230,6 +239,7 @@ async function createQuestion({
             id: questionId,
             lesson_id: lesson_id ?? null,
             type_id,
+            topic_tag: topic_tag ?? null,
             status: 'DRAFT',
             ai_check_status: 'SKIPPED_TIMEOUT',
             ai_similarity_score: null,
@@ -359,6 +369,11 @@ async function updateQuestion(questionId, updates, existingQuestion, userId) {
     }
     if (updates.type_id) {
         questionUpdates.type_id = updates.type_id;
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'topic_tag')) {
+        questionUpdates.topic_tag = typeof updates.topic_tag === 'string'
+            ? (updates.topic_tag.trim() || null)
+            : null;
     }
 
     const {error: qUpdateErr} = await supabase

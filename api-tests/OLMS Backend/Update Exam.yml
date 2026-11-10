@@ -1,23 +1,27 @@
 info:
   name: Update Exam
   type: http
-  seq: 24
+  seq: 31
 
 http:
   method: PATCH
-  url: http://localhost:3000/api/v1/exams/0199ac14-a9bc-7001-8000-000000000001
+  url: http://localhost:3000/api/v1/exams/:examId
+  params:
+    - name: examId
+      value: 1011995d-3179-4667-8ee3-f6a2d6ff1ceb
+      type: path
   body:
     type: json
     data: |-
       {
-        "name": "Kỳ thi giữa kỳ Hệ thống thông tin (Cập nhật)",
-        "duration_minutes": 60,
-        "total_score": 10.0,
-        "result_visibility_mode": "SCORE_AND_STATUS"
+        "name": "Thi Giữa kỳ Cơ sở dữ liệu 2026.1 (Đã cập nhật)",
+        "duration_minutes": 75,
+        "total_score": 10
       }
-  auth:
-    type: bearer
-    token: "{{process.env.OLMS_ACCESS_TOKEN}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  auth: inherit
 
 settings:
   encodeUrl: true
@@ -25,4 +29,3 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: false
-

@@ -3,154 +3,265 @@ const router = express.Router();
 const authenticate = require('../middlewares/authenticate');
 const requireAdminOrTeacher = require('../middlewares/require-admin-or-teacher');
 const examsService = require('../services/exams.service');
-const subjectsService = require('../services/subjects.service');
-const {
-    UUID_REGEX,
-    VALID_EXAM_STATUSES,
-    VALID_DELIVERY_MODES,
-    validateCreateExamBody,
-    validatePatchExamBody,
-    validateMatrixReplaceBody,
-    validateGradingRulesReplaceBody,
-    validateGenerateExamBody
-} = require('../validators/exams.validator');
 
 router.use(authenticate);
 router.use(requireAdminOrTeacher);
 
-// 1. GET /api/v1/exams - Danh sách kỳ thi
+function validateCreateExamInput(body) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return 'Request body must be a JSON object.';
+    }
+
+    const allowedFields = [
+        'code',
+        'name',
+        'subject_id',
+        'delivery_mode',
+        'total_questions',
+        'duration_minutes',
+        'opens_at',
+        'closes_at',
+        'total_score',
+        'result_visibility_mode',
+        'form_template_id'
+    ];
+    const unsupportedFields = Object.keys(body).filter(field => !allowedFields.includes(field));
+    if (unsupportedFields.length > 0) {
+        return 'Request contains unsupported fields.';
+    }
+
+    if (typeof body.code !== 'string' || !body.code.trim()) {
+        return 'code is required and must be a non-empty string.';
+    }
+    if (body.code.trim().length > 30) {
+        return 'code must not exceed 30 characters.';
+    }
+
+    if (typeof body.name !== 'string' || !body.name.trim()) {
+        return 'name is required and must be a non-empty string.';
+    }
+    if (body.name.trim().length > 200) {
+        return 'name must not exceed 200 characters.';
+    }
+
+    if (!body.subject_id || !examsService.isValidUUID(body.subject_id)) {
+        return 'subject_id is required and must be a valid UUID.';
+    }
+
+    if (body.total_questions === undefined || parseInt(body.total_questions, 10) <= 0) {
+        return 'total_questions must be an integer greater than 0.';
+    }
+
+    if (body.duration_minutes === undefined || parseInt(body.duration_minutes, 10) <= 0) {
+        return 'duration_minutes must be an integer greater than 0.';
+    }
+
+    if (!body.opens_at || typeof body.opens_at !== 'string') {
+        return 'opens_at is required and must be an ISO 8601 date string.';
+    }
+
+    if (!body.closes_at || typeof body.closes_at !== 'string') {
+        return 'closes_at is required and must be an ISO 8601 date string.';
+    }
+
+    const openDate = new Date(body.opens_at);
+    const closeDate = new Date(body.closes_at);
+    if (isNaN(openDate.getTime()) || isNaN(closeDate.getTime())) {
+        return 'opens_at and closes_at must be valid date-time strings.';
+    }
+    if (closeDate <= openDate) {
+        return 'closes_at must be later than opens_at.';
+    }
+
+    if (body.delivery_mode !== undefined) {
+        if (!['ONLINE', 'PAPER', 'BOTH'].includes(body.delivery_mode)) {
+            return 'delivery_mode must be one of: ONLINE, PAPER, BOTH.';
+        }
+        if (['PAPER', 'BOTH'].includes(body.delivery_mode)) {
+            if (!body.form_template_id || !examsService.isValidUUID(body.form_template_id)) {
+                return 'form_template_id is required and must be a valid UUID when delivery_mode is PAPER or BOTH.';
+            }
+        }
+    }
+
+    if (body.total_score !== undefined) {
+        const score = parseFloat(body.total_score);
+        if (isNaN(score) || score <= 0) {
+            return 'total_score must be a positive number.';
+        }
+    }
+
+    if (body.result_visibility_mode !== undefined) {
+        if (!['HIDDEN', 'SCORE_ONLY', 'SCORE_AND_STATUS', 'FULL_REVIEW'].includes(body.result_visibility_mode)) {
+            return 'result_visibility_mode must be one of: HIDDEN, SCORE_ONLY, SCORE_AND_STATUS, FULL_REVIEW.';
+        }
+    }
+
+    return null;
+}
+
+function validatePatchExamInput(body) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return 'Request body must be a JSON object.';
+    }
+
+    const allowedFields = [
+        'code',
+        'name',
+        'subject_id',
+        'delivery_mode',
+        'total_questions',
+        'duration_minutes',
+        'opens_at',
+        'closes_at',
+        'total_score',
+        'result_visibility_mode',
+        'form_template_id'
+    ];
+    const unsupportedFields = Object.keys(body).filter(field => !allowedFields.includes(field));
+    if (unsupportedFields.length > 0) {
+        return 'Request contains unsupported fields.';
+    }
+
+    if (Object.keys(body).length === 0) {
+        return 'At least one field is required for update.';
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'code')) {
+        if (typeof body.code !== 'string' || !body.code.trim()) {
+            return 'code must be a non-empty string.';
+        }
+        if (body.code.trim().length > 30) {
+            return 'code must not exceed 30 characters.';
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'name')) {
+        if (typeof body.name !== 'string' || !body.name.trim()) {
+            return 'name must be a non-empty string.';
+        }
+        if (body.name.trim().length > 200) {
+            return 'name must not exceed 200 characters.';
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'subject_id')) {
+        if (!examsService.isValidUUID(body.subject_id)) {
+            return 'subject_id must be a valid UUID.';
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'total_questions')) {
+        const total = parseInt(body.total_questions, 10);
+        if (isNaN(total) || total <= 0) {
+            return 'total_questions must be an integer greater than 0.';
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'duration_minutes')) {
+        const dur = parseInt(body.duration_minutes, 10);
+        if (isNaN(dur) || dur <= 0) {
+            return 'duration_minutes must be an integer greater than 0.';
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'delivery_mode')) {
+        if (!['ONLINE', 'PAPER', 'BOTH'].includes(body.delivery_mode)) {
+            return 'delivery_mode must be one of: ONLINE, PAPER, BOTH.';
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'total_score')) {
+        const score = parseFloat(body.total_score);
+        if (isNaN(score) || score <= 0) {
+            return 'total_score must be a positive number.';
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'result_visibility_mode')) {
+        if (!['HIDDEN', 'SCORE_ONLY', 'SCORE_AND_STATUS', 'FULL_REVIEW'].includes(body.result_visibility_mode)) {
+            return 'result_visibility_mode must be one of: HIDDEN, SCORE_ONLY, SCORE_AND_STATUS, FULL_REVIEW.';
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'form_template_id')) {
+        if (body.form_template_id !== null && !examsService.isValidUUID(body.form_template_id)) {
+            return 'form_template_id must be a valid UUID or null.';
+        }
+    }
+
+    return null;
+}
+
+// GET /exams - List exams
 router.get('/', async (req, res, next) => {
     try {
-        const {
-            q = '',
+        const { q, subject_id, status, page, page_size } = req.query;
+
+        const result = await examsService.listExams({
+            q,
             subject_id,
             status,
-            delivery_mode,
-            page: rawPage = 1,
-            page_size: rawPageSize = 20
-        } = req.query;
-
-        if (subject_id && !UUID_REGEX.test(subject_id)) {
-            return res.status(400).json({
-                success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Invalid subject_id format.',
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        if (status && !VALID_EXAM_STATUSES.includes(status)) {
-            return res.status(400).json({
-                success: false,
-                code: 'VALIDATION_ERROR',
-                message: `status must be one of: ${VALID_EXAM_STATUSES.join(', ')}.`,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        if (delivery_mode && !VALID_DELIVERY_MODES.includes(delivery_mode)) {
-            return res.status(400).json({
-                success: false,
-                code: 'VALIDATION_ERROR',
-                message: `delivery_mode must be one of: ${VALID_DELIVERY_MODES.join(', ')}.`,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const page = Number(rawPage);
-        const pageSize = Number(rawPageSize);
-
-        if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
-            return res.status(400).json({
-                success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'page must be a positive integer and page_size must be an integer between 1 and 100.',
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize - 1;
-
-        const {exams, total} = await examsService.findExams({
-            from,
-            to,
-            q: String(q).trim(),
-            subject_id,
-            status,
-            delivery_mode
+            page,
+            pageSize: page_size,
+            currentUser: req.currentUser
         });
 
         return res.status(200).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exams retrieved successfully.',
-            data: exams,
-            meta: {
-                pagination: {
-                    page,
-                    page_size: pageSize,
-                    total,
-                    total_pages: Math.ceil(total / pageSize)
-                }
-            },
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            message: 'Thành công',
+            data: result.data,
+            meta: result.pagination,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
         next(error);
     }
 });
 
-// 2. POST /api/v1/exams - Tạo kỳ thi
+// POST /exams - Create new exam in DRAFT status
 router.post('/', async (req, res, next) => {
     try {
-        const validationError = validateCreateExamBody(req.body);
+        const validationError = validateCreateExamInput(req.body);
         if (validationError) {
-            return res.status(400).json({
+            const isRangeError = validationError.includes('closes_at must be later than opens_at') ||
+                validationError.includes('form_template_id is required');
+            return res.status(isRangeError ? 422 : 400).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
+                code: isRangeError ? 'UNPROCESSABLE_ENTITY' : 'INVALID_REQUEST_BODY',
                 message: validationError,
-                data: null,
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
         }
 
-        // Verify subject_id exists and active
-        const subject = await subjectsService.findSubjectById(req.body.subject_id);
-        if (!subject) {
-            return res.status(400).json({
-                success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Subject not found or has been deleted.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const createdExam = await examsService.createExam(req.body, req.currentUser.id);
+        const newExam = await examsService.createExam(req.body, req.currentUser);
 
         return res.status(201).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exam created successfully.',
-            data: createdExam,
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            message: 'Thành công',
+            data: newExam,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
-        if (error.code === '23505') {
-            return res.status(409).json({
+        if (error.status) {
+            return res.status(error.status).json({
                 success: false,
-                code: 'CONFLICT',
-                message: 'Exam with this code already exists.',
-                data: null,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
@@ -159,17 +270,15 @@ router.post('/', async (req, res, next) => {
     }
 });
 
-// 3. GET /api/v1/exams/:examId - Chi tiết kỳ thi
+// GET /exams/:examId - Get exam details
 router.get('/:examId', async (req, res, next) => {
     try {
-        const {examId} = req.params;
-
-        if (!UUID_REGEX.test(examId)) {
+        const { examId } = req.params;
+        if (!examsService.isValidUUID(examId)) {
             return res.status(400).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Invalid exam ID format.',
-                data: null,
+                code: 'INVALID_ID_FORMAT',
+                message: 'examId must be a valid UUID.',
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
@@ -180,8 +289,18 @@ router.get('/:examId', async (req, res, next) => {
             return res.status(404).json({
                 success: false,
                 code: 'EXAM_NOT_FOUND',
-                message: 'Exam not found.',
-                data: null,
+                message: `Exam with ID ${examId} not found.`,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Enforce P-02 Ownership: TEACHER can only view their own exam; ADMIN can view any
+        if (req.currentUser.role === 'TEACHER' && exam.created_by !== req.currentUser.id) {
+            return res.status(403).json({
+                success: false,
+                code: 'FORBIDDEN',
+                message: 'You do not have permission to view this exam.',
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
@@ -190,125 +309,57 @@ router.get('/:examId', async (req, res, next) => {
         return res.status(200).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exam retrieved successfully.',
+            message: 'Thành công',
             data: exam,
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
         next(error);
     }
 });
 
-// 4. PATCH /api/v1/exams/:examId - Cập nhật cấu hình kỳ thi
+// PATCH /exams/:examId - Update DRAFT exam
 router.patch('/:examId', async (req, res, next) => {
     try {
-        const {examId} = req.params;
-
-        if (!UUID_REGEX.test(examId)) {
+        const { examId } = req.params;
+        if (!examsService.isValidUUID(examId)) {
             return res.status(400).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Invalid exam ID format.',
-                data: null,
+                code: 'INVALID_ID_FORMAT',
+                message: 'examId must be a valid UUID.',
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
         }
 
-        const validationError = validatePatchExamBody(req.body);
+        const validationError = validatePatchExamInput(req.body);
         if (validationError) {
             return res.status(400).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
+                code: 'INVALID_REQUEST_BODY',
                 message: validationError,
-                data: null,
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
         }
 
-        const existingExam = await examsService.findExamById(examId);
-        if (!existingExam) {
-            return res.status(404).json({
-                success: false,
-                code: 'EXAM_NOT_FOUND',
-                message: 'Exam not found.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // Ownership check
-        if (req.currentUser.role === 'TEACHER' && existingExam.created_by !== req.currentUser.id) {
-            return res.status(403).json({
-                success: false,
-                code: 'FORBIDDEN',
-                message: 'You do not have permission to update this exam.',
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // Must be in DRAFT to edit configuration
-        if (existingExam.status !== 'DRAFT') {
-            return res.status(409).json({
-                success: false,
-                code: 'CONFLICT',
-                message: `Cannot modify exam configuration after leaving DRAFT status (current status: ${existingExam.status}).`,
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // Check subject_id if changing
-        if (req.body.subject_id && req.body.subject_id !== existingExam.subject_id) {
-            const subject = await subjectsService.findSubjectById(req.body.subject_id);
-            if (!subject) {
-                return res.status(400).json({
-                    success: false,
-                    code: 'VALIDATION_ERROR',
-                    message: 'Subject not found or has been deleted.',
-                    data: null,
-                    trace_id: req.traceId,
-                    timestamp: new Date().toISOString()
-                });
-            }
-        }
-
-        // Check time range logic with existing dates
-        const finalOpensAt = req.body.opens_at || existingExam.opens_at;
-        const finalClosesAt = req.body.closes_at || existingExam.closes_at;
-        if (new Date(finalClosesAt) <= new Date(finalOpensAt)) {
-            return res.status(400).json({
-                success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'closes_at must be strictly after opens_at.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const updatedExam = await examsService.updateExam(examId, req.body);
+        const updatedExam = await examsService.updateExam(examId, req.body, req.currentUser);
 
         return res.status(200).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exam updated successfully.',
+            message: 'Thành công',
             data: updatedExam,
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
-        if (error.code === '23505') {
-            return res.status(409).json({
+        if (error.status) {
+            return res.status(error.status).json({
                 success: false,
-                code: 'CONFLICT',
-                message: 'Exam with this code already exists.',
-                data: null,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
@@ -317,529 +368,414 @@ router.patch('/:examId', async (req, res, next) => {
     }
 });
 
-// 5. DELETE /api/v1/exams/:examId - Xóa mềm kỳ thi
+// DELETE /exams/:examId - Soft delete DRAFT exam
 router.delete('/:examId', async (req, res, next) => {
     try {
-        const {examId} = req.params;
-
-        if (!UUID_REGEX.test(examId)) {
+        const { examId } = req.params;
+        if (!examsService.isValidUUID(examId)) {
             return res.status(400).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Invalid exam ID format.',
-                data: null,
+                code: 'INVALID_ID_FORMAT',
+                message: 'examId must be a valid UUID.',
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
         }
 
-        const existingExam = await examsService.findExamById(examId);
-        if (!existingExam) {
-            return res.status(404).json({
-                success: false,
-                code: 'EXAM_NOT_FOUND',
-                message: 'Exam not found.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // Ownership check
-        if (req.currentUser.role === 'TEACHER' && existingExam.created_by !== req.currentUser.id) {
-            return res.status(403).json({
-                success: false,
-                code: 'FORBIDDEN',
-                message: 'You do not have permission to delete this exam.',
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // Must be in DRAFT to delete
-        if (existingExam.status !== 'DRAFT') {
-            return res.status(409).json({
-                success: false,
-                code: 'CONFLICT',
-                message: `Cannot delete exam that is not in DRAFT status (current status: ${existingExam.status}).`,
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        await examsService.softDeleteExam(examId, req.currentUser.id);
+        await examsService.deleteExam(examId, req.currentUser);
 
         return res.status(200).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exam deleted successfully.',
+            message: 'Thành công',
             data: {},
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
         next(error);
     }
 });
 
-// 6. PUT /api/v1/exams/:examId/matrix - Thay thế ma trận đề
+// PUT /exams/:examId/matrix - Replace entire DRAFT exam matrix
 router.put('/:examId/matrix', async (req, res, next) => {
     try {
-        const {examId} = req.params;
-
-        if (!UUID_REGEX.test(examId)) {
+        const { examId } = req.params;
+        if (!examsService.isValidUUID(examId)) {
             return res.status(400).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Invalid exam ID format.',
-                data: null,
+                code: 'INVALID_ID_FORMAT',
+                message: 'examId must be a valid UUID.',
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
         }
 
-        const validationError = validateMatrixReplaceBody(req.body);
-        if (validationError) {
+        if (!req.body || !Array.isArray(req.body.rows)) {
             return res.status(400).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
-                message: validationError,
-                data: null,
+                code: 'INVALID_REQUEST_BODY',
+                message: 'Field "rows" must be an array of matrix rows.',
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
         }
 
-        const existingExam = await examsService.findExamById(examId);
-        if (!existingExam) {
-            return res.status(404).json({
-                success: false,
-                code: 'EXAM_NOT_FOUND',
-                message: 'Exam not found.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        if (req.currentUser.role === 'TEACHER' && existingExam.created_by !== req.currentUser.id) {
-            return res.status(403).json({
-                success: false,
-                code: 'FORBIDDEN',
-                message: 'You do not have permission to update matrix for this exam.',
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        if (existingExam.status !== 'DRAFT') {
-            return res.status(409).json({
-                success: false,
-                code: 'CONFLICT',
-                message: `Cannot replace matrix when exam is not in DRAFT status (current status: ${existingExam.status}).`,
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const replacedRows = await examsService.replaceExamMatrix(examId, req.body.rows, req.currentUser.id);
+        await examsService.replaceMatrix(examId, req.body.rows, req.currentUser);
 
         return res.status(200).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exam matrix updated successfully.',
-            data: {rows: replacedRows},
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            message: 'Thành công',
+            data: {},
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
         next(error);
     }
 });
 
-// 7. PUT /api/v1/exams/:examId/grading-rules - Thay thế quy tắc chấm điểm
+// PUT /exams/:examId/grading-rules - Replace DRAFT grading rules
 router.put('/:examId/grading-rules', async (req, res, next) => {
     try {
-        const {examId} = req.params;
-
-        if (!UUID_REGEX.test(examId)) {
+        const { examId } = req.params;
+        if (!examsService.isValidUUID(examId)) {
             return res.status(400).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Invalid exam ID format.',
-                data: null,
+                code: 'INVALID_ID_FORMAT',
+                message: 'examId must be a valid UUID.',
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
         }
 
-        const validationError = validateGradingRulesReplaceBody(req.body);
-        if (validationError) {
+        if (!req.body || !Array.isArray(req.body.rules)) {
             return res.status(400).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
-                message: validationError,
-                data: null,
+                code: 'INVALID_REQUEST_BODY',
+                message: 'Field "rules" must be an array of grading rules.',
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
         }
 
-        const existingExam = await examsService.findExamById(examId);
-        if (!existingExam) {
-            return res.status(404).json({
-                success: false,
-                code: 'EXAM_NOT_FOUND',
-                message: 'Exam not found.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        if (req.currentUser.role === 'TEACHER' && existingExam.created_by !== req.currentUser.id) {
-            return res.status(403).json({
-                success: false,
-                code: 'FORBIDDEN',
-                message: 'You do not have permission to update grading rules for this exam.',
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        if (existingExam.status !== 'DRAFT') {
-            return res.status(409).json({
-                success: false,
-                code: 'CONFLICT',
-                message: `Cannot replace grading rules when exam is not in DRAFT status (current status: ${existingExam.status}).`,
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const replacedRules = await examsService.replaceExamGradingRules(examId, req.body.rules, req.currentUser.id);
+        await examsService.replaceGradingRules(examId, req.body.rules, req.currentUser);
 
         return res.status(200).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exam grading rules updated successfully.',
-            data: {rules: replacedRules},
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            message: 'Thành công',
+            data: {},
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
         next(error);
     }
 });
 
-// 8. POST /api/v1/exams/:examId/matrix/validate - Kiểm tra ma trận đề
+// POST /exams/:examId/matrix/validate - Deep validate matrix feasibility against active question bank
 router.post('/:examId/matrix/validate', async (req, res, next) => {
     try {
-        const {examId} = req.params;
-
-        if (!UUID_REGEX.test(examId)) {
+        const { examId } = req.params;
+        if (!examsService.isValidUUID(examId)) {
             return res.status(400).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Invalid exam ID format.',
-                data: null,
+                code: 'INVALID_ID_FORMAT',
+                message: 'examId must be a valid UUID.',
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
         }
 
-        const existingExam = await examsService.findExamById(examId);
-        if (!existingExam) {
-            return res.status(404).json({
-                success: false,
-                code: 'EXAM_NOT_FOUND',
-                message: 'Exam not found.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const validationResult = await examsService.validateExamMatrix(examId);
+        const validationResult = await examsService.validateMatrix(examId, req.currentUser);
 
         return res.status(200).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exam matrix validation completed.',
+            message: 'Thành công',
             data: validationResult,
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
         next(error);
     }
 });
 
-// 9. POST /api/v1/exams/:examId/generate - Sinh đề thi và mã đề
+// POST /exams/:examId/generate - Sinh đề gốc + mã đề, đóng băng transaction
 router.post('/:examId/generate', async (req, res, next) => {
     try {
-        const {examId} = req.params;
+        const { examId } = req.params;
+        const {
+            variant_count,
+            variant_code_start,
+            strict_topic_balance,
+            similarity_threshold
+        } = req.body || {};
 
-        if (!UUID_REGEX.test(examId)) {
-            return res.status(400).json({
-                success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Invalid exam ID format.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const validationError = validateGenerateExamBody(req.body);
-        if (validationError) {
-            return res.status(400).json({
-                success: false,
-                code: 'VALIDATION_ERROR',
-                message: validationError,
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const existingExam = await examsService.findExamById(examId);
-        if (!existingExam) {
-            return res.status(404).json({
-                success: false,
-                code: 'EXAM_NOT_FOUND',
-                message: 'Exam not found.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // Ownership check: TEACHER can only generate their own exams
-        if (req.currentUser.role === 'TEACHER' && existingExam.created_by !== req.currentUser.id) {
-            return res.status(403).json({
-                success: false,
-                code: 'FORBIDDEN',
-                message: 'You do not have permission to generate variants for this exam.',
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // Status check: Must be in DRAFT status
-        if (existingExam.status !== 'DRAFT') {
-            return res.status(409).json({
-                success: false,
-                code: 'CONFLICT',
-                message: `Exam must be in DRAFT status to generate variants (current status: ${existingExam.status}).`,
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const result = await examsService.generateExamVariants(
-            examId,
-            {
-                variant_count: req.body.variant_count,
-                variant_code_start: String(req.body.variant_code_start).trim()
-            },
-            req.currentUser.id
-        );
+        const result = await examsService.generateExamVariants(examId, {
+            variant_count,
+            variant_code_start,
+            strict_topic_balance,
+            similarity_threshold
+        }, req.currentUser);
 
         return res.status(201).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exam variants generated successfully.',
+            message: 'Thành công',
             data: result,
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
-        const msg = error.message || '';
-        if (msg.includes('VARIANT_CODE_OVERFLOW')) {
-            return res.status(400).json({
+        if (error.status) {
+            return res.status(error.status).json({
                 success: false,
-                code: 'VALIDATION_ERROR',
-                message: msg,
-                data: null,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                details: error.details,
                 trace_id: req.traceId,
                 timestamp: new Date().toISOString()
             });
         }
-
-        if (msg.includes('EXAM_NOT_FOUND')) {
-            return res.status(404).json({
-                success: false,
-                code: 'EXAM_NOT_FOUND',
-                message: 'Exam not found.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        if (
-            msg.includes('EXAM_NOT_IN_DRAFT') ||
-            msg.includes('VARIANTS_ALREADY_EXIST') ||
-            msg.includes('VARIANT_CODE_CONFLICT') ||
-            error.code === '23505' ||
-            error.code === 'P0003' ||
-            error.code === 'P0008' ||
-            error.code === 'P0009'
-        ) {
-            return res.status(409).json({
-                success: false,
-                code: 'CONFLICT',
-                message: msg || 'Exam generation conflict or exam not in DRAFT status.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        if (
-            msg.includes('TOTAL_QUESTIONS_MISMATCH') ||
-            msg.includes('TOTAL_SCORE_MISMATCH') ||
-            msg.includes('MISSING_GRADING_RULE') ||
-            msg.includes('INSUFFICIENT_QUESTIONS') ||
-            msg.includes('MATRIX_EMPTY') ||
-            msg.includes('INVALID_MATRIX_CHAPTER') ||
-            msg.includes('INVALID_MATRIX_LESSON') ||
-            msg.includes('QUESTION_SELECTION_MISMATCH') ||
-            error.code === 'P0004' ||
-            error.code === 'P0005' ||
-            error.code === 'P0006' ||
-            error.code === 'P0007' ||
-            error.code === 'P0010' ||
-            error.code === 'P0011' ||
-            error.code === 'P0012'
-        ) {
-            return res.status(422).json({
-                success: false,
-                code: 'UNPROCESSABLE_ENTITY',
-                message: msg,
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
         next(error);
     }
 });
 
-// 10. GET /api/v1/exams/:examId/variants - Liệt kê mã đề
+// GET /exams/:examId/variants - Liệt kê mã đề để in/đối chiếu
 router.get('/:examId/variants', async (req, res, next) => {
     try {
-        const {examId} = req.params;
-
-        if (!UUID_REGEX.test(examId)) {
-            return res.status(400).json({
-                success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Invalid exam ID format.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const existingExam = await examsService.findExamById(examId);
-        if (!existingExam) {
-            return res.status(404).json({
-                success: false,
-                code: 'EXAM_NOT_FOUND',
-                message: 'Exam not found.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const variants = await examsService.findExamVariants(examId);
+        const { examId } = req.params;
+        const variants = await examsService.listExamVariants(examId, req.currentUser);
 
         return res.status(200).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exam variants retrieved successfully.',
+            message: 'Thành công',
             data: variants,
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
         next(error);
     }
 });
 
-// 10. POST /api/v1/exams/:examId/publish - Phát hành kỳ thi
+// POST /exams/:examId/publish - Phát hành đề và mở cấp phát tài khoản
 router.post('/:examId/publish', async (req, res, next) => {
     try {
-        const {examId} = req.params;
-
-        if (!UUID_REGEX.test(examId)) {
-            return res.status(400).json({
-                success: false,
-                code: 'VALIDATION_ERROR',
-                message: 'Invalid exam ID format.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const existingExam = await examsService.findExamById(examId);
-        if (!existingExam) {
-            return res.status(404).json({
-                success: false,
-                code: 'EXAM_NOT_FOUND',
-                message: 'Exam not found.',
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // Ownership check
-        if (req.currentUser.role === 'TEACHER' && existingExam.created_by !== req.currentUser.id) {
-            return res.status(403).json({
-                success: false,
-                code: 'FORBIDDEN',
-                message: 'You do not have permission to publish this exam.',
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // Decision P-08 & Trigger constraint: must be GENERATED before PUBLISHED
-        if (existingExam.status !== 'GENERATED') {
-            return res.status(409).json({
-                success: false,
-                code: 'CONFLICT',
-                message: `Exam must be in GENERATED status before publishing (current status: ${existingExam.status}).`,
-                data: null,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const publishedExam = await examsService.publishExam(examId, req.currentUser.id);
+        const { examId } = req.params;
+        const updated = await examsService.publishExam(examId, req.currentUser);
 
         return res.status(200).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Exam published successfully.',
-            data: publishedExam,
-            trace_id: req.traceId,
-            timestamp: new Date().toISOString()
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
         });
     } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/start - Đánh dấu bắt đầu kỳ thi
+router.post('/:examId/start', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const updated = await examsService.startExam(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/end - Kết thúc kỳ thi, thu bài chưa nộp
+router.post('/:examId/end', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const updated = await examsService.endExam(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/archive - Đóng băng kỳ thi vào lưu trữ
+router.post('/:examId/archive', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const updated = await examsService.archiveExam(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/cancel - Hủy kỳ thi trước giờ diễn ra
+router.post('/:examId/cancel', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const { reason } = req.body || {};
+        const updated = await examsService.cancelExam(examId, { reason }, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/print-files - Tạo link tải PDF đề/phiếu giấy
+router.post('/:examId/print-files', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const result = await examsService.getPrintFiles(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: result,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
         next(error);
     }
 });
 
 module.exports = router;
-
