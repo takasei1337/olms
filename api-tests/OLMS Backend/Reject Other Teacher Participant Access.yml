@@ -1,0 +1,29 @@
+info:
+  name: Reject Other Teacher Participant Access
+  type: http
+  seq: 88
+  tags:
+    - olms
+    - negative
+http:
+  method: GET
+  url: "{{base_url}}/exams/{{exam_id}}/participants"
+  auth:
+    type: bearer
+    token: "{{other_teacher_token}}"
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["other_teacher_token","exam_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 403 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(403);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 403. Requires runtime variables: other_teacher_token, exam_id. Run the collection sequentially with Local environment."

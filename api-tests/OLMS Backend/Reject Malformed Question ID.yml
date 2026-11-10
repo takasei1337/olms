@@ -1,7 +1,7 @@
 info:
   name: Reject Malformed Question ID
   type: http
-  seq: 80
+  seq: 89
   tags:
     - olms
     - negative

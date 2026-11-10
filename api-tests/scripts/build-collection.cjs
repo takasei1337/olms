@@ -1,10 +1,27 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const YAML=require('yaml');
+const ExcelJS=require('../../backend/node_modules/exceljs');
 const cases=require('./cases.cjs');
 const root=path.resolve(__dirname,'../OLMS Backend');
 function write(name,value){fs.writeFileSync(path.join(root,name),YAML.stringify(value,{lineWidth:0}));}
-function build(){
+async function ensureFixtures(){
+  const fixturesDir=path.join(root,'fixtures');
+  fs.mkdirSync(fixturesDir,{recursive:true});
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet('Participants');
+  ws.addRow(['student_code','full_name','email']);
+  ws.addRow(['BRU_IMP_01','Bruno Imported Student','bru_imp_01@example.invalid']);
+  ws.addRow(['BRU_IMP_BAD','','']);
+  await wb.xlsx.writeFile(path.join(fixturesDir,'participants.xlsx'));
+}
+function captureExpr(capture,capturePath='id'){
+  if(!capture)return '';
+  const chain=capturePath.split('.').map(p=>`?.[${JSON.stringify(p)}]`).join('');
+  return `if(res.status===expectedStatus){const val=res.body?.data${chain};if(val)bru.setVar(${JSON.stringify(capture)},val);}`;
+}
+async function build(){
+  await ensureFixtures();
   write('opencollection.yml',{opencollection:'1.0.0',info:{name:'OLMS Backend'},request:{auth:{type:'bearer',token:'{{token}}'}},bundled:false,extensions:{bruno:{ignore:['node_modules','.git','API.yml'],scripts:{flow:'sequential'}}}});
   fs.mkdirSync(path.join(root,'environments'),{recursive:true});
   const names={base_url:'BASE_URL',root_url:'ROOT_URL',run_id:'RUN_ID',single_choice_type_id:'SINGLE_CHOICE_TYPE_ID',archive_ready_exam_id:'ARCHIVE_READY_EXAM_ID',opens_at:'OPENS_AT',closes_at:'CLOSES_AT',api_user_password:'API_USER_PASSWORD',api_user_new_password:'API_USER_NEW_PASSWORD'};
@@ -15,11 +32,12 @@ function build(){
     const reset=c.name==='Health Check'?`${JSON.stringify(runtimeKeys)}.forEach(key=>bru.deleteVar(key));`:'';
     const dependencies=c.deps?.length?`const missing=${JSON.stringify(c.deps)}.filter(key=>!bru.getVar(key));\nif(missing.length){bru.runner.skipRequest();}`:'';
     const before=[reset,dependencies,c.before].filter(Boolean).join('\n');
-    const after=[c.capture?`if(res.status===${c.status} && res.body?.data?.id)bru.setVar(${JSON.stringify(c.capture)},res.body.data.id);`:'',c.token?`if(res.status===${c.status} && res.body?.data?.access_token)bru.setVar(${JSON.stringify(c.token)},res.body.data.access_token);`:'',c.flag?`if(res.status===${c.status})bru.setVar(${JSON.stringify(c.flag)},true);`:''].filter(Boolean).join('\n');
+    const after=[c.capture?captureExpr(c.capture,c.capturePath||'id').replace('expectedStatus',String(c.status)):'',c.token?`if(res.status===${c.status} && res.body?.data?.access_token)bru.setVar(${JSON.stringify(c.token)},res.body.data.access_token);`:'',c.flag?`if(res.status===${c.status})bru.setVar(${JSON.stringify(c.flag)},true);`:''].filter(Boolean).join('\n');
     const tests=`const body=res.getBody();\ntest("HTTP ${c.status} (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(${c.status});});\n${c.url==='@root/health'?'':`test("response success flag",()=>expect(body.success).to.equal(${c.status<400}));`}\n${c.check?`test("response contract",()=>{${c.check}});`:''}`;
     const scripts=[before?{type:'before-request',code:before}:null,after?{type:'after-response',code:after}:null,{type:'tests',code:tests}].filter(Boolean);
     const http={method:c.method,url:c.url.startsWith('@root')?c.url.replace('@root','{{root_url}}'):'{{base_url}}'+c.url,auth:c.auth==='none'?undefined:c.auth?{type:'bearer',token:`{{${c.auth}}}`}:'inherit'};
     if(c.body)http.body={type:'json',data:JSON.stringify(c.body,null,2)};
+    if(c.multipart)http.body={type:'multipart-form',data:c.multipart};
     write(c.file,{info:{name:c.name,type:'http',seq:c.seq,tags:['olms',c.status>=400?'negative':'positive']},http,runtime:{scripts},settings:{encodeUrl:true,timeout:30000,followRedirects:false},docs:`Expected HTTP ${c.status}. ${c.deps?.length?'Requires runtime variables: '+c.deps.join(', ')+'. ':''}${c.limitation?'Known limitation: '+c.limitation+'. ':''}Run the collection sequentially with Local environment.`});
   }
   // This existing request targets a paid third-party AI API, not an OLMS endpoint.
@@ -29,4 +47,4 @@ function build(){
   console.log(`Built ${cases.length} Bruno scenarios (OpenCollection YAML with executable scripts/tests).`);
 }
 module.exports=build;
-if(require.main===module)build();
+if(require.main===module)build().catch(e=>{console.error(e);process.exitCode=1;});

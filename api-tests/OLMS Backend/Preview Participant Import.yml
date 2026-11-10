@@ -1,0 +1,37 @@
+info:
+  name: Preview Participant Import
+  type: http
+  seq: 57
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/exams/{{exam_id}}/participants/import/preview"
+  auth: inherit
+  body:
+    type: multipart-form
+    data:
+      - name: file
+        type: file
+        value:
+          - fixtures/participants.xlsx
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id","published"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: after-response
+      code: if(res.status===200){const val=res.body?.data?.["import_token"];if(val)bru.setVar("import_token",val);}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.valid_count).to.equal(1);expect(body.data.invalid_count).to.equal(1);expect(body.data.import_token).to.be.a("string");});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: exam_id, published. Run the collection sequentially with Local environment."

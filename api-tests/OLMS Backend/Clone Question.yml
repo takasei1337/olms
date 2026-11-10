@@ -16,7 +16,7 @@ runtime:
         const missing=["question_id"].filter(key=>!bru.getVar(key));
         if(missing.length){bru.runner.skipRequest();}
     - type: after-response
-      code: if(res.status===201 && res.body?.data?.id)bru.setVar("clone_id",res.body.data.id);
+      code: if(res.status===201){const val=res.body?.data?.["id"];if(val)bru.setVar("clone_id",val);}
     - type: tests
       code: |-
         const body=res.getBody();

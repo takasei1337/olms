@@ -1,7 +1,7 @@
 info:
   name: Cancel Exam
   type: http
-  seq: 61
+  seq: 69
   tags:
     - olms
     - positive

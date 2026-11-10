@@ -1,0 +1,28 @@
+info:
+  name: Get Participants
+  type: http
+  seq: 56
+  tags:
+    - olms
+    - positive
+http:
+  method: GET
+  url: "{{base_url}}/exams/{{exam_id}}/participants?page=1&page_size=20"
+  auth: inherit
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id","participant_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data).to.be.an("array");expect(body.data.length).to.be.greaterThan(0);});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: exam_id, participant_id. Run the collection sequentially with Local environment."

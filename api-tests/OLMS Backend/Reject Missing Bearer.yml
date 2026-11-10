@@ -1,7 +1,7 @@
 info:
   name: Reject Missing Bearer
   type: http
-  seq: 85
+  seq: 94
   tags:
     - olms
     - negative

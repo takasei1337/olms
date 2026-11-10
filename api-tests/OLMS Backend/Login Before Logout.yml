@@ -1,7 +1,7 @@
 info:
   name: Login Before Logout
   type: http
-  seq: 82
+  seq: 91
   tags:
     - olms
     - positive

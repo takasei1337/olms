@@ -1,7 +1,7 @@
 info:
   name: Refresh After Logout
   type: http
-  seq: 84
+  seq: 93
   tags:
     - olms
     - negative

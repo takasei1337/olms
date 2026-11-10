@@ -1,7 +1,7 @@
 info:
   name: Create Cleanup Subject
   type: http
-  seq: 69
+  seq: 77
   tags:
     - olms
     - positive
@@ -19,7 +19,7 @@ http:
 runtime:
   scripts:
     - type: after-response
-      code: if(res.status===201 && res.body?.data?.id)bru.setVar("cleanup_subject_id",res.body.data.id);
+      code: if(res.status===201){const val=res.body?.data?.["id"];if(val)bru.setVar("cleanup_subject_id",val);}
     - type: tests
       code: |
         const body=res.getBody();

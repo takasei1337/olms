@@ -1,7 +1,7 @@
 info:
   name: Delete Subject
   type: http
-  seq: 74
+  seq: 82
   tags:
     - olms
     - positive

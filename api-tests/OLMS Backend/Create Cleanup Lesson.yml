@@ -1,7 +1,7 @@
 info:
   name: Create Cleanup Lesson
   type: http
-  seq: 71
+  seq: 79
   tags:
     - olms
     - positive
@@ -24,7 +24,7 @@ runtime:
         const missing=["cleanup_chapter_id"].filter(key=>!bru.getVar(key));
         if(missing.length){bru.runner.skipRequest();}
     - type: after-response
-      code: if(res.status===201 && res.body?.data?.id)bru.setVar("cleanup_lesson_id",res.body.data.id);
+      code: if(res.status===201){const val=res.body?.data?.["id"];if(val)bru.setVar("cleanup_lesson_id",val);}
     - type: tests
       code: |
         const body=res.getBody();

@@ -46,7 +46,7 @@ runtime:
         const missing=["lesson_id"].filter(key=>!bru.getVar(key));
         if(missing.length){bru.runner.skipRequest();}
     - type: after-response
-      code: if(res.status===201 && res.body?.data?.id)bru.setVar("question_id",res.body.data.id);
+      code: if(res.status===201){const val=res.body?.data?.["id"];if(val)bru.setVar("question_id",val);}
     - type: tests
       code: |-
         const body=res.getBody();

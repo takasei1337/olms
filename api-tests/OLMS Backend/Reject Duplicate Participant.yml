@@ -1,0 +1,35 @@
+info:
+  name: Reject Duplicate Participant
+  type: http
+  seq: 55
+  tags:
+    - olms
+    - negative
+http:
+  method: POST
+  url: "{{base_url}}/exams/{{exam_id}}/participants"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "student_code": "{{run_id}}_SV01",
+        "full_name": "Duplicate Student"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id","participant_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 409 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(409);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+        test("response contract",()=>{expect(body.code).to.equal("ERR_PARTICIPANT_ALREADY_EXISTS");});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 409. Requires runtime variables: exam_id, participant_id. Run the collection sequentially with Local environment."

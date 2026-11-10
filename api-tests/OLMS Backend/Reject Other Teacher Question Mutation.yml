@@ -1,7 +1,7 @@
 info:
   name: Reject Other Teacher Question Mutation
   type: http
-  seq: 79
+  seq: 87
   tags:
     - olms
     - negative

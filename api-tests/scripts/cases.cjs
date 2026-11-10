@@ -62,6 +62,14 @@ add('Validate Exam Matrix','POST','/exams/{{exam_id}}/matrix/validate',200,{deps
 add('Generate Exam Variants','POST','/exams/{{exam_id}}/generate',201,{deps:['exam_id'],body:{variant_count:2,variant_code_start:'101',strict_topic_balance:true,similarity_threshold:0.7},flag:'generated',check:'expect(body.data.variants).to.have.lengthOf(2);expect(body.data.status).to.equal("GENERATED");'});
 add('Get Exam Variants','GET','/exams/{{exam_id}}/variants',200,{deps:['exam_id'],check:'expect(body.data).to.be.an("array");expect(body.data).to.have.lengthOf(2);'});
 add('Publish Exam','POST','/exams/{{exam_id}}/publish',200,{deps:['exam_id','generated'],flag:'published',check:'expect(body.data.status).to.equal("PUBLISHED");'});
+add('Enroll Participant','POST','/exams/{{exam_id}}/participants',201,{deps:['exam_id','published'],body:{student_code:'{{run_id}}_SV01',full_name:'Bruno {{run_id}} Student 1',email:'{{run_id}}_sv01@example.invalid'},capture:'participant_id',capturePath:'participant.id',check:'expect(body.data.username).to.be.a("string");expect(body.data.initial_password).to.be.a("string");expect(body.data.participant.status).to.equal("REGISTERED");'});
+add('Reject Duplicate Participant','POST','/exams/{{exam_id}}/participants',409,{deps:['exam_id','participant_id'],body:{student_code:'{{run_id}}_SV01',full_name:'Duplicate Student'},check:'expect(body.code).to.equal("ERR_PARTICIPANT_ALREADY_EXISTS");'});
+add('Get Participants','GET','/exams/{{exam_id}}/participants?page=1&page_size=20',200,{deps:['exam_id','participant_id'],check:'expect(body.data).to.be.an("array");expect(body.data.length).to.be.greaterThan(0);'});
+add('Preview Participant Import','POST','/exams/{{exam_id}}/participants/import/preview',200,{deps:['exam_id','published'],multipart:[{name:'file',type:'file',value:['fixtures/participants.xlsx']}],capture:'import_token',capturePath:'import_token',check:'expect(body.data.valid_count).to.equal(1);expect(body.data.invalid_count).to.equal(1);expect(body.data.import_token).to.be.a("string");'});
+add('Commit Participant Import','POST','/exams/{{exam_id}}/participants/import/commit',201,{deps:['exam_id','import_token'],body:{import_token:'{{import_token}}'},check:'expect(body.data.created_count).to.equal(1);expect(body.data.invalid_count).to.equal(1);'});
+add('Export Participant Credentials','POST','/exams/{{exam_id}}/participants/credentials/export',200,{deps:['exam_id','participant_id'],body:{format:'XLSX'},check:'expect(body.data.download_url).to.include("/credentials/download");expect(body.data.file_name).to.include(".xlsx");'});
+add('Reset Participant Credentials','POST','/exams/{{exam_id}}/participants/{{participant_id}}/credentials/reset',200,{deps:['exam_id','participant_id'],body:{reason:'Bruno regression credential reset'},check:'expect(body.data.initial_password).to.be.a("string");expect(body.data.username).to.be.a("string");'});
+add('Delete Participant','DELETE','/exams/{{exam_id}}/participants/{{participant_id}}',200,{deps:['exam_id','participant_id']});
 add('Start Exam','POST','/exams/{{exam_id}}/start',200,{deps:['exam_id','published'],flag:'started',check:'expect(body.data.status).to.equal("IN_PROGRESS");'});
 add('End Exam','POST','/exams/{{exam_id}}/end',200,{deps:['exam_id','started'],flag:'ended',check:'expect(body.data.status).to.equal("ENDED");'});
 add('Reject Archive Before Results','POST','/exams/{{exam_id}}/archive',409,{deps:['exam_id','ended'],check:'expect(body.code).to.equal("INVALID_EXAM_STATUS");'});
@@ -84,6 +92,7 @@ add('Login Student','POST','/auth/login',200,{...auth,body:login('student'),toke
 add('Student Cannot List Questions','GET','/questions',403,{auth:'student_token',deps:['student_token']});
 add('Login Other Teacher','POST','/auth/login',200,{...auth,body:login('other_teacher'),token:'other_teacher_token'});
 add('Reject Other Teacher Question Mutation','PATCH','/questions/{{pool_question_id}}',403,{auth:'other_teacher_token',deps:['other_teacher_token','pool_question_id'],body:{content:'Must not be saved'}});
+add('Reject Other Teacher Participant Access','GET','/exams/{{exam_id}}/participants',403,{auth:'other_teacher_token',deps:['other_teacher_token','exam_id']});
 add('Reject Malformed Question ID','GET','/questions/not-a-uuid',400);
 add('Reject Invalid Answer Spec','POST','/questions',400,{body:{...question('INVALID'),answer_spec:{schema_version:1,kind:'SINGLE_CHOICE',choices:[]}},deps:['lesson_id']});
 add('Login Before Logout','POST','/auth/login',200,{...auth,body:login('teacher'),token:'token'});

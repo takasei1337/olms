@@ -22,7 +22,7 @@ http:
 runtime:
   scripts:
     - type: after-response
-      code: if(res.status===201 && res.body?.data?.id)bru.setVar("temporary_type_id",res.body.data.id);
+      code: if(res.status===201){const val=res.body?.data?.["id"];if(val)bru.setVar("temporary_type_id",val);}
     - type: tests
       code: |
         const body=res.getBody();

@@ -8,7 +8,7 @@ const generateReport=require('./write-report.cjs');
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function isReady(root){try{const r=await fetch(root+'/health',{signal:AbortSignal.timeout(1500)});const body=await r.json();return r.ok&&body.service==='olms-backend';}catch{return false;}}
 async function main(){
-  const ctx=await setup();build();
+  const ctx=await setup();await build();
   const reports=path.join(ctx.TESTS,'reports',ctx.runId);fs.mkdirSync(reports,{recursive:true});
   let server;
   const serverLog=fs.openSync(path.join(reports,'backend.log'),'a');

@@ -1,7 +1,7 @@
 info:
   name: Login Student
   type: http
-  seq: 76
+  seq: 84
   tags:
     - olms
     - positive

@@ -3949,11 +3949,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 10
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/participants.routes.js
+        line: 138
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp
         đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có.'
       x-target-roles: *id057
@@ -4036,11 +4035,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 11
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/participants.routes.js
+        line: 199
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp
         đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có. P-03: Backend tìm/tạo student_profiles
         theo student_code, ghi participants.student_profile_id; không lấy profile ID tùy ý từ frontend.'
@@ -4134,11 +4132,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 12
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/participants.routes.js
+        line: 241
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Accept .xls/.xlsx; không tạo tài khoản trong bước preview.
 
 
@@ -4226,11 +4223,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 13
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/participants.routes.js
+        line: 280
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp
         đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có.'
       x-target-roles: *id060
@@ -4313,11 +4309,10 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 14
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/participants.routes.js
+        line: 329
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: ADMIN/TEACHER (TEACHER giới hạn theo ownership P-02). Các URI/payload là hợp
         đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint sẵn có.'
       x-target-roles: *id061
@@ -4399,11 +4394,10 @@ paths:
       x-p01-policy: Export username/SBD/room/variant only; reset issues new random credential once, never reprint
         old password. Requires ADMIN or owner Teacher and audit. Pending PO sign-off.
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 15
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/participants.routes.js
+        line: 360
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'P-01 QA decision: chỉ xuất username, student_code, seat_no, variant_code, status; không
         xuất password/hash hoặc khôi phục mật khẩu cũ. ADMIN hoặc Teacher sở hữu kỳ thi (P-02), file có URL ký thời
         hạn ngắn, private/no-store, bắt buộc audit. Mất mật khẩu dùng reset để phát mới trước giờ thi. Đây là thiết
@@ -4496,11 +4490,10 @@ paths:
       x-p01-policy: Export username/SBD/room/variant only; reset issues new random credential once, never reprint
         old password. Requires ADMIN or owner Teacher and audit. Pending PO sign-off.
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 16
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/participants.routes.js
+        line: 403
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'P-01: ADMIN hoặc Teacher chủ kỳ thi (P-02) và trước giờ thi; tạo mật khẩu mới ngẫu
         nhiên, trả plaintext một lần qua TLS cho người được cấp quyền, không log/cache/DB plaintext; vô hiệu mật
         khẩu cũ và ghi audit metadata không chứa mật khẩu. Không thể lấy lại mật khẩu cũ từ hash.'

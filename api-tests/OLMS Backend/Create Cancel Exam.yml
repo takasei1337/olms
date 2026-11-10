@@ -1,7 +1,7 @@
 info:
   name: Create Cancel Exam
   type: http
-  seq: 60
+  seq: 68
   tags:
     - olms
     - positive
@@ -31,7 +31,7 @@ runtime:
         const missing=["subject_id"].filter(key=>!bru.getVar(key));
         if(missing.length){bru.runner.skipRequest();}
     - type: after-response
-      code: if(res.status===201 && res.body?.data?.id)bru.setVar("cancel_exam_id",res.body.data.id);
+      code: if(res.status===201){const val=res.body?.data?.["id"];if(val)bru.setVar("cancel_exam_id",val);}
     - type: tests
       code: |
         const body=res.getBody();
