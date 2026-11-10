@@ -20,16 +20,35 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing=["exam_id","published"].filter(key=>!bru.getVar(key));
-        if(missing.length){bru.runner.skipRequest();}
+        const missing = ["exam_id","published"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
     - type: after-response
-      code: if(res.status===200){const val=res.body?.data?.["import_token"];if(val)bru.setVar("import_token",val);}
+      code: |-
+        if (res.status === 200) {
+          const captured = res.body?.data?.["import_token"];
+          if (captured) {
+            bru.setVar("import_token", captured);
+          }
+        }
     - type: tests
       code: |-
-        const body=res.getBody();
-        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
-        test("response success flag",()=>expect(body.success).to.equal(true));
-        test("response contract",()=>{expect(body.data.valid_count).to.equal(1);expect(body.data.invalid_count).to.equal(1);expect(body.data.import_token).to.be.a("string");});
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.valid_count).to.equal(1);
+          expect(body.data.invalid_count).to.equal(1);
+          expect(body.data.import_token).to.be.a("string");
+        });
 settings:
   encodeUrl: true
   timeout: 30000

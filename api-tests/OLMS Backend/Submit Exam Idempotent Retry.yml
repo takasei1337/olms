@@ -18,14 +18,25 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing=["enrolled_student_token","submission_id","submit_token"].filter(key=>!bru.getVar(key));
-        if(missing.length){bru.runner.skipRequest();}
+        const missing = ["enrolled_student_token","submission_id","submit_token"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
     - type: tests
       code: |-
-        const body=res.getBody();
-        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
-        test("response success flag",()=>expect(body.success).to.equal(true));
-        test("response contract",()=>{expect(body.data.submission_status).to.equal("SUBMITTED");});
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.submission_status).to.equal("SUBMITTED");
+        });
 settings:
   encodeUrl: true
   timeout: 30000

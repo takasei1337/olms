@@ -30,13 +30,21 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing=["lesson_id"].filter(key=>!bru.getVar(key));
-        if(missing.length){bru.runner.skipRequest();}
+        const missing = ["lesson_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
     - type: tests
-      code: |
-        const body=res.getBody();
-        test("HTTP 400 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(400);});
-        test("response success flag",()=>expect(body.success).to.equal(false));
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 400 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(400);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(false);
+        });
 settings:
   encodeUrl: true
   timeout: 30000

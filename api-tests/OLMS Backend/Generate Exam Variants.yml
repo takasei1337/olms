@@ -22,16 +22,31 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing=["exam_id"].filter(key=>!bru.getVar(key));
-        if(missing.length){bru.runner.skipRequest();}
+        const missing = ["exam_id"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
     - type: after-response
-      code: if(res.status===201)bru.setVar("generated",true);
+      code: |-
+        if (res.status === 201) {
+          bru.setVar("generated", true);
+        }
     - type: tests
       code: |-
-        const body=res.getBody();
-        test("HTTP 201 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(201);});
-        test("response success flag",()=>expect(body.success).to.equal(true));
-        test("response contract",()=>{expect(body.data.variants).to.have.lengthOf(2);expect(body.data.status).to.equal("GENERATED");});
+        const body = res.getBody();
+
+        test("HTTP 201 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.variants).to.have.lengthOf(2);
+          expect(body.data.status).to.equal("GENERATED");
+        });
 settings:
   encodeUrl: true
   timeout: 30000

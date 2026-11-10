@@ -15,14 +15,27 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing=["enrolled_student_token","exam_id","results_published"].filter(key=>!bru.getVar(key));
-        if(missing.length){bru.runner.skipRequest();}
+        const missing = ["enrolled_student_token","exam_id","results_published"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
     - type: tests
       code: |-
-        const body=res.getBody();
-        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
-        test("response success flag",()=>expect(body.success).to.equal(true));
-        test("response contract",()=>{expect(body.data.answers).to.have.lengthOf(1);expect(body.data.answers[0].grading_status).to.be.a("string");expect(body.data.answers[0].correct_answer).to.equal(undefined);});
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.answers).to.have.lengthOf(1);
+          expect(body.data.answers[0].grading_status).to.be.a("string");
+          expect(body.data.answers[0].correct_answer).to.equal(undefined);
+        });
 settings:
   encodeUrl: true
   timeout: 30000

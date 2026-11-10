@@ -20,12 +20,24 @@ http:
 runtime:
   scripts:
     - type: after-response
-      code: if(res.status===201){const val=res.body?.data?.["id"];if(val)bru.setVar("subject_id",val);}
+      code: |-
+        if (res.status === 201) {
+          const captured = res.body?.data?.["id"];
+          if (captured) {
+            bru.setVar("subject_id", captured);
+          }
+        }
     - type: tests
-      code: |
-        const body=res.getBody();
-        test("HTTP 201 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(201);});
-        test("response success flag",()=>expect(body.success).to.equal(true));
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 201 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
 settings:
   encodeUrl: true
   timeout: 30000

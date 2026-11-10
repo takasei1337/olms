@@ -13,16 +13,30 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing=["exam_id","published"].filter(key=>!bru.getVar(key));
-        if(missing.length){bru.runner.skipRequest();}
+        const missing = ["exam_id","published"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
     - type: after-response
-      code: if(res.status===200)bru.setVar("started",true);
+      code: |-
+        if (res.status === 200) {
+          bru.setVar("started", true);
+        }
     - type: tests
       code: |-
-        const body=res.getBody();
-        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
-        test("response success flag",()=>expect(body.success).to.equal(true));
-        test("response contract",()=>{expect(body.data.status).to.equal("IN_PROGRESS");});
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.status).to.equal("IN_PROGRESS");
+        });
 settings:
   encodeUrl: true
   timeout: 30000

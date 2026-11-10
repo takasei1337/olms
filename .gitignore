@@ -81,3 +81,5 @@ Desktop.ini
 # Explicitly ensure README.md is never ignored
 !README.md
 !readme.md
+
+test.md
