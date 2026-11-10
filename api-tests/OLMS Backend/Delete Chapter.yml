@@ -1,7 +1,7 @@
 info:
   name: Delete Chapter
   type: http
-  seq: 81
+  seq: 93
   tags:
     - olms
     - positive

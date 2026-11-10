@@ -1,0 +1,30 @@
+info:
+  name: Get Exam Session
+  type: http
+  seq: 67
+  tags:
+    - olms
+    - positive
+http:
+  method: GET
+  url: "{{base_url}}/me/exams/{{exam_id}}/session"
+  auth:
+    type: bearer
+    token: "{{enrolled_student_token}}"
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["enrolled_student_token","exam_id","submission_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.submission_id).to.equal(bru.getVar("submission_id"));expect(body.data.questions).to.have.lengthOf(1);});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: enrolled_student_token, exam_id, submission_id. Run the collection sequentially with Local environment."

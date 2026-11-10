@@ -1,0 +1,33 @@
+info:
+  name: Submit Exam
+  type: http
+  seq: 71
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/me/submissions/{{submission_id}}/submit"
+  auth:
+    type: bearer
+    token: "{{enrolled_student_token}}"
+  headers:
+    - name: Idempotency-Key
+      value: 22222222-2222-4222-8222-222222222201
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["enrolled_student_token","submission_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.submission_status).to.equal("SUBMITTED");expect(body.data.participant_status).to.equal("COMPLETED");});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: enrolled_student_token, submission_id. Run the collection sequentially with Local environment."

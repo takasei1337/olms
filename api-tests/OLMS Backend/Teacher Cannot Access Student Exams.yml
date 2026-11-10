@@ -1,0 +1,23 @@
+info:
+  name: Teacher Cannot Access Student Exams
+  type: http
+  seq: 96
+  tags:
+    - olms
+    - negative
+http:
+  method: GET
+  url: "{{base_url}}/me/exams"
+  auth: inherit
+runtime:
+  scripts:
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 403 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(403);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: Expected HTTP 403. Run the collection sequentially with Local environment.

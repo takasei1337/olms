@@ -4563,11 +4563,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 17
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/me.routes.js
+        line: 36
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: STUDENT. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có.
 
@@ -4648,11 +4647,10 @@ paths:
       x-decisions:
       - P-04:RESOLVED
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 18
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/me.routes.js
+        line: 54
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'POST có tính idempotent theo participant; nếu đang thi trả lại submission cũ; không
         tiết lộ đáp án đúng.
 
@@ -4749,11 +4747,10 @@ paths:
       x-decisions:
       - P-04:RESOLVED
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 19
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/me.routes.js
+        line: 77
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Vai trò: STUDENT. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
         không phải endpoint sẵn có. P-04: Chỉ cho xem bài đang mở khi server_time < deadline_at; không gia hạn và
         không hiển thị đề sau khi hết hạn.
@@ -4869,11 +4866,10 @@ paths:
         before checking session deadline; CAS for new writes only.
       x-authorization: STUDENT JWT owner required before DB function; no cross-owner or cross-exam data in 409.
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 20
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/me.routes.js
+        line: 100
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'So sánh sequence theo từng câu; khi request cũ, trả 409, không ghi đè.
 
 
@@ -4999,11 +4995,10 @@ paths:
       x-decisions:
       - P-04:RESOLVED
       x-implementation:
-        status: not_implemented
-        source: backend/src/routes/pending.routes.js
-        line: 21
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: implemented
+        source: backend/src/routes/me.routes.js
+        line: 132
+        schema-contract-validation: runtime-verified-via-bruno
       x-target-description: 'Header Idempotency-Key UUID bắt buộc. Retry cùng UUID trả kết quả/ trạng thái hiện
         hành, UUID khác trả 409. Worker chấm async.
 

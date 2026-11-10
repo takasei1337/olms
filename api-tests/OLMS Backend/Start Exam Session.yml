@@ -1,0 +1,34 @@
+info:
+  name: Start Exam Session
+  type: http
+  seq: 66
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/me/exams/{{exam_id}}/session"
+  auth:
+    type: bearer
+    token: "{{enrolled_student_token}}"
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["enrolled_student_token","exam_id","started"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: after-response
+      code: |-
+        if(res.status===200){const val=res.body?.data?.["submission_id"];if(val)bru.setVar("submission_id",val);}
+        if(res.status===200&&res.body?.data?.questions?.[0]?.exam_variant_question_id)bru.setVar("evq_id",res.body.data.questions[0].exam_variant_question_id);
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 200 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(200);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+        test("response contract",()=>{expect(body.data.status).to.equal("IN_PROGRESS");expect(body.data.questions).to.have.lengthOf(1);expect(body.data.questions[0].render_spec.choices[0].is_correct).to.equal(undefined);expect(body.data.remaining_seconds).to.be.greaterThan(0);});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: enrolled_student_token, exam_id, started. Run the collection sequentially with Local environment."

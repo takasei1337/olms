@@ -1,7 +1,7 @@
 info:
   name: Reject Repeated Archive
   type: http
-  seq: 66
+  seq: 78
   tags:
     - olms
     - negative

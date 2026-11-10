@@ -1,7 +1,7 @@
 info:
   name: Create Cleanup Chapter
   type: http
-  seq: 78
+  seq: 90
   tags:
     - olms
     - positive

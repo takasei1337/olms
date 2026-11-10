@@ -1,7 +1,7 @@
 info:
   name: Login Other Teacher
   type: http
-  seq: 86
+  seq: 99
   tags:
     - olms
     - positive

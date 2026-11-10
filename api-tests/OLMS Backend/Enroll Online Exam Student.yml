@@ -1,0 +1,39 @@
+info:
+  name: Enroll Online Exam Student
+  type: http
+  seq: 62
+  tags:
+    - olms
+    - positive
+http:
+  method: POST
+  url: "{{base_url}}/exams/{{exam_id}}/participants"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "student_code": "{{run_id}}_SV02",
+        "full_name": "Bruno {{run_id}} Online Student",
+        "email": "{{run_id}}_sv02@example.invalid"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["exam_id","published"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: after-response
+      code: |-
+        if(res.status===201){const val=res.body?.data?.["participant"]?.["id"];if(val)bru.setVar("sv02_participant_id",val);}
+        if(res.status===201&&res.body?.data){bru.setVar("sv02_username",res.body.data.username);bru.setVar("sv02_password",res.body.data.initial_password);}
+    - type: tests
+      code: |
+        const body=res.getBody();
+        test("HTTP 201 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(201);});
+        test("response success flag",()=>expect(body.success).to.equal(true));
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 201. Requires runtime variables: exam_id, published. Run the collection sequentially with Local environment."

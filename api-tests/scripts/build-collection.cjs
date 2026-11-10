@@ -32,10 +32,11 @@ async function build(){
     const reset=c.name==='Health Check'?`${JSON.stringify(runtimeKeys)}.forEach(key=>bru.deleteVar(key));`:'';
     const dependencies=c.deps?.length?`const missing=${JSON.stringify(c.deps)}.filter(key=>!bru.getVar(key));\nif(missing.length){bru.runner.skipRequest();}`:'';
     const before=[reset,dependencies,c.before].filter(Boolean).join('\n');
-    const after=[c.capture?captureExpr(c.capture,c.capturePath||'id').replace('expectedStatus',String(c.status)):'',c.token?`if(res.status===${c.status} && res.body?.data?.access_token)bru.setVar(${JSON.stringify(c.token)},res.body.data.access_token);`:'',c.flag?`if(res.status===${c.status})bru.setVar(${JSON.stringify(c.flag)},true);`:''].filter(Boolean).join('\n');
+    const after=[c.capture?captureExpr(c.capture,c.capturePath||'id').replace('expectedStatus',String(c.status)):'',c.token?`if(res.status===${c.status} && res.body?.data?.access_token)bru.setVar(${JSON.stringify(c.token)},res.body.data.access_token);`:'',c.flag?`if(res.status===${c.status})bru.setVar(${JSON.stringify(c.flag)},true);`:'',c.after].filter(Boolean).join('\n');
     const tests=`const body=res.getBody();\ntest("HTTP ${c.status} (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(${c.status});});\n${c.url==='@root/health'?'':`test("response success flag",()=>expect(body.success).to.equal(${c.status<400}));`}\n${c.check?`test("response contract",()=>{${c.check}});`:''}`;
     const scripts=[before?{type:'before-request',code:before}:null,after?{type:'after-response',code:after}:null,{type:'tests',code:tests}].filter(Boolean);
     const http={method:c.method,url:c.url.startsWith('@root')?c.url.replace('@root','{{root_url}}'):'{{base_url}}'+c.url,auth:c.auth==='none'?undefined:c.auth?{type:'bearer',token:`{{${c.auth}}}`}:'inherit'};
+    if(c.headers)http.headers=Object.entries(c.headers).map(([name,value])=>({name,value}));
     if(c.body)http.body={type:'json',data:JSON.stringify(c.body,null,2)};
     if(c.multipart)http.body={type:'multipart-form',data:c.multipart};
     write(c.file,{info:{name:c.name,type:'http',seq:c.seq,tags:['olms',c.status>=400?'negative':'positive']},http,runtime:{scripts},settings:{encodeUrl:true,timeout:30000,followRedirects:false},docs:`Expected HTTP ${c.status}. ${c.deps?.length?'Requires runtime variables: '+c.deps.join(', ')+'. ':''}${c.limitation?'Known limitation: '+c.limitation+'. ':''}Run the collection sequentially with Local environment.`});

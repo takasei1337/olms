@@ -1,0 +1,33 @@
+info:
+  name: Reject Conflicting Submit Token
+  type: http
+  seq: 73
+  tags:
+    - olms
+    - negative
+http:
+  method: POST
+  url: "{{base_url}}/me/submissions/{{submission_id}}/submit"
+  auth:
+    type: bearer
+    token: "{{enrolled_student_token}}"
+  headers:
+    - name: Idempotency-Key
+      value: 22222222-2222-4222-8222-222222222202
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing=["enrolled_student_token","submission_id"].filter(key=>!bru.getVar(key));
+        if(missing.length){bru.runner.skipRequest();}
+    - type: tests
+      code: |-
+        const body=res.getBody();
+        test("HTTP 409 (actual "+res.getStatus()+" "+(body?.code||body?.status||"")+")",()=>{expect(res.getStatus()).to.equal(409);});
+        test("response success flag",()=>expect(body.success).to.equal(false));
+        test("response contract",()=>{expect(body.code).to.equal("CONFLICTING_SUBMIT_TOKEN");});
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 409. Requires runtime variables: enrolled_student_token, submission_id. Run the collection sequentially with Local environment."
