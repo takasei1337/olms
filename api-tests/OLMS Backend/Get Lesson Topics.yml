@@ -1,25 +1,19 @@
 info:
-  name: Override Semantic Pool Question
+  name: Get Lesson Topics
   type: http
-  seq: 116
+  seq: 119
   tags:
     - olms
     - positive
 http:
-  method: POST
-  url: "{{base_url}}/questions/{{pool_sim_question_id}}/ai-override"
+  method: GET
+  url: "{{base_url}}/lessons/{{lesson_id}}/topics"
   auth: inherit
-  body:
-    type: json
-    data: |-
-      {
-        "reason": "Isolated Bruno fixture for semantic guard regression"
-      }
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["pool_sim_question_id"].filter((key) => !bru.getVar(key));
+        const missing = ["lesson_id","topic_b_question_id"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
@@ -34,8 +28,14 @@ runtime:
         test("response success flag", () => {
           expect(body.success).to.equal(true);
         });
+
+        test("response contract", () => {
+          expect(body.data).to.be.an("array");
+          expect(body.data.length).to.be.greaterThan(1);
+          expect(body.data.some((t) => String(t.topic_tag).endsWith("_TOPIC_B"))).to.equal(true);
+        });
 settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: pool_sim_question_id. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: lesson_id, topic_b_question_id. Run the collection sequentially with Local environment."

@@ -1,13 +1,13 @@
 info:
   name: Publish Exam Results
   type: http
-  seq: 98
+  seq: 100
   tags:
     - olms
     - positive
 http:
   method: POST
-  url: "{{base_url}}/exams/{{exam_id}}/results/publish"
+  url: "{{base_url}}/exams/{{publish_ready_exam_id}}/results/publish"
   auth: inherit
   body:
     type: json
@@ -17,12 +17,6 @@ http:
       }
 runtime:
   scripts:
-    - type: before-request
-      code: |-
-        const missing = ["exam_id","ended"].filter((key) => !bru.getVar(key));
-        if (missing.length) {
-          bru.runner.skipRequest();
-        }
     - type: after-response
       code: |-
         if (res.status === 200) {
@@ -48,4 +42,4 @@ settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: exam_id, ended. Run the collection sequentially with Local environment."
+docs: Expected HTTP 200. Run the collection sequentially with Local environment.

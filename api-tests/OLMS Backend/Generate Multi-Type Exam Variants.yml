@@ -1,7 +1,7 @@
 info:
   name: Generate Multi-Type Exam Variants
   type: http
-  seq: 138
+  seq: 153
   tags:
     - olms
     - positive
@@ -45,7 +45,8 @@ runtime:
 
         test("response contract", () => {
           expect(body.data.status).to.equal("GENERATED");
-          expect(body.data.variants).to.have.lengthOf(1);
+          expect(body.data.variants).to.have.lengthOf(2);
+          expect(body.data.root_variant.variant_code).to.equal("ROOT");
         });
 settings:
   encodeUrl: true

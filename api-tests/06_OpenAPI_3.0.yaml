@@ -1,5 +1,10 @@
 openapi: 3.0.3
 info:
+  x-planned-design:
+    version: '2.0'
+    status: specified
+    reference: docs/16_Ngan_Hang_Cau_Hoi_Va_Ma_De.md
+    scope: Lesson topics, question families, distinct variants per exam code and revisioned previews.
   title: OLMS — Backend REST API Contract
   version: 1.1.0-implementation
   x-olms-release-audit:
@@ -8,13 +13,13 @@ info:
     status: partial-implementation-local-mock-tested
     database-target: PostgreSQL 17 / Supabase
     business-operations: 83
-    implemented-business-handlers: 50
-    placeholder-business-handlers: 1
-    not-implemented-business-handlers: 32
+    implemented-business-handlers: 74
+    placeholder-business-handlers: 0
+    not-implemented-business-handlers: 9
     health-operations: 1
     validation: route inventory, internal refs, 103 mock tests and 18 security assertions; not live DB verification
   description: 'OLMS Express 5 / Supabase PostgreSQL 17. Đồng bộ với mã nguồn ngày 2026-11-10. Có 83 operation nghiệp
-    vụ: 50 handler có logic, 1 placeholder xuất file, 32 scaffold HTTP 501; thêm GET /health ngoài /api/v1. Trạng
+    vụ: 74 handler có logic, 9 scaffold HTTP 501; thêm GET /health ngoài /api/v1. Trạng
     thái có code không đồng nghĩa đã kiểm thử live. Các schema tương lai chỉ là thiết kế; xem x-implementation và
     x-target-*.'
   contact:
@@ -1739,6 +1744,63 @@ paths:
         source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
         schema-contract-validation: not-comprehensively-runtime-verified
       x-current-role-gate: *id025
+  /lessons/{lessonId}/topics:
+    get:
+      tags:
+      - Catalog
+      summary: Danh sách chủ đề câu hỏi theo bài học
+      operationId: get_lessons__lessonId__topics
+      description: Lấy danh sách các topic_tag gắn cho câu hỏi thuộc một bài học kèm tổng số câu và số câu ACTIVE.
+      x-roles:
+      - ADMIN
+      - TEACHER
+      x-use-case: Catalog
+      parameters:
+      - in: path
+        name: lessonId
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: ID lessonId (UUID hợp lệ)
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          topic_tag:
+                            type: string
+                          total_questions:
+                            type: integer
+                          active_questions:
+                            type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-implementation:
+        status: implemented
+        source: backend/src/routes/lessons.routes.js
+        line: 207
+      x-current-role-gate:
+      - ADMIN
+      - TEACHER
   /question-types:
     get:
       tags:
@@ -3091,6 +3153,164 @@ paths:
         source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
         schema-contract-validation: not-comprehensively-runtime-verified
       x-current-role-gate: *id045
+  /exams/{examId}/root-questions:
+    put:
+      tags:
+      - Exams
+      summary: Tạo hoặc cập nhật Đề gốc cố định (DRAFT)
+      operationId: put_exams__examId__root_questions
+      description: Giáo viên tự chọn danh sách câu hỏi và điểm cho Đề gốc; hệ thống tự đồng bộ bảng tóm tắt ma trận.
+      x-roles:
+      - ADMIN
+      - TEACHER
+      x-use-case: Exams
+      parameters:
+      - in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - items
+              properties:
+                variant_code:
+                  type: string
+                  pattern: ^(ROOT|root|[0-9]{3,10})$
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                    - question_id
+                    properties:
+                      question_id:
+                        type: string
+                        format: uuid
+                      score:
+                        type: number
+                        minimum: 0.01
+      responses:
+        '200':
+          description: Thành công
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-implementation:
+        status: implemented
+        source: backend/src/routes/exams.routes.js
+        line: 458
+      x-current-role-gate:
+      - ADMIN
+      - TEACHER
+    get:
+      tags:
+      - Exams
+      summary: Xem danh sách câu hỏi trong Đề gốc
+      operationId: get_exams__examId__root_questions
+      x-roles:
+      - ADMIN
+      - TEACHER
+      x-use-case: Exams
+      parameters:
+      - in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Thành công
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-implementation:
+        status: implemented
+        source: backend/src/routes/exams.routes.js
+        line: 510
+      x-current-role-gate:
+      - ADMIN
+      - TEACHER
+  /exams/{examId}/root-questions/from-matrix:
+    post:
+      tags:
+      - Exams
+      summary: Sinh Đề gốc nháp (ROOT) từ Ma trận để kiểm tra trước khi trộn đề
+      operationId: post_exams__examId__root_questions__from_matrix
+      x-roles:
+      - ADMIN
+      - TEACHER
+      x-use-case: Exams
+      parameters:
+      - in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                strict_topic_balance:
+                  type: boolean
+                  default: false
+                prevent_duplicate_topic:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Thành công
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-implementation:
+        status: implemented
+        source: backend/src/routes/exams.routes.js
+        line: 530
+      x-current-role-gate:
+      - ADMIN
+      - TEACHER
   /exams/{examId}/grading-rules:
     put:
       tags:
@@ -3236,8 +3456,7 @@ paths:
       - Exams
       summary: Sinh đề gốc + mã đề, đóng băng transaction
       operationId: post_exams__examId__generate
-      description: variant_count 1..100; mã đầu 3..10 chữ số. Topic non-strict cho phép overflow, strict thiếu trả
-        422. similarity_threshold chỉ được validate, chưa dùng lọc. Ghi nhiều request, chưa gọi RPC olms_generate_exam_variants.
+      description: Dùng preview_only trước khi giáo viên nhấn tạo đề. Nếu AI thiếu embedding, giao diện hiển thị các câu trong questions và đánh dấu embedding_unavailable để giáo viên đối chiếu. Sau khi xác nhận, gửi lại review_token trong confirmed_review_token.
       x-roles: &id048
       - ADMIN
       - TEACHER
@@ -3257,6 +3476,17 @@ paths:
             schema:
               $ref: '#/components/schemas/GenerateRequest'
       responses:
+        '200':
+          description: Bản xem trước. Kỳ thi vẫn ở DRAFT.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/GenerationReview'
         '201':
           description: Đã tạo mới
           content:
@@ -3293,7 +3523,15 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: Sai trạng thái, cần tự kiểm tra trùng lặp (DUPLICATE_REVIEW_REQUIRED) hoặc bản xem trước đã thay đổi (EXAM_PREVIEW_CHANGED). Hai mã liên quan đến kiểm tra trả bản xem trước mới trong details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: {type: string}
+                  message: {type: string}
+                  details: {$ref: '#/components/schemas/GenerationReview'}
         '422':
           $ref: '#/components/responses/Unprocessable'
         '500':
@@ -3446,8 +3684,7 @@ paths:
       - Exams
       summary: Đánh dấu bắt đầu kỳ thi
       operationId: post_exams__examId__start
-      description: Có handler Express và service logic. Kiểm tra nguồn theo x-implementation; chưa chứng minh mọi
-        schema/response đúng trên DB live.
+      description: Kỳ thi phải ở trạng thái PUBLISHED và đã đến opens_at. Trước opens_at trả 409 EXAM_NOT_OPEN.
       x-roles: &id051
       - ADMIN
       - TEACHER
@@ -3511,76 +3748,6 @@ paths:
         source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
         schema-contract-validation: not-comprehensively-runtime-verified
       x-current-role-gate: *id051
-  /exams/{examId}/end:
-    post:
-      tags:
-      - Exams
-      summary: Kết thúc kỳ thi, thu bài chưa nộp
-      operationId: post_exams__examId__end
-      description: Chuyển IN_PROGRESS sang ENDED; chưa có worker thu bài hoặc grading.
-      x-roles: &id052
-      - ADMIN
-      - TEACHER
-      x-use-case: Exams
-      parameters:
-      - in: path
-        name: examId
-        required: true
-        schema:
-          type: string
-          format: uuid
-        description: ID examId (UUID v7 hoặc UUID hợp lệ)
-      responses:
-        '200':
-          description: Thành công
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Exam'
-              example:
-                success: true
-                code: SUCCESS
-                message: Thành công
-                data:
-                  id: 0199ac14-a9bc-7001-8000-000000000004
-                  code: CSDL_GK_2026_1
-                  name: Giữa kỳ CSDL
-                  subject_id: 0199ac14-a9bc-7001-8000-000000000005
-                  status: DRAFT
-                  delivery_mode: ONLINE
-                  total_questions: 40
-                  duration_minutes: 60
-                  total_score: 10
-                  result_visibility_mode: HIDDEN
-                meta: null
-                timestamp: '2026-10-10T01:15:12Z'
-                trace_id: req_01HW0Y6RP5
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/Unprocessable'
-        '500':
-          $ref: '#/components/responses/InternalError'
-      x-implementation:
-        status: implemented
-        source: backend/src/routes/exams.routes.js
-        line: 669
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
-      x-current-role-gate: *id052
   /exams/{examId}/results/publish:
     post:
       tags:
@@ -3829,8 +3996,7 @@ paths:
       - Exams
       summary: Tạo link tải PDF đề/phiếu giấy
       operationId: post_exams__examId__print_files
-      description: 'Placeholder: chỉ trả URL dựng sẵn, expires_at một giờ và file_name. Chưa tạo PDF/ZIP hoặc signed
-        URL.'
+      description: Xuất đề giấy tạm hoãn. API trả HTTP 501 NOT_IMPLEMENTED.
       x-roles: &id056
       - ADMIN
       - TEACHER
@@ -3844,48 +4010,20 @@ paths:
           format: uuid
         description: ID examId (UUID v7 hoặc UUID hợp lệ)
       responses:
-        '200':
-          description: Thành công
+        '501':
+          description: NOT_IMPLEMENTED
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/DownloadLink'
-              example:
-                success: true
-                code: SUCCESS
-                message: Thành công
-                data:
-                  download_url: https://download.example/temporary-signed-url
-                  expires_at: '2026-10-10T01:20:00Z'
-                  file_name: credentials.xlsx
-                meta: null
-                timestamp: '2026-10-10T01:15:12Z'
-                trace_id: req_01HW0Y6RP5
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: '#/components/schemas/ApiResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/Unprocessable'
-        '500':
-          $ref: '#/components/responses/InternalError'
       x-implementation:
-        status: placeholder
-        source: backend/src/routes/exams.routes.js
-        line: 754
-        source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
-        schema-contract-validation: not-comprehensively-runtime-verified
+        status: not_implemented
+        source: backend/src/routes/pending.routes.js
+        line: 5
       x-current-role-gate: *id056
   /exams/{examId}/participants:
     get:
@@ -4615,9 +4753,7 @@ paths:
       - StudentExam
       summary: Bắt đầu/phục hồi cùng một phiên bài làm
       operationId: post_me_exams__examId__session
-      description: Chưa triển khai nghiệp vụ. Handler hiện trả HTTP 501 NOT_IMPLEMENTED. Scaffold hiện chưa có middleware
-        xác thực tương ứng; không phải API dữ liệu đã mở. Các DTO/thành công x-target-responses là thiết kế tương
-        lai.
+      description: Chỉ thí sinh đã đăng ký được truy cập phiên thi. Trước opens_at trả 409 EXAM_NOT_OPEN.
       x-roles: &id065
       - STUDENT
       x-use-case: StudentExam
@@ -4629,13 +4765,6 @@ paths:
           type: string
           format: uuid
         description: ID examId (UUID v7 hoặc UUID hợp lệ)
-      responses:
-        '501':
-          description: NOT_IMPLEMENTED scaffold
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
       x-decisions:
       - P-04:RESOLVED
       x-implementation:
@@ -4643,21 +4772,7 @@ paths:
         source: backend/src/routes/me.routes.js
         line: 54
         schema-contract-validation: runtime-verified-via-bruno
-      x-target-description: 'POST có tính idempotent theo participant; nếu đang thi trả lại submission cũ; không
-        tiết lộ đáp án đúng.
-
-
-        Vai trò: STUDENT. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD, không phải endpoint
-        sẵn có. P-04: Từ chối tạo phiên khi server_time >= closes_at hoặc exam không IN_PROGRESS; trả cùng deadline_at=min(started_at+duration,
-        closes_at) khi resume.
-
-        ARC-01/02: saved_answers.client_sequence is server-authoritative per question. Retry per edit_token, backlog
-        after deadline rejected. Resume must not create new session or extend deadline.
-
-        Security: derive STUDENT identity from JWT; prevent IDOR; Cache-Control: private, no-store for sensitive
-        data.'
-      x-target-roles: *id065
-      x-target-responses:
+      responses:
         '200':
           description: Thành công
           content:
@@ -4669,33 +4784,6 @@ paths:
                   properties:
                     data:
                       $ref: '#/components/schemas/Session'
-              example:
-                success: true
-                code: SUCCESS
-                message: Thành công
-                data:
-                  submission_id: 0199ac14-a9bc-7001-8000-000000000008
-                  exam_id: 0199ac14-a9bc-7001-8000-000000000004
-                  variant_code: '102'
-                  status: IN_PROGRESS
-                  started_at: '2026-10-10T01:00:00Z'
-                  deadline_at: '2026-10-10T02:00:00Z'
-                  server_time: '2026-10-10T01:15:00Z'
-                  remaining_seconds: 2700
-                  questions:
-                  - exam_variant_question_id: 0199ac14-a9bc-7001-8000-000000000009
-                    position: 1
-                    type_code: SINGLE_CHOICE
-                    content: 2 + 3 = ?
-                    options:
-                    - display_label: A
-                      content: '4'
-                    - display_label: B
-                      content: '5'
-                  saved_answers: []
-                meta: null
-                timestamp: '2026-10-10T01:15:12Z'
-                trace_id: req_01HW0Y6RP5
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -4708,16 +4796,15 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
-      security: []
-      x-current-role-gate: []
+      security:
+      - bearerAuth: []
+      x-current-role-gate: [STUDENT]
     get:
       tags:
       - StudentExam
       summary: Khôi phục đề, đáp án đã lưu và thời gian server
       operationId: get_me_exams__examId__session
-      description: Chưa triển khai nghiệp vụ. Handler hiện trả HTTP 501 NOT_IMPLEMENTED. Scaffold hiện chưa có middleware
-        xác thực tương ứng; không phải API dữ liệu đã mở. Các DTO/thành công x-target-responses là thiết kế tương
-        lai.
+      description: Chỉ thí sinh đã đăng ký được truy cập phiên thi. Trước opens_at trả 409 EXAM_NOT_OPEN.
       x-roles: &id066
       - STUDENT
       x-use-case: StudentExam
@@ -4729,13 +4816,6 @@ paths:
           type: string
           format: uuid
         description: ID examId (UUID v7 hoặc UUID hợp lệ)
-      responses:
-        '501':
-          description: NOT_IMPLEMENTED scaffold
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
       x-decisions:
       - P-04:RESOLVED
       x-implementation:
@@ -4743,17 +4823,7 @@ paths:
         source: backend/src/routes/me.routes.js
         line: 77
         schema-contract-validation: runtime-verified-via-bruno
-      x-target-description: 'Vai trò: STUDENT. Các URI/payload là hợp đồng thiết kế đề xuất dựa trên SRS+CSDL+SAD/HLD,
-        không phải endpoint sẵn có. P-04: Chỉ cho xem bài đang mở khi server_time < deadline_at; không gia hạn và
-        không hiển thị đề sau khi hết hạn.
-
-        ARC-01/02: saved_answers.client_sequence is server-authoritative per question. Retry per edit_token, backlog
-        after deadline rejected. Resume must not create new session or extend deadline.
-
-        Security: derive STUDENT identity from JWT; prevent IDOR; Cache-Control: private, no-store for sensitive
-        data.'
-      x-target-roles: *id066
-      x-target-responses:
+      responses:
         '200':
           description: Thành công
           content:
@@ -4765,33 +4835,6 @@ paths:
                   properties:
                     data:
                       $ref: '#/components/schemas/Session'
-              example:
-                success: true
-                code: SUCCESS
-                message: Thành công
-                data:
-                  submission_id: 0199ac14-a9bc-7001-8000-000000000008
-                  exam_id: 0199ac14-a9bc-7001-8000-000000000004
-                  variant_code: '102'
-                  status: IN_PROGRESS
-                  started_at: '2026-10-10T01:00:00Z'
-                  deadline_at: '2026-10-10T02:00:00Z'
-                  server_time: '2026-10-10T01:15:00Z'
-                  remaining_seconds: 2700
-                  questions:
-                  - exam_variant_question_id: 0199ac14-a9bc-7001-8000-000000000009
-                    position: 1
-                    type_code: SINGLE_CHOICE
-                    content: 2 + 3 = ?
-                    options:
-                    - display_label: A
-                      content: '4'
-                    - display_label: B
-                      content: '5'
-                  saved_answers: []
-                meta: null
-                timestamp: '2026-10-10T01:15:12Z'
-                trace_id: req_01HW0Y6RP5
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -4800,10 +4843,13 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
-      security: []
-      x-current-role-gate: []
+      security:
+      - bearerAuth: []
+      x-current-role-gate: [STUDENT]
   /me/submissions/{submissionId}/answers/{variantQuestionId}:
     put:
       tags:
@@ -7313,6 +7359,25 @@ components:
       - valid
       - issues
       additionalProperties: false
+    GenerationReview:
+      type: object
+      required: [exam_id, review_required, message, questions, review_token]
+      properties:
+        exam_id: {type: string, format: uuid}
+        review_required: {type: boolean}
+        message: {type: string}
+        review_token: {type: string}
+        questions:
+          type: array
+          items:
+            type: object
+            properties:
+              question_id: {type: string, format: uuid}
+              version_id: {type: string, format: uuid}
+              content: {type: string}
+              media_url: {type: string, nullable: true}
+              answer_spec: {type: object}
+              embedding_unavailable: {type: boolean}
     GenerateRequest:
       type: object
       properties:
@@ -7325,16 +7390,33 @@ components:
           type: string
           pattern: ^[0-9]{3,10}$
           description: Mã đề đầu gồm 3 đến 10 chữ số, ví dụ 101
+        generation_mode:
+          type: string
+          enum:
+          - FROM_MATRIX
+          - FROM_ROOT
+          default: FROM_MATRIX
+          description: FROM_MATRIX chọn câu cho từng mã đề theo ma trận; FROM_ROOT lấy Đề gốc cố định rồi chỉ trộn câu hỏi và đáp án thành các mã đề mới.
         strict_topic_balance:
           type: boolean
           default: false
           description: false cho phép lấy overflow vượt topic cap; true thiếu topic trả 422.
+        prevent_duplicate_topic:
+          type: boolean
+          default: false
+          description: true bắt buộc trong cùng 1 mã đề không có 2 câu hỏi cùng topic_tag trong cùng bài học; câu hỏi được phép dùng lại giữa các mã đề khác nhau.
         similarity_threshold:
           type: number
           minimum: 0
           maximum: 1
           default: 0.7
-          description: Giá trị 0..1 hiện chỉ được validate; chưa dùng lọc ngữ nghĩa trong generator.
+          description: Ngưỡng lọc tương đồng. Giá trị 1 tắt bộ lọc.
+        preview_only:
+          type: boolean
+          default: false
+        confirmed_review_token:
+          type: string
+          description: Token của bộ câu hỏi giáo viên đã đối chiếu.
       required:
       - variant_count
       - variant_code_start
@@ -7561,7 +7643,7 @@ components:
       properties:
         download_url:
           type: string
-          description: print-files hiện trả URL mẫu; không có bằng chứng ký hoặc object thật.
+          description: URL tải tệp.
           format: uri
         expires_at:
           type: string
@@ -7574,8 +7656,7 @@ components:
       - expires_at
       - file_name
       additionalProperties: false
-      description: Metadata liên kết tải. Signed URL là yêu cầu đích cho export; print-files hiện chỉ trả URL dựng
-        sẵn, không tạo file.
+      description: Metadata liên kết tải.
     SessionQuestionOption:
       type: object
       properties:

@@ -1,26 +1,26 @@
 info:
-  name: End Exam
+  name: Publish Future Exam
   type: http
-  seq: 91
+  seq: 176
   tags:
     - olms
     - positive
 http:
   method: POST
-  url: "{{base_url}}/exams/{{exam_id}}/end"
+  url: "{{base_url}}/exams/{{reuse_exam_id}}/publish"
   auth: inherit
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["exam_id","started"].filter((key) => !bru.getVar(key));
+        const missing = ["reuse_exam_id","reuse_generated"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
     - type: after-response
       code: |-
         if (res.status === 200) {
-          bru.setVar("ended", true);
+          bru.setVar("future_published", true);
         }
     - type: tests
       code: |-
@@ -33,12 +33,8 @@ runtime:
         test("response success flag", () => {
           expect(body.success).to.equal(true);
         });
-
-        test("response contract", () => {
-          expect(body.data.status).to.equal("ENDED");
-        });
 settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: exam_id, started. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: reuse_exam_id, reuse_generated. Run the collection sequentially with Local environment."

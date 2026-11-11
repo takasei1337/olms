@@ -19,7 +19,7 @@ http:
         "delivery_mode": "ONLINE",
         "total_questions": 1,
         "duration_minutes": 30,
-        "opens_at": "{{opens_at}}",
+        "opens_at": "{{already_open_at}}",
         "closes_at": "{{closes_at}}",
         "total_score": 1,
         "result_visibility_mode": "HIDDEN"

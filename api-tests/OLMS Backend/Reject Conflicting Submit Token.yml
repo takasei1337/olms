@@ -1,7 +1,7 @@
 info:
   name: Reject Conflicting Submit Token
   type: http
-  seq: 89
+  seq: 90
   tags:
     - olms
     - negative

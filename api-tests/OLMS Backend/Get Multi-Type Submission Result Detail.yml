@@ -1,7 +1,7 @@
 info:
   name: Get Multi-Type Submission Result Detail
   type: http
-  seq: 150
+  seq: 164
   tags:
     - olms
     - positive
@@ -13,7 +13,7 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["mt_exam_id","mt_submission_id","mt_ended"].filter((key) => !bru.getVar(key));
+        const missing = ["mt_exam_id","mt_submission_id","mt_started"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
@@ -49,4 +49,4 @@ settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: mt_exam_id, mt_submission_id, mt_ended. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: mt_exam_id, mt_submission_id, mt_started. Run the collection sequentially with Local environment."

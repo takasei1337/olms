@@ -10,6 +10,10 @@ variables:
     value: "{{process.env.OLMS_TEST_SINGLE_CHOICE_TYPE_ID}}"
   - name: archive_ready_exam_id
     value: "{{process.env.OLMS_TEST_ARCHIVE_READY_EXAM_ID}}"
+  - name: publish_ready_exam_id
+    value: "{{process.env.OLMS_TEST_PUBLISH_READY_EXAM_ID}}"
+  - name: already_open_at
+    value: "{{process.env.OLMS_TEST_ALREADY_OPEN_AT}}"
   - name: opens_at
     value: "{{process.env.OLMS_TEST_OPENS_AT}}"
   - name: closes_at

@@ -1,0 +1,51 @@
+info:
+  name: Set Matrix-Root-Shuffle Grading Rules
+  type: http
+  seq: 136
+  tags:
+    - olms
+    - positive
+http:
+  method: PUT
+  url: "{{base_url}}/exams/{{mat_root_exam_id}}/grading-rules"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "rules": [
+          {
+            "question_type_id": "{{single_choice_type_id}}",
+            "scoring_mode": "EXACT_MATCH",
+            "penalty_for_wrong": true,
+            "case_sensitive": false,
+            "rounding_precision": 2,
+            "rounding_rule": "ROUND_HALF_UP",
+            "allow_negative_marking": false
+          }
+        ]
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["mat_root_exam_id","mat_root_drafted"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(true);
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 200. Requires runtime variables: mat_root_exam_id, mat_root_drafted. Run the collection sequentially with Local environment."

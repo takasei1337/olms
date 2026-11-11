@@ -1,7 +1,7 @@
 info:
-  name: Create Semantic Pool Question
+  name: Create Distinct-Topic Question
   type: http
-  seq: 115
+  seq: 118
   tags:
     - olms
     - positive
@@ -16,10 +16,10 @@ http:
         "lesson_id": "{{lesson_id}}",
         "type_id": "{{single_choice_type_id}}",
         "difficulty_level": "EASY",
-        "topic_tag": "{{run_id}}",
-        "content": "Bruno {{run_id}} POOL: 2 + 3 là bao nhiêu?",
+        "topic_tag": "{{run_id}}_TOPIC_B",
+        "content": "Bruno {{run_id}} TOPIC_B: 4 + 5 bằng bao nhiêu?",
         "explanation": "2 + 3 = 5.",
-        "requested_status": "DRAFT",
+        "requested_status": "ACTIVE",
         "answer_spec": {
           "schema_version": 1,
           "kind": "SINGLE_CHOICE",
@@ -52,7 +52,7 @@ runtime:
         if (res.status === 201) {
           const captured = res.body?.data?.["id"];
           if (captured) {
-            bru.setVar("pool_sim_question_id", captured);
+            bru.setVar("topic_b_question_id", captured);
           }
         }
     - type: tests
@@ -65,6 +65,12 @@ runtime:
 
         test("response success flag", () => {
           expect(body.success).to.equal(true);
+        });
+
+        test("response contract", () => {
+          expect(body.data.status).to.equal("ACTIVE");
+          expect(body.data.ai_check_status).to.equal("CHECKED");
+          expect(body.data.topic_tag).to.include("_TOPIC_B");
         });
 settings:
   encodeUrl: true

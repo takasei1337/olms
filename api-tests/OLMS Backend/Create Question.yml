@@ -69,6 +69,7 @@ runtime:
 
         test("response contract", () => {
           expect(body.data.answer_spec.kind).to.equal("SINGLE_CHOICE");
+          expect(body.data.ai_check_status).to.equal("CHECKED");
         });
 settings:
   encodeUrl: true

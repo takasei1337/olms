@@ -1,7 +1,7 @@
 info:
   name: Get Exam Results
   type: http
-  seq: 93
+  seq: 94
   tags:
     - olms
     - positive
@@ -13,7 +13,7 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["exam_id","ended","submission_id"].filter((key) => !bru.getVar(key));
+        const missing = ["exam_id","started","submission_id"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
@@ -40,4 +40,4 @@ settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: exam_id, ended, submission_id. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: exam_id, started, submission_id. Run the collection sequentially with Local environment."

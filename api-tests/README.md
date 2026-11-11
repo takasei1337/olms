@@ -79,7 +79,7 @@ Các scenario bao phủ mọi method/path có handler ở thời điểm xây d�
 
 Mỗi lần chạy tạo dữ liệu có code/name theo run_id. CRUD xóa mềm được test bằng tài nguyên riêng chưa dùng. Những câu hỏi/snapshot đã dùng sinh đề, kỳ thi và user test được giữ để đối soát, không hard-delete dữ liệu frozen hay thay dữ liệu người dùng sẵn có. Bốn tài khoản bootstrap được tái sử dụng qua file state local; mỗi lượt tạo user đổi mật khẩu riêng rồi khôi phục mật khẩu test.
 
-`print-files` hiện là placeholder metadata; HTTP 200 không được báo là đã tạo ZIP/PDF thật. Archive đã đồng bộ theo SQL: ENDED trả 409, RESULT_PUBLISHED → ARCHIVED trả 200, gọi archive lần nữa trả 409. Collection kiểm cả ba nhánh, không thay lỗi 500 thành expected success. Xem kết quả thực tế trong báo cáo.
+Kịch bản xuất đề giấy kiểm tra HTTP 501 NOT_IMPLEMENTED. Kịch bản bắt đầu thi kiểm tra cả trước và sau opens_at. Archive đã đồng bộ theo SQL: ENDED trả 409, RESULT_PUBLISHED → ARCHIVED trả 200, gọi archive lần nữa trả 409. Collection kiểm cả ba nhánh, không thay lỗi 500 thành expected success. Xem kết quả thực tế trong báo cáo.
 
 ## Kết quả và bảo trì
 
@@ -89,3 +89,7 @@ Mỗi lần chạy tạo dữ liệu có code/name theo run_id. CRUD xóa mềm 
 - `api-tests/reports/latest.json`: summary của lần gần nhất.
 
 Khi thêm API, bổ sung scenario trong `scripts/cases.cjs`; `npm test` dựng lại YAML từ nguồn này. Các request thử nghiệm ngoài danh sách không tự được wrapper chạy. Muốn chuẩn bị collection mà chưa chạy: `node api-tests/scripts/build-collection.cjs`. Tài liệu tham khảo: [Bruno CLI run](https://docs.usebruno.com/bru-cli/run/overview) và [reporter options](https://docs.usebruno.com/bru-cli/run/options).
+
+## Thiết kế ngân hàng 2.0
+
+Bộ Bruno hiện tại kiểm backend 1.x. Các ca cần bổ sung cho topic, nhóm tương đương và mã đề khác dữ kiện nằm ở mục 11 của [đặc tả 2.0](../docs/16_Ngan_Hang_Cau_Hoi_Va_Ma_De.md). Chỉ tính nghiệm thu 2.0 sau khi triển khai và chạy các ca BANK2/MAT2/GEN2/MIG2 trên fixture mới.

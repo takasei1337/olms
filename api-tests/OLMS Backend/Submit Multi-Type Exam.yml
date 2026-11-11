@@ -1,7 +1,7 @@
 info:
   name: Submit Multi-Type Exam
   type: http
-  seq: 148
+  seq: 163
   tags:
     - olms
     - positive

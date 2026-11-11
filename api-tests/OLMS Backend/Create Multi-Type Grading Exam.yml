@@ -1,7 +1,7 @@
 info:
   name: Create Multi-Type Grading Exam
   type: http
-  seq: 135
+  seq: 150
   tags:
     - olms
     - positive
@@ -19,7 +19,7 @@ http:
         "delivery_mode": "ONLINE",
         "total_questions": 4,
         "duration_minutes": 30,
-        "opens_at": "{{opens_at}}",
+        "opens_at": "{{already_open_at}}",
         "closes_at": "{{closes_at}}",
         "total_score": 4,
         "result_visibility_mode": "HIDDEN"

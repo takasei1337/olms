@@ -1,26 +1,32 @@
 info:
-  name: End Multi-Type Exam
+  name: Generate Draft Root From Matrix
   type: http
-  seq: 149
+  seq: 135
   tags:
     - olms
     - positive
 http:
   method: POST
-  url: "{{base_url}}/exams/{{mt_exam_id}}/end"
+  url: "{{base_url}}/exams/{{mat_root_exam_id}}/root-questions/from-matrix"
   auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "prevent_duplicate_topic": true
+      }
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["mt_exam_id","mt_started"].filter((key) => !bru.getVar(key));
+        const missing = ["mat_root_exam_id"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
     - type: after-response
       code: |-
         if (res.status === 200) {
-          bru.setVar("mt_ended", true);
+          bru.setVar("mat_root_drafted", true);
         }
     - type: tests
       code: |-
@@ -35,10 +41,12 @@ runtime:
         });
 
         test("response contract", () => {
-          expect(body.data.status).to.equal("ENDED");
+          expect(body.data.has_root_variant).to.equal(true);
+          expect(body.data.variant_code).to.equal("ROOT");
+          expect(body.data.items).to.have.lengthOf(2);
         });
 settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: mt_exam_id, mt_started. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: mat_root_exam_id. Run the collection sequentially with Local environment."

@@ -1,7 +1,7 @@
 info:
   name: Publish Exam
   type: http
-  seq: 69
+  seq: 70
   tags:
     - olms
     - positive

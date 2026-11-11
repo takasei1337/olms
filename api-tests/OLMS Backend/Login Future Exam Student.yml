@@ -1,27 +1,32 @@
 info:
-  name: Activate Semantic Pool Question
+  name: Login Future Exam Student
   type: http
-  seq: 117
+  seq: 179
   tags:
     - olms
     - positive
 http:
-  method: PATCH
-  url: "{{base_url}}/questions/{{pool_sim_question_id}}/status"
-  auth: inherit
+  method: POST
+  url: "{{base_url}}/auth/login"
   body:
     type: json
     data: |-
       {
-        "status": "ACTIVE"
+        "username": "{{future_username}}",
+        "password": "{{future_password}}"
       }
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["pool_sim_question_id"].filter((key) => !bru.getVar(key));
+        const missing = ["future_username","future_password"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body?.data?.access_token) {
+          bru.setVar("future_student_token", res.body.data.access_token);
         }
     - type: tests
       code: |-
@@ -38,4 +43,4 @@ settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: pool_sim_question_id. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: future_username, future_password. Run the collection sequentially with Local environment."

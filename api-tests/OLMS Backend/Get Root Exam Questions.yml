@@ -1,21 +1,19 @@
 info:
-  name: Student Review Multi-Type Results
+  name: Get Root Exam Questions
   type: http
-  seq: 152
+  seq: 130
   tags:
     - olms
     - positive
 http:
   method: GET
-  url: "{{base_url}}/me/results/{{mt_exam_id}}/review"
-  auth:
-    type: bearer
-    token: "{{mt_student_token}}"
+  url: "{{base_url}}/exams/{{root_exam_id}}/root-questions"
+  auth: inherit
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["mt_student_token","mt_exam_id","mt_results_published"].filter((key) => !bru.getVar(key));
+        const missing = ["root_exam_id","root_questions_set"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
@@ -32,11 +30,13 @@ runtime:
         });
 
         test("response contract", () => {
-          expect(body.data.summary.total_score).to.equal(3.67);
-          expect(body.data.answers).to.have.lengthOf(4);
+          expect(body.data.has_root_variant).to.equal(true);
+          expect(body.data.variant_code).to.equal("ROOT");
+          expect(body.data.items).to.have.lengthOf(2);
+          expect(body.data.items[0].question_id).to.equal(bru.getVar("pool_question_id"));
         });
 settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: mt_student_token, mt_exam_id, mt_results_published. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: root_exam_id, root_questions_set. Run the collection sequentially with Local environment."

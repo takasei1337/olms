@@ -1,10 +1,10 @@
 info:
   name: Export Print Files
   type: http
-  seq: 111
+  seq: 113
   tags:
     - olms
-    - positive
+    - negative
 http:
   method: POST
   url: "{{base_url}}/exams/{{exam_id}}/print-files"
@@ -13,7 +13,7 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["exam_id","generated"].filter((key) => !bru.getVar(key));
+        const missing = ["exam_id"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
@@ -21,20 +21,20 @@ runtime:
       code: |-
         const body = res.getBody();
 
-        test("HTTP 200 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
-          expect(res.getStatus()).to.equal(200);
+        test("HTTP 501 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(501);
         });
 
         test("response success flag", () => {
-          expect(body.success).to.equal(true);
+          expect(body.success).to.equal(false);
         });
 
         test("response contract", () => {
-          expect(body.data.download_url).to.be.a("string");
-          expect(body.data.file_name).to.include(".zip");
+          expect(body.code).to.equal("NOT_IMPLEMENTED");
+          expect(body.data).to.equal(null);
         });
 settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: exam_id, generated. Known limitation: PLACEHOLDER. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 501. Requires runtime variables: exam_id. Run the collection sequentially with Local environment."

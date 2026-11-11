@@ -53,9 +53,15 @@ async function build(){
   await ensureFixtures();
   write('opencollection.yml',{opencollection:'1.0.0',info:{name:'OLMS Backend'},request:{auth:{type:'bearer',token:'{{token}}'}},bundled:false,extensions:{bruno:{ignore:['node_modules','.git','API.yml'],scripts:{flow:'sequential'}}}});
   fs.mkdirSync(path.join(root,'environments'),{recursive:true});
-  const names={base_url:'BASE_URL',root_url:'ROOT_URL',run_id:'RUN_ID',single_choice_type_id:'SINGLE_CHOICE_TYPE_ID',archive_ready_exam_id:'ARCHIVE_READY_EXAM_ID',opens_at:'OPENS_AT',closes_at:'CLOSES_AT',api_user_password:'API_USER_PASSWORD',api_user_new_password:'API_USER_NEW_PASSWORD'};
+  const names={base_url:'BASE_URL',root_url:'ROOT_URL',run_id:'RUN_ID',single_choice_type_id:'SINGLE_CHOICE_TYPE_ID',archive_ready_exam_id:'ARCHIVE_READY_EXAM_ID',publish_ready_exam_id:'PUBLISH_READY_EXAM_ID',already_open_at:'ALREADY_OPEN_AT',opens_at:'OPENS_AT',closes_at:'CLOSES_AT',api_user_password:'API_USER_PASSWORD',api_user_new_password:'API_USER_NEW_PASSWORD'};
   for(const role of ['admin','teacher','other_teacher','student'])for(const field of ['username','password'])names[role+'_'+field]=(role+'_'+field).toUpperCase();
   write('environments/Local.yml',{name:'Local',variables:Object.entries(names).map(([name,key])=>({name,value:`{{process.env.OLMS_TEST_${key}}}`}))});
+  const expectedFiles=new Set(['opencollection.yml','API.yml',...cases.map(c=>c.file)]);
+  for(const entry of fs.readdirSync(root,{withFileTypes:true})){
+    if(entry.isFile()&&entry.name.endsWith('.yml')&&!expectedFiles.has(entry.name)){
+      fs.unlinkSync(path.join(root,entry.name));
+    }
+  }
   const runtimeKeys=[...new Set(cases.flatMap(item=>[item.capture,item.token,item.flag,...(item.deps||[])]).filter(Boolean))];
   for(const c of cases){
     const reset=c.name==='Health Check'?[

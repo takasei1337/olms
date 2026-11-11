@@ -1,19 +1,19 @@
 info:
-  name: Reject Draft print-files
+  name: Reject Start Before Opening
   type: http
-  seq: 157
+  seq: 177
   tags:
     - olms
     - negative
 http:
   method: POST
-  url: "{{base_url}}/exams/{{delete_exam_id}}/print-files"
+  url: "{{base_url}}/exams/{{reuse_exam_id}}/start"
   auth: inherit
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["delete_exam_id"].filter((key) => !bru.getVar(key));
+        const missing = ["future_published"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
@@ -28,8 +28,12 @@ runtime:
         test("response success flag", () => {
           expect(body.success).to.equal(false);
         });
+
+        test("response contract", () => {
+          expect(body.code).to.equal("EXAM_NOT_OPEN");
+        });
 settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 409. Requires runtime variables: delete_exam_id. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 409. Requires runtime variables: future_published. Run the collection sequentially with Local environment."

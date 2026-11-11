@@ -1,7 +1,7 @@
 info:
   name: Logout
   type: http
-  seq: 175
+  seq: 189
   tags:
     - olms
     - positive

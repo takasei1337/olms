@@ -1,13 +1,13 @@
 info:
-  name: Set Semantic Exam Matrix
+  name: Set Matrix-Root-Shuffle Exam Matrix
   type: http
-  seq: 119
+  seq: 134
   tags:
     - olms
     - positive
 http:
   method: PUT
-  url: "{{base_url}}/exams/{{sem_exam_id}}/matrix"
+  url: "{{base_url}}/exams/{{mat_root_exam_id}}/matrix"
   auth: inherit
   body:
     type: json
@@ -21,7 +21,7 @@ http:
             "difficulty_level": "EASY",
             "num_questions": 2,
             "score_per_question": 1,
-            "max_questions_per_topic": 5
+            "max_questions_per_topic": 1
           }
         ]
       }
@@ -29,7 +29,7 @@ runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["sem_exam_id","lesson_id"].filter((key) => !bru.getVar(key));
+        const missing = ["mat_root_exam_id","lesson_id"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
@@ -48,4 +48,4 @@ settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: sem_exam_id, lesson_id. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: mat_root_exam_id, lesson_id. Run the collection sequentially with Local environment."

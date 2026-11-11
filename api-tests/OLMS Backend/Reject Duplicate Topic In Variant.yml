@@ -1,7 +1,7 @@
 info:
-  name: Reject Semantically Redundant Variants
+  name: Reject Duplicate Topic In Variant
   type: http
-  seq: 121
+  seq: 123
   tags:
     - olms
     - negative
@@ -15,8 +15,7 @@ http:
       {
         "variant_count": 1,
         "variant_code_start": "301",
-        "strict_topic_balance": false,
-        "similarity_threshold": 0.7
+        "prevent_duplicate_topic": true
       }
 runtime:
   scripts:
@@ -39,7 +38,7 @@ runtime:
         });
 
         test("response contract", () => {
-          expect(body.code).to.equal("SEMANTIC_POOL_INSUFFICIENT");
+          expect(body.code).to.equal("TOPIC_POOL_INSUFFICIENT");
         });
 settings:
   encodeUrl: true

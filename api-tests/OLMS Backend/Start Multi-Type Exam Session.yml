@@ -1,7 +1,7 @@
 info:
   name: Start Multi-Type Exam Session
   type: http
-  seq: 143
+  seq: 158
   tags:
     - olms
     - positive
@@ -31,7 +31,14 @@ runtime:
         if (res.status === 200 && Array.isArray(res.body?.data?.questions)) {
           for (const q of res.body.data.questions) {
             const kind = q.render_spec?.kind;
-            if (kind === "MULTI_CHOICE") bru.setVar("mt_multi_evq_id", q.exam_variant_question_id);
+            if (kind === "MULTI_CHOICE") {
+              bru.setVar("mt_multi_evq_id", q.exam_variant_question_id);
+              const twoPrimes = (q.render_spec.choices || []).filter((c) => ["2", "3", "5"].includes(c.text)).slice(0, 2);
+              if (twoPrimes.length === 2) {
+                bru.setVar("mt_mc_opt_1", twoPrimes[0].display_label);
+                bru.setVar("mt_mc_opt_2", twoPrimes[1].display_label);
+              }
+            }
             if (kind === "DROPDOWN") bru.setVar("mt_dropdown_evq_id", q.exam_variant_question_id);
             if (kind === "INPUT") bru.setVar("mt_input_evq_id", q.exam_variant_question_id);
             if (kind === "MATCHING") bru.setVar("mt_matching_evq_id", q.exam_variant_question_id);

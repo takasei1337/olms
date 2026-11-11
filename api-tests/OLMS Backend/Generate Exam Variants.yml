@@ -1,7 +1,7 @@
 info:
   name: Generate Exam Variants
   type: http
-  seq: 67
+  seq: 68
   tags:
     - olms
     - positive
@@ -16,7 +16,8 @@ http:
         "variant_count": 2,
         "variant_code_start": "101",
         "strict_topic_balance": true,
-        "similarity_threshold": 0.7
+        "similarity_threshold": 0.7,
+        "confirmed_review_token": "{{main_preview_token}}"
       }
 runtime:
   scripts:
@@ -44,7 +45,10 @@ runtime:
         });
 
         test("response contract", () => {
-          expect(body.data.variants).to.have.lengthOf(2);
+          expect(body.data.variants).to.have.lengthOf(3);
+          expect(body.data.root_variant.variant_code).to.equal("ROOT");
+          expect(body.data.root_variant.is_root).to.equal(true);
+          expect(body.data.variants.some((v) => !v.is_root && v.variant_code === "101")).to.equal(true);
           expect(body.data.status).to.equal("GENERATED");
         });
 settings:

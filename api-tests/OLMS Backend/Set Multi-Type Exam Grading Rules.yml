@@ -1,7 +1,7 @@
 info:
   name: Set Multi-Type Exam Grading Rules
   type: http
-  seq: 137
+  seq: 152
   tags:
     - olms
     - positive

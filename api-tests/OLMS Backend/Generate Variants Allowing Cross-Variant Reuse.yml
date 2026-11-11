@@ -1,30 +1,34 @@
 info:
-  name: Generate Variants At Threshold 1
+  name: Generate Variants Allowing Cross-Variant Reuse
   type: http
-  seq: 122
+  seq: 127
   tags:
     - olms
     - positive
 http:
   method: POST
-  url: "{{base_url}}/exams/{{sem_exam_id}}/generate"
+  url: "{{base_url}}/exams/{{reuse_exam_id}}/generate"
   auth: inherit
   body:
     type: json
     data: |-
       {
-        "variant_count": 1,
+        "variant_count": 4,
         "variant_code_start": "301",
-        "strict_topic_balance": false,
-        "similarity_threshold": 1
+        "prevent_duplicate_topic": true
       }
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["sem_exam_id"].filter((key) => !bru.getVar(key));
+        const missing = ["reuse_exam_id"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
+        }
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          bru.setVar("reuse_generated", true);
         }
     - type: tests
       code: |-
@@ -40,9 +44,11 @@ runtime:
 
         test("response contract", () => {
           expect(body.data.status).to.equal("GENERATED");
+          expect(body.data.root_variant.variant_code).to.equal("ROOT");
+          expect(body.data.variants).to.have.lengthOf(5);
         });
 settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 201. Requires runtime variables: sem_exam_id. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 201. Requires runtime variables: reuse_exam_id. Run the collection sequentially with Local environment."

@@ -1,32 +1,38 @@
 info:
-  name: Publish Multi-Type Results
+  name: Preview Exam Variants
   type: http
-  seq: 151
+  seq: 67
   tags:
     - olms
     - positive
 http:
   method: POST
-  url: "{{base_url}}/exams/{{mt_exam_id}}/results/publish"
+  url: "{{base_url}}/exams/{{exam_id}}/generate"
   auth: inherit
   body:
     type: json
     data: |-
       {
-        "result_visibility_mode": "FULL_REVIEW"
+        "variant_count": 2,
+        "variant_code_start": "101",
+        "strict_topic_balance": true,
+        "preview_only": true
       }
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["mt_exam_id","mt_ended"].filter((key) => !bru.getVar(key));
+        const missing = ["exam_id"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
     - type: after-response
       code: |-
         if (res.status === 200) {
-          bru.setVar("mt_results_published", true);
+          const captured = res.body?.data?.["review_token"];
+          if (captured) {
+            bru.setVar("main_preview_token", captured);
+          }
         }
     - type: tests
       code: |-
@@ -41,10 +47,13 @@ runtime:
         });
 
         test("response contract", () => {
-          expect(body.data.status).to.equal("RESULT_PUBLISHED");
+          expect(body.data.review_required).to.equal(false);
+          expect(body.data.variant_code).to.equal("ROOT");
+          expect(body.data.is_root).to.equal(true);
+          expect(body.data.questions).to.have.lengthOf(1);
         });
 settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: mt_exam_id, mt_ended. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: exam_id. Run the collection sequentially with Local environment."

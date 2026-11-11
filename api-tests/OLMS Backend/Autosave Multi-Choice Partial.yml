@@ -1,7 +1,7 @@
 info:
   name: Autosave Multi-Choice Partial
   type: http
-  seq: 144
+  seq: 159
   tags:
     - olms
     - positive
@@ -20,15 +20,15 @@ http:
         "client_sequence": 1,
         "edit_token": "33333333-3333-4333-8333-333333333301",
         "selected_options": [
-          "A",
-          "B"
+          "{{mt_mc_opt_1}}",
+          "{{mt_mc_opt_2}}"
         ]
       }
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["mt_student_token","mt_submission_id","mt_multi_evq_id"].filter((key) => !bru.getVar(key));
+        const missing = ["mt_student_token","mt_submission_id","mt_multi_evq_id","mt_mc_opt_1","mt_mc_opt_2"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
@@ -51,4 +51,4 @@ settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: mt_student_token, mt_submission_id, mt_multi_evq_id. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: mt_student_token, mt_submission_id, mt_multi_evq_id, mt_mc_opt_1, mt_mc_opt_2. Run the collection sequentially with Local environment."

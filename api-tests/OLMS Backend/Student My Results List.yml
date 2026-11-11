@@ -1,7 +1,7 @@
 info:
   name: Student My Results List
   type: http
-  seq: 99
+  seq: 101
   tags:
     - olms
     - positive
@@ -10,12 +10,12 @@ http:
   url: "{{base_url}}/me/results"
   auth:
     type: bearer
-    token: "{{enrolled_student_token}}"
+    token: "{{student_token}}"
 runtime:
   scripts:
     - type: before-request
       code: |-
-        const missing = ["enrolled_student_token","exam_id","results_published"].filter((key) => !bru.getVar(key));
+        const missing = ["student_token","results_published"].filter((key) => !bru.getVar(key));
         if (missing.length) {
           bru.runner.skipRequest();
         }
@@ -32,7 +32,8 @@ runtime:
         });
 
         test("response contract", () => {
-          const item = body.data.find((entry) => entry.exam_id === bru.getVar("exam_id"));
+          const targetId = bru.getEnvVar("publish_ready_exam_id");
+          const item = body.data.find((entry) => entry.exam_id === targetId);
           expect(item).to.be.an("object");
           expect(item.result_available).to.equal(true);
           expect(item.total_score).to.be.a("number");
@@ -41,4 +42,4 @@ settings:
   encodeUrl: true
   timeout: 30000
   followRedirects: false
-docs: "Expected HTTP 200. Requires runtime variables: enrolled_student_token, exam_id, results_published. Run the collection sequentially with Local environment."
+docs: "Expected HTTP 200. Requires runtime variables: student_token, results_published. Run the collection sequentially with Local environment."
