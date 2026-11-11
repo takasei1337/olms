@@ -454,6 +454,120 @@ router.put('/:examId/matrix', async (req, res, next) => {
     }
 });
 
+// PUT /exams/:examId/root-questions - Giáo viên tạo / cập nhật Đề gốc cố định cho kỳ thi DRAFT
+router.put('/:examId/root-questions', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        if (!examsService.isValidUUID(examId)) {
+            return res.status(400).json({
+                success: false,
+                code: 'INVALID_ID_FORMAT',
+                message: 'examId must be a valid UUID.',
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        if (!req.body || !Array.isArray(req.body.items)) {
+            return res.status(400).json({
+                success: false,
+                code: 'INVALID_REQUEST_BODY',
+                message: 'Field "items" must be an array of root exam questions.',
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const result = await examsService.replaceRootQuestions(examId, {
+            items: req.body.items,
+            variant_code: req.body.variant_code
+        }, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: result,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                details: error.details,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// GET /exams/:examId/root-questions - Lấy danh sách câu hỏi trong Đề gốc hiện tại của kỳ thi
+router.get('/:examId/root-questions', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const result = await examsService.getRootQuestions(examId, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: result,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/root-questions/from-matrix - Sinh Đề gốc (ROOT) từ Ma trận để giảng viên kiểm tra trước khi trộn đề
+router.post('/:examId/root-questions/from-matrix', async (req, res, next) => {
+    try {
+        const { examId } = req.params;
+        const { strict_topic_balance = false, prevent_duplicate_topic = false } = req.body || {};
+
+        const result = await examsService.generateDraftRootFromMatrix(examId, {
+            strict_topic_balance,
+            prevent_duplicate_topic
+        }, req.currentUser);
+
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: result,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                details: error.details,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
 // PUT /exams/:examId/grading-rules - Replace DRAFT grading rules
 router.put('/:examId/grading-rules', async (req, res, next) => {
     try {
@@ -547,21 +661,29 @@ router.post('/:examId/generate', async (req, res, next) => {
         const {
             variant_count,
             variant_code_start,
+            generation_mode,
             strict_topic_balance,
-            similarity_threshold
+            prevent_duplicate_topic,
+            similarity_threshold,
+            preview_only,
+            confirmed_review_token
         } = req.body || {};
 
         const result = await examsService.generateExamVariants(examId, {
             variant_count,
             variant_code_start,
+            generation_mode,
             strict_topic_balance,
-            similarity_threshold
+            prevent_duplicate_topic,
+            similarity_threshold,
+            preview_only,
+            confirmed_review_token
         }, req.currentUser);
 
-        return res.status(201).json({
+        return res.status(preview_only ? 200 : 201).json({
             success: true,
             code: 'SUCCESS',
-            message: 'Thành công',
+            message: preview_only ? result.message : 'Thành công',
             data: result,
             timestamp: new Date().toISOString(),
             trace_id: req.traceId
@@ -665,34 +787,6 @@ router.post('/:examId/start', async (req, res, next) => {
     }
 });
 
-// POST /exams/:examId/end - Kết thúc kỳ thi, thu bài chưa nộp
-router.post('/:examId/end', async (req, res, next) => {
-    try {
-        const { examId } = req.params;
-        const updated = await examsService.endExam(examId, req.currentUser);
-
-        return res.status(200).json({
-            success: true,
-            code: 'SUCCESS',
-            message: 'Thành công',
-            data: updated,
-            timestamp: new Date().toISOString(),
-            trace_id: req.traceId
-        });
-    } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({
-                success: false,
-                code: error.code || 'BAD_REQUEST',
-                message: error.message,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-        next(error);
-    }
-});
-
 // POST /exams/:examId/archive - Đóng băng kỳ thi vào lưu trữ
 router.post('/:examId/archive', async (req, res, next) => {
     try {
@@ -733,34 +827,6 @@ router.post('/:examId/cancel', async (req, res, next) => {
             code: 'SUCCESS',
             message: 'Thành công',
             data: updated,
-            timestamp: new Date().toISOString(),
-            trace_id: req.traceId
-        });
-    } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({
-                success: false,
-                code: error.code || 'BAD_REQUEST',
-                message: error.message,
-                trace_id: req.traceId,
-                timestamp: new Date().toISOString()
-            });
-        }
-        next(error);
-    }
-});
-
-// POST /exams/:examId/print-files - Tạo link tải PDF đề/phiếu giấy
-router.post('/:examId/print-files', async (req, res, next) => {
-    try {
-        const { examId } = req.params;
-        const result = await examsService.getPrintFiles(examId, req.currentUser);
-
-        return res.status(200).json({
-            success: true,
-            code: 'SUCCESS',
-            message: 'Thành công',
-            data: result,
             timestamp: new Date().toISOString(),
             trace_id: req.traceId
         });

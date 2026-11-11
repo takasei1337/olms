@@ -278,6 +278,8 @@ async function createQuestion({
     const now = new Date().toISOString();
     const questionId = require('node:crypto').randomUUID();
     const versionId = require('node:crypto').randomUUID();
+    const normalizedTopic = typeof topic_tag === 'string' ? (topic_tag.trim() || null) : null;
+    const initialStatus = requested_status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT';
 
     const {data: qData, error: qErr} = await supabase
         .from('questions')
@@ -285,10 +287,15 @@ async function createQuestion({
             id: questionId,
             lesson_id: lesson_id ?? null,
             type_id,
-            topic_tag: topic_tag ?? null,
-            status: 'DRAFT',
-            ai_check_status: 'PENDING',
-            ai_similarity_score: null,
+            topic_tag: normalizedTopic,
+            status: initialStatus,
+            ai_check_status: 'CHECKED',
+            ai_similarity_score: 0,
+            ai_audit_metadata: {
+                skipped_ai_check: true,
+                mode: 'TOPIC_BASED',
+                checked_at: now
+            },
             is_duplicate_overridden: false,
             created_by,
             created_at: now,
@@ -321,19 +328,13 @@ async function createQuestion({
 
     if (vErr) throw vErr;
 
-    const aiUpdated = await runSafeAiCheck(questionId);
     let detail = await findQuestionById(questionId);
 
     if (!detail) {
         detail = formatQuestionResponse({
             ...qData,
-            ...(aiUpdated || {}),
             question_versions: [vData]
         });
-    }
-
-    if (requested_status === 'ACTIVE' && canAutoActivateAfterAiCheck(detail)) {
-        return await updateQuestionStatus(questionId, 'ACTIVE');
     }
 
     delete detail._rawVersion;
@@ -428,7 +429,7 @@ async function updateQuestion(questionId, updates, existingQuestion, userId) {
         updates.lesson_id !== existingQuestion.lesson_id;
     const shouldRecheckAi = contentChanged || typeChanged || lessonChanged;
 
-    // Update parent question table
+    // Update parent question table without blocking on AI check
     const questionUpdates = {updated_at: now};
     if (Object.prototype.hasOwnProperty.call(updates, 'lesson_id')) {
         questionUpdates.lesson_id = updates.lesson_id;
@@ -442,11 +443,19 @@ async function updateQuestion(questionId, updates, existingQuestion, userId) {
             : null;
     }
     if (shouldRecheckAi) {
-        questionUpdates.status = 'DRAFT';
-        questionUpdates.ai_check_status = 'PENDING';
-        questionUpdates.ai_similarity_score = null;
+        questionUpdates.ai_check_status = 'CHECKED';
+        questionUpdates.ai_similarity_score = 0;
         questionUpdates.is_duplicate_overridden = false;
-        questionUpdates.ai_audit_metadata = null;
+        questionUpdates.ai_audit_metadata = {
+            skipped_ai_check: true,
+            mode: 'TOPIC_BASED',
+            checked_at: now
+        };
+    }
+    if (updates.requested_status === 'ACTIVE') {
+        questionUpdates.status = 'ACTIVE';
+    } else if (updates.requested_status === 'DRAFT') {
+        questionUpdates.status = 'DRAFT';
     }
 
     const {error: qUpdateErr} = await supabase
@@ -456,21 +465,8 @@ async function updateQuestion(questionId, updates, existingQuestion, userId) {
 
     if (qUpdateErr) throw qUpdateErr;
 
-    if (shouldRecheckAi) {
-        await runSafeAiCheck(questionId);
-    }
-
     const updated = await findQuestionById(questionId);
     if (!updated) return null;
-
-    if (updates.requested_status === 'ACTIVE') {
-        const canActivate = shouldRecheckAi
-            ? canAutoActivateAfterAiCheck(updated)
-            : (updated.status === 'ACTIVE' || !isDuplicateBlocked(updated));
-        if (canActivate && updated.status !== 'ACTIVE') {
-            return await updateQuestionStatus(questionId, 'ACTIVE');
-        }
-    }
 
     delete updated._rawVersion;
     return updated;
@@ -632,6 +628,33 @@ async function softDeleteQuestion(questionId, deletedBy) {
     return data;
 }
 
+async function listTopicsByLesson(lessonId) {
+    const {data, error} = await supabase
+        .from('questions')
+        .select('topic_tag, status')
+        .eq('lesson_id', lessonId)
+        .is('deleted_at', null);
+
+    if (error) throw error;
+
+    const topicMap = new Map();
+    for (const row of data ?? []) {
+        const tag = typeof row.topic_tag === 'string' ? row.topic_tag.trim() : '';
+        if (!tag) continue;
+        const key = tag.toLowerCase();
+        if (!topicMap.has(key)) {
+            topicMap.set(key, {topic_tag: tag, total_questions: 0, active_questions: 0});
+        }
+        const entry = topicMap.get(key);
+        entry.total_questions++;
+        if (row.status === 'ACTIVE') {
+            entry.active_questions++;
+        }
+    }
+
+    return Array.from(topicMap.values()).sort((a, b) => a.topic_tag.localeCompare(b.topic_tag));
+}
+
 module.exports = {
     findQuestions,
     findQuestionById,
@@ -645,6 +668,7 @@ module.exports = {
     softDeleteQuestion,
     formatQuestionResponse,
     recheckQuestionAi,
-    isDuplicateBlocked
+    isDuplicateBlocked,
+    listTopicsByLesson
 };
 

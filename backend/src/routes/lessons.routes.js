@@ -5,6 +5,7 @@ const requireAdminOrTeacher = require('../middlewares/require-admin-or-teacher')
 const lessonsService = require('../services/lessons.service');
 const chaptersService = require('../services/chapters.service');
 const subjectsService = require('../services/subjects.service');
+const questionsService = require('../services/questions.service');
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -194,6 +195,47 @@ router.delete('/:lessonId', async (req, res, next) => {
             code: 'SUCCESS',
             message: 'Lesson deleted successfully.',
             data: {id: lessonId},
+            trace_id: req.traceId,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// 3. GET /api/v1/lessons/:lessonId/topics - Danh sách chủ đề câu hỏi theo bài học
+router.get('/:lessonId/topics', async (req, res, next) => {
+    try {
+        const {lessonId} = req.params;
+        if (!UUID_REGEX.test(lessonId)) {
+            return res.status(400).json({
+                success: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid lesson ID format.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const existingLesson = await lessonsService.findLessonById(lessonId);
+        if (!existingLesson) {
+            return res.status(404).json({
+                success: false,
+                code: 'LESSON_NOT_FOUND',
+                message: 'Lesson not found.',
+                data: null,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        const topics = await questionsService.listTopicsByLesson(lessonId);
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Lesson topics retrieved successfully.',
+            data: topics,
             trace_id: req.traceId,
             timestamp: new Date().toISOString()
         });
