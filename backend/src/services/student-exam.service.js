@@ -2,6 +2,8 @@ const crypto = require('node:crypto');
 const supabase = require('../config/supabase');
 const {UUID_REGEX} = require('../validators/answer-spec.validator');
 
+const {requireExamOpened} = require('./exams.service');
+
 const STUDENT_VISIBLE_EXAM_STATUSES = ['PUBLISHED', 'IN_PROGRESS', 'ENDED', 'RESULT_PUBLISHED'];
 
 function indexToDisplayLabel(idx) {
@@ -75,6 +77,53 @@ function getOrderedMatchingPairs(optionsSnapshot, optionOrder) {
     };
 }
 
+function getOrderedDropdownBlanks(optionsSnapshot, optionOrder) {
+    const blanks = Array.isArray(optionsSnapshot?.blanks) ? optionsSnapshot.blanks : [];
+    const orderByBlankId = new Map();
+
+    if (Array.isArray(optionOrder)) {
+        for (const entry of optionOrder) {
+            if (entry && typeof entry === 'object' && entry.blank_id && Array.isArray(entry.choice_order)) {
+                orderByBlankId.set(String(entry.blank_id), entry.choice_order.map(String));
+            }
+        }
+    }
+
+    return blanks.map(b => {
+        const choices = Array.isArray(b.choices) ? b.choices : [];
+        const desiredOrder = orderByBlankId.get(String(b.blank_id));
+        if (!desiredOrder || desiredOrder.length === 0) {
+            return {
+                blank_id: b.blank_id,
+                choices: choices.map(ch => ({value_id: ch.value_id, label: ch.label}))
+            };
+        }
+
+        const byValueId = new Map(choices.map(ch => [String(ch.value_id), ch]));
+        const ordered = [];
+        const seen = new Set();
+
+        for (const vid of desiredOrder) {
+            const found = byValueId.get(vid);
+            if (found && !seen.has(found)) {
+                ordered.push({value_id: found.value_id, label: found.label});
+                seen.add(found);
+            }
+        }
+        for (const ch of choices) {
+            if (!seen.has(ch)) {
+                ordered.push({value_id: ch.value_id, label: ch.label});
+                seen.add(ch);
+            }
+        }
+
+        return {
+            blank_id: b.blank_id,
+            choices: ordered
+        };
+    });
+}
+
 function buildStudentRenderSpec(optionsSnapshot, optionOrder) {
     if (!optionsSnapshot || typeof optionsSnapshot !== 'object') {
         return null;
@@ -94,17 +143,10 @@ function buildStudentRenderSpec(optionsSnapshot, optionOrder) {
             };
         }
         case 'DROPDOWN': {
-            const blanks = Array.isArray(optionsSnapshot.blanks) ? optionsSnapshot.blanks : [];
             return {
                 schema_version: 1,
                 kind: 'DROPDOWN',
-                blanks: blanks.map(b => ({
-                    blank_id: b.blank_id,
-                    choices: (Array.isArray(b.choices) ? b.choices : []).map(ch => ({
-                        value_id: ch.value_id,
-                        label: ch.label
-                    }))
-                }))
+                blanks: getOrderedDropdownBlanks(optionsSnapshot, optionOrder)
             };
         }
         case 'INPUT': {
@@ -242,6 +284,7 @@ async function findParticipantAndExam(examId, studentUserId) {
         throw err;
     }
 
+    requireExamOpened(exam);
     return {exam, participant};
 }
 
@@ -267,33 +310,42 @@ async function chooseVariantForParticipant(examId) {
 }
 
 async function buildSessionPayload(exam, submission) {
-    const {data: variant, error: varErr} = await supabase
-        .from('exam_variants')
-        .select('id, variant_code')
-        .eq('id', submission.variant_id)
-        .is('deleted_at', null)
-        .single();
+    const [
+        {data: variant, error: varErr},
+        {data: evqRows, error: evqErr},
+        {data: answerRows, error: ansErr}
+    ] = await Promise.all([
+        supabase
+            .from('exam_variants')
+            .select('id, variant_code')
+            .eq('id', submission.variant_id)
+            .is('deleted_at', null)
+            .single(),
+        supabase
+            .from('exam_variant_questions')
+            .select(`
+                id,
+                position_in_variant,
+                option_order,
+                question_versions!inner (
+                    id,
+                    content,
+                    media_url,
+                    options_snapshot,
+                    question_types!inner ( code )
+                )
+            `)
+            .eq('variant_id', submission.variant_id)
+            .order('position_in_variant', {ascending: true}),
+        supabase
+            .from('student_answers')
+            .select('exam_variant_question_id, client_sequence, selected_options, answer_text, response_data')
+            .eq('submission_id', submission.id)
+    ]);
 
     if (varErr) throw varErr;
-
-    const {data: evqRows, error: evqErr} = await supabase
-        .from('exam_variant_questions')
-        .select(`
-            id,
-            position_in_variant,
-            option_order,
-            question_versions!inner (
-                id,
-                content,
-                media_url,
-                options_snapshot,
-                question_types!inner ( code )
-            )
-        `)
-        .eq('variant_id', submission.variant_id)
-        .order('position_in_variant', {ascending: true});
-
     if (evqErr) throw evqErr;
+    if (ansErr) throw ansErr;
 
     const kindByEvqId = new Map();
     const questions = (evqRows ?? []).map(row => {
@@ -311,13 +363,6 @@ async function buildSessionPayload(exam, submission) {
             render_spec: buildStudentRenderSpec(qv?.options_snapshot, row.option_order)
         };
     });
-
-    const {data: answerRows, error: ansErr} = await supabase
-        .from('student_answers')
-        .select('exam_variant_question_id, client_sequence, selected_options, answer_text, response_data')
-        .eq('submission_id', submission.id);
-
-    if (ansErr) throw ansErr;
 
     const savedAnswers = (answerRows ?? []).map(row =>
         formatSavedAnswer(row, kindByEvqId.get(row.exam_variant_question_id) || 'SINGLE_CHOICE')
@@ -692,7 +737,8 @@ async function resolveOwnedSubmission(submissionId, studentUserId) {
             participants!inner (
                 id,
                 student_user_id,
-                deleted_at
+                deleted_at,
+                exams!inner (opens_at)
             )
         `)
         .eq('id', submissionId)
@@ -714,6 +760,7 @@ async function resolveOwnedSubmission(submissionId, studentUserId) {
         throw err;
     }
 
+    requireExamOpened(Array.isArray(participant.exams) ? participant.exams[0] : participant.exams);
     return submission;
 }
 

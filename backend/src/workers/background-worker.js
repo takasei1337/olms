@@ -198,6 +198,69 @@ async function sweepExpiredSubmissions(options = {}) {
 }
 
 /**
+ * Automatically transition IN_PROGRESS exams whose closes_at has passed to ENDED
+ * after force-submitting and grading any remaining IN_PROGRESS online submissions.
+ */
+async function sweepClosedExams(options = {}) {
+    const client = options.client || supabase;
+    const nowIso = new Date(options.nowMs !== undefined ? options.nowMs : Date.now()).toISOString();
+
+    const {data: expiredExams, error: examErr} = await client
+        .from('exams')
+        .select('id, closes_at')
+        .eq('status', 'IN_PROGRESS')
+        .lte('closes_at', nowIso)
+        .is('deleted_at', null)
+        .limit(20);
+
+    if (examErr) throw examErr;
+    const summary = {scanned: (expiredExams ?? []).length, ended: 0};
+
+    for (const exam of expiredExams ?? []) {
+        const {data: openSubs, error: openErr} = await client
+            .from('submissions')
+            .select('id')
+            .eq('exam_id', exam.id)
+            .eq('source', 'ONLINE')
+            .eq('status', 'IN_PROGRESS');
+
+        if (openErr) continue;
+
+        for (const sub of openSubs ?? []) {
+            try {
+                await client.rpc('olms_force_submit_expired_online', {p_submission: sub.id});
+            } catch (_) {
+                // Retry on next sweep tick if clock skew occurred
+            }
+        }
+
+        try {
+            await gradingService.gradePendingOnlineSubmissionsForExam(exam.id);
+        } catch (_) {
+            // Continue checking readiness
+        }
+
+        const {data: remainingOpen} = await client
+            .from('submissions')
+            .select('id')
+            .eq('exam_id', exam.id)
+            .in('status', ['IN_PROGRESS', 'SUBMITTED', 'GRADING'])
+            .limit(1);
+
+        if (!remainingOpen || remainingOpen.length === 0) {
+            const {error: updErr} = await client
+                .from('exams')
+                .update({status: 'ENDED', updated_at: new Date().toISOString()})
+                .eq('id', exam.id)
+                .eq('status', 'IN_PROGRESS');
+            if (!updErr) summary.ended++;
+        }
+    }
+
+    return summary;
+}
+
+/**
  * Start periodic background worker intervals for AI retry and deadline recovery.
  */
 function startBackgroundWorkers() {
@@ -205,24 +268,28 @@ function startBackgroundWorkers() {
         return {stop: () => {}};
     }
 
-    const aiTimer = setInterval(() => {
-        sweepSkippedTimeoutQuestions().catch((err) => {
-            console.error('AI retry worker error:', err.message);
-        });
-    }, DEFAULT_AI_RETRY_INTERVAL_MS);
+    const aiTimer = process.env.AI_RETRY_ENABLED === 'true'
+        ? setInterval(() => {
+            sweepSkippedTimeoutQuestions().catch((err) => {
+                console.error('AI retry worker error:', err.message);
+            });
+        }, DEFAULT_AI_RETRY_INTERVAL_MS)
+        : null;
 
     const deadlineTimer = setInterval(() => {
-        sweepExpiredSubmissions().catch((err) => {
-            console.error('Deadline recovery worker error:', err.message);
-        });
+        sweepExpiredSubmissions()
+            .then(() => sweepClosedExams())
+            .catch((err) => {
+                console.error('Deadline recovery worker error:', err.message);
+            });
     }, DEFAULT_DEADLINE_INTERVAL_MS);
 
-    aiTimer.unref();
+    if (aiTimer) aiTimer.unref();
     deadlineTimer.unref();
 
     return {
         stop: () => {
-            clearInterval(aiTimer);
+            if (aiTimer) clearInterval(aiTimer);
             clearInterval(deadlineTimer);
         }
     };
@@ -231,5 +298,6 @@ function startBackgroundWorkers() {
 module.exports = {
     sweepSkippedTimeoutQuestions,
     sweepExpiredSubmissions,
+    sweepClosedExams,
     startBackgroundWorkers
 };

@@ -30,9 +30,9 @@ function securityHeaders(req, res, next) {
     // Permissions Policy: disable sensitive device APIs
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
 
-    // Cross-Origin Isolations
+    // Cross-Origin Isolations (allow cross-origin API consumption by trusted CORS origins)
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
     // Ensure X-Powered-By is removed
     res.removeHeader('X-Powered-By');

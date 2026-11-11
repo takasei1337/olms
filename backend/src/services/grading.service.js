@@ -494,8 +494,10 @@ async function gradePendingOnlineSubmissionsForExam(examId, {gradedBy = null} = 
 
     if (error) throw error;
 
-    for (const sub of pendingSubs ?? []) {
-        await gradeSubmission(sub.id, {gradedBy});
+    const subs = pendingSubs ?? [];
+    for (let i = 0; i < subs.length; i += 5) {
+        const chunk = subs.slice(i, i + 5);
+        await Promise.all(chunk.map(sub => gradeSubmission(sub.id, {gradedBy})));
     }
 }
 

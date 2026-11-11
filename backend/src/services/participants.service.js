@@ -9,18 +9,18 @@ const VALID_PARTICIPANT_STATUSES = ['REGISTERED', 'IN_PROGRESS', 'COMPLETED'];
 const IMPORT_PREVIEW_TTL_MS = 15 * 60 * 1000;
 const EXPORT_URL_TTL_MS = 5 * 60 * 1000;
 
-const importPreviewStore = new Map();
-
 function getSigningSecret() {
     return process.env.JWT_ACCESS_SECRET || 'olms-dev-export-signing-secret';
 }
 
-function cleanupExpiredPreviews() {
-    const now = Date.now();
-    for (const [token, entry] of importPreviewStore.entries()) {
-        if (entry.expiresAt <= now) {
-            importPreviewStore.delete(token);
-        }
+async function cleanupExpiredPreviewsAsync() {
+    try {
+        await supabase
+            .from('participant_import_previews')
+            .delete()
+            .lt('expires_at', new Date().toISOString());
+    } catch (_) {
+        // Non-blocking cleanup
     }
 }
 
@@ -483,8 +483,6 @@ async function extractSpreadsheetRows(buffer, originalName = '') {
 }
 
 async function previewParticipantImport(exam, file, actorUserId) {
-    cleanupExpiredPreviews();
-
     const rawRows = await extractSpreadsheetRows(file.buffer, file.originalname);
     if (rawRows.length < 2) {
         const err = new Error('Import file must contain a header row and at least one data row.');
@@ -590,13 +588,21 @@ async function previewParticipantImport(exam, file, actorUserId) {
     }
 
     const importToken = crypto.randomUUID();
-    importPreviewStore.set(importToken, {
-        examId: exam.id,
-        actorId: actorUserId,
-        rows: internalRows,
-        committed: false,
-        expiresAt: Date.now() + IMPORT_PREVIEW_TTL_MS
-    });
+    const expiresAtIso = new Date(Date.now() + IMPORT_PREVIEW_TTL_MS).toISOString();
+
+    const {error: prevInsErr} = await supabase
+        .from('participant_import_previews')
+        .insert({
+            id: importToken,
+            exam_id: exam.id,
+            actor_user_id: actorUserId,
+            rows: internalRows,
+            status: 'PENDING',
+            expires_at: expiresAtIso
+        });
+
+    if (prevInsErr) throw prevInsErr;
+    cleanupExpiredPreviewsAsync();
 
     return {
         import_token: importToken,
@@ -608,73 +614,297 @@ async function previewParticipantImport(exam, file, actorUserId) {
 }
 
 async function commitParticipantImport(exam, importToken, actorUserId, requestMeta = {}) {
-    cleanupExpiredPreviews();
+    cleanupExpiredPreviewsAsync();
 
-    const preview = importPreviewStore.get(importToken);
-    if (!preview || preview.examId !== exam.id) {
+    const {data: preview, error: findPrevErr} = await supabase
+        .from('participant_import_previews')
+        .select('id, exam_id, actor_user_id, rows, status, expires_at')
+        .eq('id', importToken)
+        .maybeSingle();
+
+    if (findPrevErr) throw findPrevErr;
+
+    if (!preview || preview.exam_id !== exam.id || Date.now() >= new Date(preview.expires_at).getTime()) {
         const err = new Error('Invalid or expired import_token.');
         err.code = 'INVALID_IMPORT_TOKEN';
         err.status = 400;
         throw err;
     }
 
-    if (preview.actorId !== actorUserId) {
+    if (preview.actor_user_id !== actorUserId) {
         const err = new Error('You do not have permission to commit this import preview.');
         err.code = 'FORBIDDEN';
         err.status = 403;
         throw err;
     }
 
-    if (preview.committed) {
+    if (preview.status !== 'PENDING') {
         const err = new Error('This import_token has already been committed.');
         err.code = 'CONFLICT';
         err.status = 409;
         throw err;
     }
 
-    preview.committed = true;
+    const {data: claimed, error: claimErr} = await supabase
+        .from('participant_import_previews')
+        .update({status: 'COMMITTING'})
+        .eq('id', importToken)
+        .eq('exam_id', exam.id)
+        .eq('status', 'PENDING')
+        .select('id')
+        .maybeSingle();
+
+    if (claimErr) throw claimErr;
+    if (!claimed) {
+        const err = new Error('This import_token has already been committed.');
+        err.code = 'CONFLICT';
+        err.status = 409;
+        throw err;
+    }
 
     let createdCount = 0;
     let skippedDuplicateCount = 0;
     let invalidCount = 0;
 
     try {
-        for (const row of preview.rows) {
+        const validRows = [];
+        for (const row of preview.rows || []) {
             if (!row.valid) {
-                if (row.isDuplicate) {
-                    skippedDuplicateCount++;
-                } else {
-                    invalidCount++;
-                }
+                if (row.isDuplicate) skippedDuplicateCount++;
+                else invalidCount++;
                 continue;
             }
+            validRows.push({
+                student_code: row.student_code.trim(),
+                full_name: row.full_name.trim(),
+                email: typeof row.email === 'string' && row.email.trim() ? row.email.trim() : null
+            });
+        }
 
-            try {
-                await enrollParticipant(
-                    exam,
-                    {
-                        student_code: row.student_code,
-                        full_name: row.full_name,
-                        email: row.email
-                    },
-                    actorUserId,
-                    requestMeta
-                );
-                createdCount++;
-            } catch (err) {
-                if (err.code === 'ERR_PARTICIPANT_ALREADY_EXISTS') {
-                    skippedDuplicateCount++;
-                } else {
-                    throw err;
+        if (validRows.length > 0) {
+            const codes = [...new Set(validRows.map(r => r.student_code))];
+            const now = new Date().toISOString();
+
+            const [{data: existingProfiles, error: profErr}, {data: existingParts, error: partErr}] = await Promise.all([
+                supabase
+                    .from('student_profiles')
+                    .select('id, student_code, email, deleted_at')
+                    .in('student_code', codes),
+                supabase
+                    .from('participants')
+                    .select('id, student_code, student_profile_id, deleted_at')
+                    .eq('exam_id', exam.id)
+                    .in('student_code', codes)
+            ]);
+
+            if (profErr) throw profErr;
+            if (partErr) throw partErr;
+
+            const profileByCode = new Map((existingProfiles ?? []).map(p => [String(p.student_code).toLowerCase(), p]));
+            const partByCode = new Map();
+            for (const p of existingParts ?? []) {
+                const key = String(p.student_code).toLowerCase();
+                const prev = partByCode.get(key);
+                if (!prev || !p.deleted_at) partByCode.set(key, p);
+            }
+
+            // Reactivate any soft-deleted profiles in batch; insert missing profiles in batch
+            const toRestoreProfiles = [];
+            const toCreateProfiles = [];
+            for (const r of validRows) {
+                const key = r.student_code.toLowerCase();
+                const existingPart = partByCode.get(key);
+                if (existingPart && !existingPart.deleted_at) continue;
+
+                const prof = profileByCode.get(key);
+                if (!prof) {
+                    const newProf = {
+                        id: crypto.randomUUID(),
+                        student_code: r.student_code,
+                        full_name: r.full_name,
+                        email: r.email,
+                        created_at: now,
+                        updated_at: now
+                    };
+                    profileByCode.set(key, newProf);
+                    toCreateProfiles.push(newProf);
+                } else if (prof.deleted_at) {
+                    toRestoreProfiles.push(prof.id);
+                    prof.deleted_at = null;
                 }
+            }
+
+            if (toRestoreProfiles.length > 0) {
+                const {error: resProfErr} = await supabase
+                    .from('student_profiles')
+                    .update({deleted_at: null, deleted_by: null, updated_at: now})
+                    .in('id', toRestoreProfiles);
+                if (resProfErr) throw resProfErr;
+            }
+
+            if (toCreateProfiles.length > 0) {
+                const {error: insProfErr} = await supabase.from('student_profiles').insert(toCreateProfiles);
+                if (insProfErr) throw insProfErr;
+            }
+
+            const batchNewRows = [];
+            const reactivateRows = [];
+            const seenBatchCodes = new Set();
+
+            for (const r of validRows) {
+                const key = r.student_code.toLowerCase();
+                if (seenBatchCodes.has(key)) {
+                    skippedDuplicateCount++;
+                    continue;
+                }
+                seenBatchCodes.add(key);
+
+                const existingPart = partByCode.get(key);
+                if (existingPart && !existingPart.deleted_at) {
+                    skippedDuplicateCount++;
+                    continue;
+                }
+                if (existingPart && existingPart.deleted_at) {
+                    reactivateRows.push(r);
+                } else {
+                    batchNewRows.push({...r, profile: profileByCode.get(key)});
+                }
+            }
+
+            // Re-enrolling previously soft-deleted participants uses existing single-row reactivation path
+            for (const r of reactivateRows) {
+                await enrollParticipant(exam, r, actorUserId, requestMeta);
+                createdCount++;
+            }
+
+            if (batchNewRows.length > 0) {
+                const ecSlug = sanitizeSlug(exam.code, 14) || 'exam';
+                const candidateUsernames = batchNewRows.map(r => {
+                    const scSlug = sanitizeSlug(r.student_code, 20) || 'student';
+                    return `sv_${scSlug}_${ecSlug}_${crypto.randomBytes(4).toString('hex')}`.slice(0, 50);
+                });
+
+                const {data: collidedUsers, error: colErr} = await supabase
+                    .from('users')
+                    .select('username')
+                    .in('username', candidateUsernames)
+                    .is('deleted_at', null);
+                if (colErr) throw colErr;
+
+                const usedUsernames = new Set((collidedUsers ?? []).map(u => u.username));
+                const passwords = batchNewRows.map(() => generateRandomPassword(12));
+
+                // Hash passwords concurrently across libuv threadpool in bounded chunks of 8
+                const passwordHashes = new Array(batchNewRows.length);
+                for (let start = 0; start < passwords.length; start += 8) {
+                    const chunk = passwords.slice(start, start + 8);
+                    const hashedChunk = await Promise.all(chunk.map(pw => hashPassword(pw)));
+                    for (let j = 0; j < hashedChunk.length; j++) {
+                        passwordHashes[start + j] = hashedChunk[j];
+                    }
+                }
+
+                const userRecords = batchNewRows.map((r, i) => {
+                    let uname = candidateUsernames[i];
+                    if (usedUsernames.has(uname)) {
+                        uname = `sv_${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
+                    }
+                    usedUsernames.add(uname);
+                    return {
+                        id: crypto.randomUUID(),
+                        username: uname,
+                        password_hash: passwordHashes[i],
+                        full_name: r.full_name,
+                        email: r.email,
+                        role: 'STUDENT',
+                        status: 'ACTIVE',
+                        created_at: now,
+                        updated_at: now
+                    };
+                });
+
+                // Deduplicate active emails inside the batch too
+                const batchEmails = userRecords.map(u => u.email).filter(Boolean);
+                let takenEmails = new Set();
+                if (batchEmails.length > 0) {
+                    const {data: existingEmailUsers, error: emErr} = await supabase
+                        .from('users')
+                        .select('email')
+                        .in('email', batchEmails)
+                        .is('deleted_at', null);
+                    if (emErr) throw emErr;
+                    takenEmails = new Set((existingEmailUsers ?? []).map(u => String(u.email).toLowerCase()));
+                }
+
+                const seenEmailInBatch = new Set();
+                for (const u of userRecords) {
+                    if (!u.email) continue;
+                    const emLower = u.email.toLowerCase();
+                    if (takenEmails.has(emLower) || seenEmailInBatch.has(emLower)) {
+                        u.email = null;
+                    } else {
+                        seenEmailInBatch.add(emLower);
+                    }
+                }
+
+                const {error: insUsersErr} = await supabase.from('users').insert(userRecords);
+                if (insUsersErr) throw insUsersErr;
+
+                const participantRecords = batchNewRows.map((r, i) => ({
+                    id: crypto.randomUUID(),
+                    exam_id: exam.id,
+                    student_user_id: userRecords[i].id,
+                    student_profile_id: r.profile.id,
+                    student_code: r.student_code,
+                    full_name_snapshot: r.full_name,
+                    variant_id: null,
+                    seat_no: null,
+                    status: 'REGISTERED',
+                    attendance_status: 'NOT_MARKED',
+                    created_at: now,
+                    updated_at: now
+                }));
+
+                const {error: insPartsErr} = await supabase.from('participants').insert(participantRecords);
+                if (insPartsErr) throw insPartsErr;
+
+                const auditRows = participantRecords.map((p, i) => ({
+                    actor_user_id: actorUserId || null,
+                    action: 'PARTICIPANT_ENROLLED',
+                    entity_name: 'participants',
+                    entity_id: p.id,
+                    new_value: {
+                        exam_id: exam.id,
+                        student_code: p.student_code,
+                        student_user_id: p.student_user_id,
+                        username: userRecords[i].username
+                    },
+                    ip_address: requestMeta.ip || null,
+                    user_agent: requestMeta.userAgent ? String(requestMeta.userAgent).slice(0, 255) : null,
+                    created_at: now
+                }));
+
+                try {
+                    await supabase.from('audit_logs').insert(auditRows);
+                } catch (_) {
+                    // Non-blocking audit fallback
+                }
+                createdCount += participantRecords.length;
             }
         }
     } catch (err) {
-        preview.committed = false;
+        await supabase
+            .from('participant_import_previews')
+            .update({status: 'PENDING'})
+            .eq('id', importToken)
+            .eq('status', 'COMMITTING');
         throw err;
     }
 
-    importPreviewStore.delete(importToken);
+    await supabase
+        .from('participant_import_previews')
+        .update({status: 'COMMITTED', committed_at: new Date().toISOString()})
+        .eq('id', importToken);
 
     await recordAuditLog({
         actorUserId,

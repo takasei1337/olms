@@ -84,20 +84,23 @@ async function buildSubmissionReviewItems(submissionId) {
 async function getExamResultsList(exam, {page = 1, pageSize = 20, status = null, student_code = ''} = {}) {
     await gradingService.gradePendingOnlineSubmissionsForExam(exam.id);
 
-    const {data: participantRows, error: partErr} = await supabase
-        .from('participants')
-        .select('id, student_code, full_name_snapshot, status')
-        .eq('exam_id', exam.id)
-        .is('deleted_at', null)
-        .order('student_code', {ascending: true});
+    const [
+        {data: participantRows, error: partErr},
+        {data: submissionRows, error: subErr}
+    ] = await Promise.all([
+        supabase
+            .from('participants')
+            .select('id, student_code, full_name_snapshot, status')
+            .eq('exam_id', exam.id)
+            .is('deleted_at', null)
+            .order('student_code', {ascending: true}),
+        supabase
+            .from('submissions')
+            .select('id, participant_id, status, raw_score')
+            .eq('exam_id', exam.id)
+    ]);
 
     if (partErr) throw partErr;
-
-    const {data: submissionRows, error: subErr} = await supabase
-        .from('submissions')
-        .select('id, participant_id, status, raw_score')
-        .eq('exam_id', exam.id);
-
     if (subErr) throw subErr;
 
     const submissionByParticipantId = new Map((submissionRows ?? []).map(s => [s.participant_id, s]));
@@ -203,20 +206,23 @@ async function getSubmissionResultDetail(exam, submissionId) {
 async function getExamStatistics(exam) {
     await gradingService.gradePendingOnlineSubmissionsForExam(exam.id);
 
-    const {count: participantCount, error: partCountErr} = await supabase
-        .from('participants')
-        .select('id', {count: 'exact', head: true})
-        .eq('exam_id', exam.id)
-        .is('deleted_at', null);
+    const [
+        {count: participantCount, error: partCountErr},
+        {data: submissionRows, error: subErr}
+    ] = await Promise.all([
+        supabase
+            .from('participants')
+            .select('id', {count: 'exact', head: true})
+            .eq('exam_id', exam.id)
+            .is('deleted_at', null),
+        supabase
+            .from('submissions')
+            .select('id')
+            .eq('exam_id', exam.id)
+            .eq('status', 'GRADED')
+    ]);
 
     if (partCountErr) throw partCountErr;
-
-    const {data: submissionRows, error: subErr} = await supabase
-        .from('submissions')
-        .select('id')
-        .eq('exam_id', exam.id)
-        .eq('status', 'GRADED');
-
     if (subErr) throw subErr;
 
     const submissionIds = (submissionRows ?? []).map(s => s.id);
@@ -262,8 +268,35 @@ async function getExamStatistics(exam) {
 }
 
 async function publishExamResults(exam, {result_visibility_mode} = {}, currentUser) {
-    if (exam.status !== 'ENDED') {
-        const err = new Error(`Results can only be published when exam status is ENDED (current: ${exam.status}).`);
+    let currentExamStatus = exam.status;
+
+    // Automatically conclude an IN_PROGRESS exam once its closes_at deadline has passed
+    if (currentExamStatus === 'IN_PROGRESS' && Date.now() >= Date.parse(exam.closes_at)) {
+        const {data: openSubs, error: openErr} = await supabase
+            .from('submissions')
+            .select('id')
+            .eq('exam_id', exam.id)
+            .eq('source', 'ONLINE')
+            .eq('status', 'IN_PROGRESS');
+        if (openErr) throw openErr;
+
+        for (const sub of openSubs ?? []) {
+            await supabase.rpc('olms_force_submit_expired_online', {p_submission: sub.id});
+        }
+
+        await gradingService.gradePendingOnlineSubmissionsForExam(exam.id, {gradedBy: currentUser.id});
+
+        const {error: endErr} = await supabase
+            .from('exams')
+            .update({status: 'ENDED', updated_at: new Date().toISOString()})
+            .eq('id', exam.id)
+            .eq('status', 'IN_PROGRESS');
+        if (endErr) throw endErr;
+        currentExamStatus = 'ENDED';
+    }
+
+    if (currentExamStatus !== 'ENDED') {
+        const err = new Error(`Results can only be published when exam status is ENDED (current: ${currentExamStatus}).`);
         err.code = 'INVALID_EXAM_STATUS';
         err.status = 409;
         throw err;

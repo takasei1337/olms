@@ -4,6 +4,7 @@ const healthRoutes = require('./routes/health.routes');
 const apiRoutes = require('./routes/api.routes');
 const requestContext = require('./middlewares/request-context');
 const securityHeaders = require('./middlewares/security-headers');
+const corsMiddleware = require('./middlewares/cors');
 const pendingRoutes = require('./routes/pending.routes');
 
 const app = express();
@@ -11,8 +12,9 @@ const app = express();
 // Disable information leakage header
 app.disable('x-powered-by');
 
-// Security Hardening Headers
+// Security Hardening Headers & CORS
 app.use(securityHeaders);
+app.use(corsMiddleware);
 
 // Restrict request body size to 1MB to prevent Denial of Service (DoS)
 app.use(express.json({ limit: '1mb' }));

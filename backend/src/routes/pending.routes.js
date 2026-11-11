@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const pendingEndpoints = [
+    ['post', '/exams/:examId/print-files'],
     ['post', '/exams/:examId/omr/scans'],
     ['get', '/exams/:examId/omr/scans'],
     ['get', '/omr/scans/:scanId'],
