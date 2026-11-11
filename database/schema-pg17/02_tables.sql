@@ -458,6 +458,19 @@ CREATE TABLE grades (
   CONSTRAINT chk_grades_counts CHECK (correct_count >= 0 AND wrong_count >= 0 AND blank_count >= 0),
   CONSTRAINT uq_grades_submission UNIQUE (submission_id)
 );
+
+CREATE TABLE participant_import_previews (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  exam_id       UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+  actor_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rows          JSONB NOT NULL,
+  status        VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  expires_at    TIMESTAMPTZ NOT NULL,
+  committed_at  TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_participant_import_previews_rows_array CHECK (jsonb_typeof(rows) = 'array'),
+  CONSTRAINT chk_participant_import_previews_status CHECK (status IN ('PENDING', 'COMMITTING', 'COMMITTED'))
+);
  
 -- =====================================================================
 -- COMMENTS: lam ro cac quyet dinh thiet ke quan trong (JSONB, bat bien...)

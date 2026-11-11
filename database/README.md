@@ -48,3 +48,7 @@ Bộ fresh schema có 23 bảng nghiệp vụ; migration 001 bổ sung `refresh_
 ## Trạng thái
 
 Cấu trúc cơ sở dữ liệu và phân quyền ban đầu đã được triển khai trên môi trường phát triển. Các kiểm thử nghiệp vụ và bảo mật toàn diện vẫn cần được thực hiện trước khi sử dụng trong production.
+
+## Thiết kế ngân hàng và mã đề 2.0
+
+Mô hình topic/nhóm/duyệt version/preview/slot và kế hoạch backfill được mô tả ở [đặc tả 2.0](../docs/16_Ngan_Hang_Cau_Hoi_Va_Ma_De.md), mục 7 và 10, cùng [ERD đích](../docs/17_ERD_Ngan_Hang_2.0.dbml). Trạng thái SPECIFIED. Các SQL schema/migration liệt kê phía trên vẫn là implementation hiện có; cần xây dựng migration và kiểm chứng riêng khi triển khai mô hình mới.

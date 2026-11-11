@@ -20,7 +20,7 @@ DROP TRIGGER IF EXISTS trg_olms_guard_generation_config ON exams;
 CREATE TRIGGER trg_olms_guard_generation_config BEFORE UPDATE OF status ON exams
 FOR EACH ROW EXECUTE FUNCTION olms_guard_exam_generation_config();
 
--- DB-02: no duplicate question across an exam variant and no mismatched root membership.
+-- DB-02: no duplicate question within an exam variant; different variants may draw distinct or overlapping question subsets.
 -- Checked at atomic DRAFT -> GENERATED boundary, after the candidate variants exist.
 CREATE OR REPLACE FUNCTION olms_validate_variant_membership()
 RETURNS trigger LANGUAGE plpgsql AS $$
@@ -44,24 +44,6 @@ BEGIN
        WHERE v.exam_id=NEW.id AND v.deleted_at IS NULL
        GROUP BY v.id,qv.question_id HAVING count(*)>1
     ) THEN RAISE EXCEPTION 'DB02: duplicate question in exam variant'; END IF;
-    IF EXISTS (
-      SELECT 1 FROM exam_variants v WHERE v.exam_id=NEW.id AND v.deleted_at IS NULL
-      AND (
-        EXISTS (
-          SELECT qv.question_id FROM exam_variant_questions evq
-             JOIN question_versions qv ON qv.id=evq.question_version_id WHERE evq.variant_id=v_root
-          EXCEPT
-          SELECT qv.question_id FROM exam_variant_questions evq
-             JOIN question_versions qv ON qv.id=evq.question_version_id WHERE evq.variant_id=v.id
-        ) OR EXISTS (
-          SELECT qv.question_id FROM exam_variant_questions evq
-             JOIN question_versions qv ON qv.id=evq.question_version_id WHERE evq.variant_id=v.id
-          EXCEPT
-          SELECT qv.question_id FROM exam_variant_questions evq
-             JOIN question_versions qv ON qv.id=evq.question_version_id WHERE evq.variant_id=v_root
-        )
-      )
-    ) THEN RAISE EXCEPTION 'DB02: variant differs from root question set'; END IF;
   END IF;
   RETURN NEW;
 END $$;
