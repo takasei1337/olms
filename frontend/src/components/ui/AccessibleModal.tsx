@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -114,9 +115,9 @@ export function AccessibleModal({
     return null;
   }
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-surface-overlay p-4"
+      className="fixed inset-0 z-50 m-0 flex items-center justify-center bg-surface-overlay p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !isBusy) {
           onClose();
@@ -168,4 +169,8 @@ export function AccessibleModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : modalContent;
 }
