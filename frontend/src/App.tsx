@@ -13,6 +13,10 @@ import { ExamDetailPage } from './features/exams/pages/ExamDetailPage';
 import { ExamsPage } from './features/exams/pages/ExamsPage';
 import { QuestionBankPage } from './features/questions/pages/QuestionBankPage';
 import { QuestionEditorPage } from './features/questions/pages/QuestionEditorPage';
+import { StudentExamSessionPage } from './features/student-exams/pages/StudentExamSessionPage';
+import { StudentExamsPage } from './features/student-exams/pages/StudentExamsPage';
+import { StudentResultDetailPage } from './features/results/pages/StudentResultDetailPage';
+import { StudentResultsPage } from './features/results/pages/StudentResultsPage';
 import { UsersManagementPage } from './features/users/pages/UsersManagementPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 import { HomePage } from './pages/HomePage';
@@ -83,6 +87,38 @@ export function AppRoutes() {
             element={
               <RequireRole allowedRoles={['ADMIN', 'TEACHER']}>
                 <ExamDetailPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="my-exams"
+            element={
+              <RequireRole allowedRoles={['STUDENT']}>
+                <StudentExamsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="my-exams/:examId/session"
+            element={
+              <RequireRole allowedRoles={['STUDENT']}>
+                <StudentExamSessionPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="my-results"
+            element={
+              <RequireRole allowedRoles={['STUDENT']}>
+                <StudentResultsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="my-results/:examId"
+            element={
+              <RequireRole allowedRoles={['STUDENT']}>
+                <StudentResultDetailPage />
               </RequireRole>
             }
           />

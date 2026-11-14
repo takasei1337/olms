@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
+  Award,
   BookOpen,
   ClipboardList,
   HelpCircle,
@@ -314,19 +315,73 @@ export function HomePage() {
               ) : null}
 
               {user.role === 'STUDENT' ? (
-                <div className="flex items-start gap-3 p-5">
-                  <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-surface-border bg-surface-muted text-text-secondary">
-                    <UserCheck aria-hidden="true" className="size-4" />
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-text-primary">
-                      Hướng dẫn sử dụng tài khoản Sinh viên
-                    </h3>
-                    <p className="mt-1.5 max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
-                      Tài khoản Sinh viên được cấp theo danh sách thí sinh của từng kỳ thi. Nếu bạn cần cấp lại mật khẩu hoặc điều chỉnh họ tên, vui lòng liên hệ Giáo viên coi thi hoặc Quản trị viên nhà trường.
-                    </p>
+                <>
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
+                        <ClipboardList aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-text-primary">
+                          Kỳ thi của tôi &amp; làm bài trực tuyến
+                        </h3>
+                        <p className="max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                          Xem danh sách kỳ thi được phân công, theo dõi lịch mở đề và vào phòng thi trực tuyến.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/my-exams"
+                      className={cn(
+                        buttonVariants({ size: 'sm' }),
+                        'shrink-0 bg-brand-600 font-semibold text-white hover:bg-brand-700'
+                      )}
+                    >
+                      <span>Kỳ thi của tôi</span>
+                      <ArrowRight aria-hidden="true" className="size-3.5" />
+                    </Link>
                   </div>
-                </div>
+
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-semantic-success/30 bg-semantic-success-bg text-semantic-success">
+                        <Award aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-text-primary">
+                          Kết quả thi &amp; xem lại bài làm
+                        </h3>
+                        <p className="max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                          Tra cứu điểm số đã công bố, thống kê đúng sai và đối chiếu đáp án chi tiết theo quy định kỳ thi.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/my-results"
+                      className={cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'shrink-0 font-semibold'
+                      )}
+                    >
+                      <span>Kết quả thi</span>
+                      <ArrowRight aria-hidden="true" className="size-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-5">
+                    <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-surface-border bg-surface-muted text-text-secondary">
+                      <UserCheck aria-hidden="true" className="size-4" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-text-primary">
+                        Hướng dẫn sử dụng tài khoản Sinh viên
+                      </h3>
+                      <p className="mt-1.5 max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                        Tài khoản Sinh viên được cấp theo danh sách thí sinh của từng kỳ thi. Nếu bạn cần cấp lại mật khẩu hoặc điều chỉnh họ tên, vui lòng liên hệ Giáo viên coi thi hoặc Quản trị viên nhà trường.
+                      </p>
+                    </div>
+                  </div>
+                </>
               ) : null}
             </CardContent>
           </Card>

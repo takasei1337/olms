@@ -179,6 +179,44 @@ export function translateApiError(
       return 'Tệp thiếu cột bắt buộc (cần có cột mã sinh viên và họ tên: student_code, full_name).';
     case 'INVALID_IMPORT_TOKEN':
       return 'Phiên xem trước dữ liệu import đã hết hạn hoặc không còn hợp lệ. Vui lòng tải tệp và xem trước lại.';
+    case 'INVALID_DELIVERY_MODE':
+      return 'Kỳ thi này thực hiện trên giấy (OMR) và không hỗ trợ làm bài trực tuyến.';
+    case 'VARIANTS_NOT_GENERATED':
+      return 'Kỳ thi hiện chưa có mã đề thi khả dụng để làm bài.';
+    case 'SUBMISSION_ALREADY_CLOSED':
+      return 'Bài làm của bạn đã được nộp hoặc phiên thi đã kết thúc.';
+    case 'SESSION_EXPIRED':
+      return 'Đã hết thời gian làm bài theo đồng hồ máy chủ.';
+    case 'SESSION_NOT_FOUND':
+      return 'Chưa tìm thấy phiên làm bài đang hoạt động cho kỳ thi này.';
+    case 'SUBMISSION_NOT_FOUND':
+      return 'Không tìm thấy thông tin bài làm.';
+    case 'SUBMISSION_NOT_ONLINE':
+      return 'Bài làm này không phải dạng thi trực tuyến.';
+    case 'SUBMISSION_LOCKED':
+      return 'Bài làm đã bị khóa, không thể lưu hoặc chỉnh sửa thêm.';
+    case 'VARIANT_QUESTION_NOT_FOUND':
+      return 'Câu hỏi này không thuộc mã đề thi hiện tại của bạn.';
+    case 'ANSWER_REVISION_CONFLICT':
+      return 'Đáp án câu này vừa được cập nhật ở một phiên hoặc lần đồng bộ khác. Hệ thống đang đồng bộ lại.';
+    case 'EDIT_TOKEN_REUSED_DIFFERENT_PAYLOAD':
+      return 'Yêu cầu lưu vừa rồi gặp xung đột phiên. Vui lòng thử lưu lại đáp án.';
+    case 'CONFLICTING_SUBMIT_TOKEN':
+      return 'Bài làm đã được gửi nộp bằng một yêu cầu khác trước đó.';
+    case 'SUBMISSIONS_NOT_GRADED':
+      return 'Vẫn còn bài làm chưa hoàn tất chấm điểm. Vui lòng làm mới để hệ thống chấm tự động trước khi công bố.';
+    case 'RESULT_NOT_READY':
+      return 'Kết quả thi hiện chưa sẵn sàng. Vui lòng thử lại sau ít phút.';
+    case 'RESULT_HIDDEN':
+      return 'Kết quả kỳ thi này hiện đang được ẩn bởi giảng viên hoặc chưa đến thời điểm công bố.';
+    case 'REVIEW_NOT_ALLOWED':
+      return 'Chế độ công bố hiện tại không cho phép xem chi tiết từng câu hỏi.';
+    case 'GRADE_COUNT_MISMATCH':
+      return 'Dữ liệu chấm điểm từng câu chưa đồng bộ. Vui lòng liên hệ quản trị viên hoặc thử lại.';
+    case 'INVALID_SUBMISSION_STATUS':
+      return 'Trạng thái bài nộp hiện không hợp lệ cho thao tác này.';
+    case 'VARIANT_NOT_ASSIGNED':
+      return 'Thí sinh chưa được gán mã đề hợp lệ.';
     case 'VALIDATION_FAILED':
     case 'VALIDATION_ERROR': {
       if (serverMessage.includes('password must have at least 8 characters') || serverMessage.includes('New password must have at least 8 characters')) {

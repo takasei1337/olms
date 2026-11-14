@@ -1,6 +1,7 @@
 import {
   Archive,
   Ban,
+  BarChart3,
   FileEdit,
   FolderOpen,
   Globe,
@@ -29,6 +30,7 @@ interface ExamRowActionsMenuProps {
   currentUserRole: string;
   onOpenDetail: (exam: ExamRecord) => void;
   onOpenParticipants: (exam: ExamRecord) => void;
+  onOpenResults: (exam: ExamRecord) => void;
   onEditDraft: (exam: ExamRecord) => void;
   onLifecycleAction: (exam: ExamRecord, action: ExamLifecycleActionType) => void;
 }
@@ -39,6 +41,7 @@ export function ExamRowActionsMenu({
   currentUserRole,
   onOpenDetail,
   onOpenParticipants,
+  onOpenResults,
   onEditDraft,
   onLifecycleAction,
 }: ExamRowActionsMenuProps) {
@@ -79,6 +82,13 @@ export function ExamRowActionsMenu({
         >
           <Users aria-hidden="true" className="size-3.5 text-text-secondary" />
           <span>Quản lý thí sinh</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => onOpenResults(exam)}
+          className="cursor-pointer text-xs"
+        >
+          <BarChart3 aria-hidden="true" className="size-3.5 text-text-secondary" />
+          <span>Kết quả &amp; Thống kê</span>
         </DropdownMenuItem>
 
         {canManage && isDraft ? (

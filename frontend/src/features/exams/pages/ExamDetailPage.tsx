@@ -33,6 +33,7 @@ import {
 } from '../components/ExamLifecycleModal';
 import { ExamMatrixAndRootTab } from '../components/ExamMatrixAndRootTab';
 import { ExamParticipantsTab } from '../components/ExamParticipantsTab';
+import { ExamResultsTab } from '../../results/components/ExamResultsTab';
 import {
   DeliveryModeBadge,
   ExamStatusBadge,
@@ -52,10 +53,10 @@ import {
 } from '../types';
 import { formatExamDateTime, formatScore } from '../utils';
 
-type DetailTabValue = 'matrix' | 'generate' | 'participants';
+type DetailTabValue = 'matrix' | 'generate' | 'participants' | 'results';
 
 function normalizeTabParam(raw: string | null): DetailTabValue {
-  if (raw === 'generate' || raw === 'participants' || raw === 'matrix') {
+  if (raw === 'generate' || raw === 'participants' || raw === 'results' || raw === 'matrix') {
     return raw;
   }
   return 'matrix';
@@ -471,6 +472,9 @@ export function ExamDetailPage() {
           <TabsTrigger value="participants" className="text-xs font-medium">
             3. Danh sách thí sinh
           </TabsTrigger>
+          <TabsTrigger value="results" className="text-xs font-medium">
+            4. Kết quả &amp; Thống kê
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="matrix">
@@ -500,6 +504,9 @@ export function ExamDetailPage() {
 
         <TabsContent value="participants">
           <ExamParticipantsTab exam={exam} />
+        </TabsContent>
+        <TabsContent value="results">
+          <ExamResultsTab exam={exam} canManage={canManage} onExamUpdated={setExam} />
         </TabsContent>
       </Tabs>
 

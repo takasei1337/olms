@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
+  Award,
   BookOpen,
   ClipboardList,
   HelpCircle,
@@ -94,6 +95,7 @@ export function AppShell() {
   const canManageUsers = user.role === 'ADMIN';
   const canManageQuestions = user.role === 'ADMIN' || user.role === 'TEACHER';
   const canChangePassword = user.role === 'ADMIN' || user.role === 'TEACHER';
+  const isStudent = user.role === 'STUDENT';
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -224,6 +226,19 @@ export function AppShell() {
                 <NavLink to="/exams" className={navLinkClass}>
                   <ClipboardList aria-hidden="true" className="size-4 shrink-0" />
                   <span>Kỳ thi &amp; Đề thi</span>
+                </NavLink>
+              </>
+            ) : null}
+
+            {isStudent ? (
+              <>
+                <NavLink to="/my-exams" className={navLinkClass}>
+                  <ClipboardList aria-hidden="true" className="size-4 shrink-0" />
+                  <span>Kỳ thi của tôi</span>
+                </NavLink>
+                <NavLink to="/my-results" className={navLinkClass}>
+                  <Award aria-hidden="true" className="size-4 shrink-0" />
+                  <span>Kết quả thi</span>
                 </NavLink>
               </>
             ) : null}

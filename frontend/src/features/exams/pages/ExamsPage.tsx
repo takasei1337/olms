@@ -581,6 +581,9 @@ export function ExamsPage() {
                           onOpenParticipants={(target) =>
                             navigate(`/exams/${target.id}?tab=participants`)
                           }
+                          onOpenResults={(target) =>
+                            navigate(`/exams/${target.id}?tab=results`)
+                          }
                           onEditDraft={(target) => {
                             setEditingExam(target);
                             setIsFormOpen(true);
