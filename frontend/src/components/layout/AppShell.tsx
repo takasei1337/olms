@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { KeyRound, LayoutDashboard, LogOut, Menu, Users, X } from 'lucide-react';
+import {
+  BookOpen,
+  HelpCircle,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Users,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../../features/auth/AuthContext';
 import { ROLE_LABELS } from '../../features/auth/types';
@@ -82,6 +91,7 @@ export function AppShell() {
   }
 
   const canManageUsers = user.role === 'ADMIN';
+  const canManageQuestions = user.role === 'ADMIN' || user.role === 'TEACHER';
   const canChangePassword = user.role === 'ADMIN' || user.role === 'TEACHER';
 
   const handleLogout = async () => {
@@ -199,6 +209,19 @@ export function AppShell() {
               <LayoutDashboard aria-hidden="true" className="size-4 shrink-0" />
               <span>Tổng quan</span>
             </NavLink>
+
+            {canManageQuestions ? (
+              <>
+                <NavLink to="/catalog" className={navLinkClass}>
+                  <BookOpen aria-hidden="true" className="size-4 shrink-0" />
+                  <span>Môn &amp; Bài học</span>
+                </NavLink>
+                <NavLink to="/questions" className={navLinkClass}>
+                  <HelpCircle aria-hidden="true" className="size-4 shrink-0" />
+                  <span>Ngân hàng câu hỏi</span>
+                </NavLink>
+              </>
+            ) : null}
 
             {canManageUsers ? (
               <NavLink to="/admin/users" className={navLinkClass}>

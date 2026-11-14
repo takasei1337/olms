@@ -1,6 +1,6 @@
 # Kiểm thử OLMS bằng Bruno
 
-Collection **OLMS Backend** dùng OpenCollection YAML và Bruno CLI **4.3.0** được pin trong package-lock.json. Đây là HTTP integration với ứng dụng Express và Supabase/PostgreSQL thật từ backend/.env. Lệnh test của backend chuyển tiếp sang bộ Bruno này. Các script `.cjs` tại `api-tests/scripts/` vẫn cần để setup fixture, dựng collection, chạy CLI và xuất báo cáo.
+Collection **OLMS Backend** dùng OpenCollection YAML và Bruno CLI **4.3.0** được pin trong package-lock.json. Đây là HTTP integration với ứng dụng Express và Supabase/PostgreSQL test riêng được cấu hình qua `api-tests/.env` (tách khỏi `backend/.env`). Lệnh test của backend chuyển tiếp sang bộ Bruno này. Các script `.cjs` tại `api-tests/scripts/` vẫn cần để setup fixture, dựng collection, chạy CLI và xuất báo cáo.
 
 Phạm vi hiện tại là kiểm thử API. Bộ này chưa thay thế các ca unit riêng cho embedding/cosine, ranh giới timeout, xung đột đồng thời và những logic nội bộ không quan sát được đầy đủ qua HTTP.
 
@@ -16,26 +16,30 @@ npm --prefix api-tests test
 
 Runner sẽ:
 
-1. Đọc cấu hình database/JWT từ `backend/.env`.
-2. Tạo hoặc xác minh bốn tài khoản riêng cho Bruno: ADMIN, TEACHER, một TEACHER khác chủ và STUDENT. Bootstrap bằng Supabase service-role chỉ phục vụ fixture; các request cần xác thực vẫn login qua API thật.
-3. Sinh run_id và mật khẩu user kiểm thử; ghi biến local vào `OLMS Backend/.env`, giữ nguyên các biến không thuộc runner đã có trong file đó. Tạo thêm fixture exam riêng ở RESULT_PUBLISHED để test archive thành công; đây là tiền điều kiện seed trong DB cho kịch bản archive.
-4. Dựng collection từ `scripts/cases.cjs`; mở backend localhost cổng 3301 nếu chưa có server phù hợp.
-5. Chạy các request tuần tự bằng Bruno CLI safe sandbox, tự lưu/gửi cookie, tự lấy token và ID từ response.
-6. Ghi JSON/JUnit/log, cập nhật `docs/completed_api.md` và lưu bằng chứng JSON đã lược dữ liệu nhạy cảm.
-7. Dừng backend nếu chính runner đã mở process đó; không dừng server có sẵn.
+1. Đọc cấu hình database/JWT test riêng từ `api-tests/.env` (hoặc biến môi trường `OLMS_TEST_*`). Runner từ chối chạy nếu thiếu cấu hình, thiếu `OLMS_TEST_DB_CONFIRM=isolated-test-db` hoặc `OLMS_TEST_SUPABASE_URL` trùng với database dev/demo trong `backend/.env`.
+2. Khởi tạo manifest tài nguyên (`api-tests/reports/<run_id>/manifest.json`) ngay khi bắt đầu tạo tài nguyên để đối soát cleanup theo từng lượt chạy.
+3. Tạo hoặc xác minh bốn tài khoản riêng cho Bruno trên database test: ADMIN, TEACHER, một TEACHER khác chủ và STUDENT. Bootstrap bằng Supabase service-role chỉ phục vụ fixture; các request cần xác thực vẫn login qua API thật.
+4. Sinh run_id và mật khẩu user kiểm thử; ghi biến local vào `OLMS Backend/.env`, giữ nguyên các biến không thuộc runner đã có trong file đó. Tạo thêm fixture exam riêng ở RESULT_PUBLISHED để test archive thành công.
+5. Dựng collection từ `scripts/cases.cjs`; mở backend localhost cổng 3301 với biến môi trường database test (hoặc kiểm tra `X-OLMS-Target-Fingerprint` nếu kết nối server có sẵn).
+6. Chạy các request tuần tự bằng Bruno CLI safe sandbox, tự lưu/gửi cookie, tự lấy token và ID từ response.
+7. Ghi JSON/JUnit/log, cập nhật `docs/completed_api.md` và lưu bằng chứng JSON đã lược dữ liệu nhạy cảm.
+8. Dừng backend nếu chính runner đã mở process đó; không dừng server có sẵn.
 
 Exit code khác 0 khi có assertion hoặc request lỗi. Báo cáo vẫn được tạo để đối chiếu; không thay expected status thành 500 chỉ để che lỗi backend.
 
 ## Biến môi trường
 
-Copy `api-tests/.env.example` thành `api-tests/.env` nếu muốn thay mặc định:
+Copy `api-tests/.env.example` thành `api-tests/.env` và cấu hình database test riêng (bắt buộc trước khi chạy `setup` hoặc `test`):
 
 | Biến | Mặc định | Mục đích |
 | --- | --- | --- |
 | OLMS_TEST_BASE_URL | http://127.0.0.1:3301/api/v1 | Địa chỉ backend cần kiểm thử |
-| OLMS_TEST_AUTO_START | true | Tự mở server localhost khi health chưa có; false để dùng server tự quản lý |
-
-`backend/.env` cần SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_ACCESS_SECRET. Không chép service key vào environment của Bruno. Nếu dùng server tự quản lý, server đó cần trỏ cùng database để thấy tài khoản fixture.
+| OLMS_TEST_AUTO_START | true | Tự mở server localhost khi chưa có; false để dùng server tự quản lý có cùng target |
+| OLMS_TEST_SUPABASE_URL | *(bắt buộc)* | URL Supabase project dành riêng cho test (phải khác `backend/.env`) |
+| OLMS_TEST_SUPABASE_SERVICE_ROLE_KEY | *(bắt buộc)* | Service-role key của project test |
+| OLMS_TEST_JWT_ACCESS_SECRET | *(bắt buộc)* | JWT access secret dùng cho server test |
+| OLMS_TEST_JWT_REFRESH_SECRET | `OLMS_TEST_JWT_ACCESS_SECRET` | JWT refresh secret dùng cho server test |
+| OLMS_TEST_DB_CONFIRM | *(bắt buộc: `isolated-test-db`)* | Xác nhận target là database test riêng |
 
 Environment **Local** trong `OLMS Backend/environments/Local.yml` lấy các biến `OLMS_TEST_*` từ file `.env` tại collection. Không commit mật khẩu, JWT, cookie hoặc giá trị secrets. `.bruno.local.json` lưu credentials/ID của bốn tài khoản fixture để các lần sau tái sử dụng; file này bị ignore.
 

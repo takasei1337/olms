@@ -8,6 +8,9 @@ import {
 } from './features/auth/components/RouteGuards';
 import { ChangePasswordPage } from './features/auth/pages/ChangePasswordPage';
 import { LoginPage } from './features/auth/pages/LoginPage';
+import { CatalogPage } from './features/catalog/pages/CatalogPage';
+import { QuestionBankPage } from './features/questions/pages/QuestionBankPage';
+import { QuestionEditorPage } from './features/questions/pages/QuestionEditorPage';
 import { UsersManagementPage } from './features/users/pages/UsersManagementPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 import { HomePage } from './pages/HomePage';
@@ -33,6 +36,38 @@ export function AppRoutes() {
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route index element={<HomePage />} />
+          <Route
+            path="catalog"
+            element={
+              <RequireRole allowedRoles={['ADMIN', 'TEACHER']}>
+                <CatalogPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="questions"
+            element={
+              <RequireRole allowedRoles={['ADMIN', 'TEACHER']}>
+                <QuestionBankPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="questions/new"
+            element={
+              <RequireRole allowedRoles={['ADMIN', 'TEACHER']}>
+                <QuestionEditorPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="questions/:questionId/edit"
+            element={
+              <RequireRole allowedRoles={['ADMIN', 'TEACHER']}>
+                <QuestionEditorPage />
+              </RequireRole>
+            }
+          />
           <Route
             path="account/password"
             element={

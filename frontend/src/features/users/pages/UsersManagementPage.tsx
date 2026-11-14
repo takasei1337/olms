@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import {
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Eye,
   RefreshCw,
   Search,
@@ -721,9 +725,10 @@ export function UsersManagementPage() {
                     size="sm"
                     onClick={() => setPage(1)}
                     disabled={page <= 1 || isLoading}
-                    className="h-8 px-2.5 text-xs font-medium"
+                    aria-label="Trang đầu"
+                    className="h-8 w-8 p-0"
                   >
-                    Đầu
+                    <ChevronsLeft className="size-4" />
                   </Button>
                   <Button
                     type="button"
@@ -731,11 +736,12 @@ export function UsersManagementPage() {
                     size="sm"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1 || isLoading}
-                    className="h-8 px-2.5 text-xs font-medium"
+                    aria-label="Trang trước"
+                    className="h-8 w-8 p-0"
                   >
-                    Trước
+                    <ChevronLeft className="size-4" />
                   </Button>
-                  <span className="px-2 font-mono font-semibold tabular-nums text-text-primary">
+                  <span className="px-2 font-mono text-xs font-semibold tabular-nums text-text-primary">
                     {page} / {totalPages}
                   </span>
                   <Button
@@ -744,9 +750,10 @@ export function UsersManagementPage() {
                     size="sm"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages || isLoading}
-                    className="h-8 px-2.5 text-xs font-medium"
+                    aria-label="Trang sau"
+                    className="h-8 w-8 p-0"
                   >
-                    Sau
+                    <ChevronRight className="size-4" />
                   </Button>
                   <Button
                     type="button"
@@ -754,9 +761,10 @@ export function UsersManagementPage() {
                     size="sm"
                     onClick={() => setPage(totalPages)}
                     disabled={page >= totalPages || isLoading}
-                    className="h-8 px-2.5 text-xs font-medium"
+                    aria-label="Trang cuối"
+                    className="h-8 w-8 p-0"
                   >
-                    Cuối
+                    <ChevronsRight className="size-4" />
                   </Button>
                 </nav>
               </div>

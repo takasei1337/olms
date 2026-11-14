@@ -1,5 +1,13 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, KeyRound, ShieldCheck, UserCheck, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpen,
+  HelpCircle,
+  KeyRound,
+  ShieldCheck,
+  UserCheck,
+  Users,
+} from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import {
   Card,
@@ -54,6 +62,58 @@ export function HomePage() {
                   <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
                     <div className="flex items-start gap-3">
                       <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
+                        <BookOpen aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-text-primary">
+                          Cấu trúc Môn &amp; Bài học
+                        </h3>
+                        <p className="max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                          Quản lý danh mục Môn học, Chương và Bài học theo cây phân cấp kiến thức để liên kết câu hỏi kiểm tra.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/catalog"
+                      className={cn(
+                        buttonVariants({ variant: 'default', size: 'sm' }),
+                        'shrink-0 font-semibold'
+                      )}
+                    >
+                      <span>Môn &amp; Bài học</span>
+                      <ArrowRight aria-hidden="true" className="size-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
+                        <HelpCircle aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-text-primary">
+                          Ngân hàng câu hỏi
+                        </h3>
+                        <p className="max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                          Tìm kiếm, phân loại, biên soạn và duyệt ngân hàng câu hỏi 5 dạng chuẩn hóa (Trắc nghiệm, Điền khuyết, Ghép cặp).
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/questions"
+                      className={cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'shrink-0 font-semibold'
+                      )}
+                    >
+                      <span>Ngân hàng câu hỏi</span>
+                      <ArrowRight aria-hidden="true" className="size-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
                         <Users aria-hidden="true" className="size-4" />
                       </span>
                       <div className="space-y-1">
@@ -68,7 +128,7 @@ export function HomePage() {
                     <Link
                       to="/admin/users"
                       className={cn(
-                        buttonVariants({ variant: 'default', size: 'sm' }),
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
                         'shrink-0 font-semibold'
                       )}
                     >
@@ -109,6 +169,58 @@ export function HomePage() {
                   <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
                     <div className="flex items-start gap-3">
                       <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
+                        <BookOpen aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-text-primary">
+                          Quản lý Môn &amp; Bài học
+                        </h3>
+                        <p className="max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                          Xem và xây dựng cấu trúc Môn, Chương và Bài học bạn phụ trách để tổ chức kiến thức khoa học.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/catalog"
+                      className={cn(
+                        buttonVariants({ variant: 'default', size: 'sm' }),
+                        'shrink-0 font-semibold'
+                      )}
+                    >
+                      <span>Môn &amp; Bài học</span>
+                      <ArrowRight aria-hidden="true" className="size-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
+                        <HelpCircle aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-text-primary">
+                          Ngân hàng câu hỏi
+                        </h3>
+                        <p className="max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                          Biên soạn câu hỏi trắc nghiệm, điền khuyết, ghép cặp; xem trước trực quan và quản lý phiên bản.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/questions"
+                      className={cn(
+                        buttonVariants({ variant: 'default', size: 'sm' }),
+                        'shrink-0 font-semibold'
+                      )}
+                    >
+                      <span>Ngân hàng câu hỏi</span>
+                      <ArrowRight aria-hidden="true" className="size-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-surface-border bg-surface-muted text-text-secondary">
                         <KeyRound aria-hidden="true" className="size-4" />
                       </span>
                       <div className="space-y-1">
@@ -123,7 +235,7 @@ export function HomePage() {
                     <Link
                       to="/account/password"
                       className={cn(
-                        buttonVariants({ variant: 'default', size: 'sm' }),
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
                         'shrink-0 font-semibold'
                       )}
                     >

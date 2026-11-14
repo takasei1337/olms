@@ -65,6 +65,15 @@ npm --prefix frontend test
 npm --prefix frontend run build
 ```
 
+## Dữ liệu demo minh họa
+
+Seed bộ môn/chương/bài/câu hỏi minh họa (chỉ tạo/cập nhật bản ghi thuộc dataset demo, có `--dry-run` mặc định):
+
+```bash
+node backend/scripts/seed-demo.js --dry-run
+node backend/scripts/seed-demo.js --apply
+```
+
 ## Kiểm thử API
 
 ```bash
@@ -72,7 +81,7 @@ npm --prefix api-tests ci
 npm --prefix api-tests test
 ```
 
-Bộ Bruno kết nối database thật và tạo dữ liệu kiểm thử. Chạy trên database test riêng; xem [cấu hình và cách chạy](api-tests/README.md). Báo cáo được sinh local.
+Bộ Bruno yêu cầu cấu hình database test riêng trong `api-tests/.env` (không fallback sang `backend/.env` để tránh ghi fixture vào database dev/demo); xem [cấu hình và cách chạy](api-tests/README.md). Báo cáo và manifest từng lượt chạy được sinh local.
 
 ## Cấu trúc
 
