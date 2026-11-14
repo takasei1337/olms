@@ -1,0 +1,50 @@
+@import '../../design-tokens/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: var(--olms-font-sans);
+    background-color: var(--olms-surface-canvas);
+    color: var(--olms-text-primary);
+    text-underline-offset: 3px;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--olms-surface-canvas);
+    color: var(--olms-text-primary);
+    caret-color: var(--olms-brand-primary);
+  }
+
+  ::selection {
+    background-color: var(--olms-brand-100);
+    color: var(--olms-brand-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--olms-brand-600);
+    outline-offset: 2px;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
