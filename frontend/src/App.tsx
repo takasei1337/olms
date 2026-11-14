@@ -9,6 +9,8 @@ import {
 import { ChangePasswordPage } from './features/auth/pages/ChangePasswordPage';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { CatalogPage } from './features/catalog/pages/CatalogPage';
+import { ExamDetailPage } from './features/exams/pages/ExamDetailPage';
+import { ExamsPage } from './features/exams/pages/ExamsPage';
 import { QuestionBankPage } from './features/questions/pages/QuestionBankPage';
 import { QuestionEditorPage } from './features/questions/pages/QuestionEditorPage';
 import { UsersManagementPage } from './features/users/pages/UsersManagementPage';
@@ -65,6 +67,22 @@ export function AppRoutes() {
             element={
               <RequireRole allowedRoles={['ADMIN', 'TEACHER']}>
                 <QuestionEditorPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="exams"
+            element={
+              <RequireRole allowedRoles={['ADMIN', 'TEACHER']}>
+                <ExamsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="exams/:examId"
+            element={
+              <RequireRole allowedRoles={['ADMIN', 'TEACHER']}>
+                <ExamDetailPage />
               </RequireRole>
             }
           />

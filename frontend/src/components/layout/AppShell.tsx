@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
+  ClipboardList,
   HelpCircle,
   KeyRound,
   LayoutDashboard,
@@ -219,6 +220,10 @@ export function AppShell() {
                 <NavLink to="/questions" className={navLinkClass}>
                   <HelpCircle aria-hidden="true" className="size-4 shrink-0" />
                   <span>Ngân hàng câu hỏi</span>
+                </NavLink>
+                <NavLink to="/exams" className={navLinkClass}>
+                  <ClipboardList aria-hidden="true" className="size-4 shrink-0" />
+                  <span>Kỳ thi &amp; Đề thi</span>
                 </NavLink>
               </>
             ) : null}

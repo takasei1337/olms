@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   BookOpen,
+  ClipboardList,
   HelpCircle,
   KeyRound,
   ShieldCheck,
@@ -114,6 +115,32 @@ export function HomePage() {
                   <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
                     <div className="flex items-start gap-3">
                       <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
+                        <ClipboardList aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-text-primary">
+                          Tổ chức kỳ thi &amp; sinh mã đề
+                        </h3>
+                        <p className="max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                          Tạo kỳ thi, thiết lập ma trận đề, quy tắc chấm điểm, trộn mã đề chuẩn hóa và quản lý danh sách thí sinh.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/exams"
+                      className={cn(
+                        buttonVariants({ variant: 'default', size: 'sm' }),
+                        'shrink-0 font-semibold'
+                      )}
+                    >
+                      <span>Kỳ thi &amp; Đề thi</span>
+                      <ArrowRight aria-hidden="true" className="size-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
                         <Users aria-hidden="true" className="size-4" />
                       </span>
                       <div className="space-y-1">
@@ -214,6 +241,32 @@ export function HomePage() {
                       )}
                     >
                       <span>Ngân hàng câu hỏi</span>
+                      <ArrowRight aria-hidden="true" className="size-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
+                        <ClipboardList aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-text-primary">
+                          Tổ chức kỳ thi &amp; sinh mã đề
+                        </h3>
+                        <p className="max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                          Tạo kỳ thi, thiết lập ma trận đề, quy tắc chấm điểm, trộn mã đề chuẩn hóa và quản lý danh sách thí sinh.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/exams"
+                      className={cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'shrink-0 font-semibold'
+                      )}
+                    >
+                      <span>Kỳ thi &amp; Đề thi</span>
                       <ArrowRight aria-hidden="true" className="size-3.5" />
                     </Link>
                   </div>

@@ -129,7 +129,56 @@ export function translateApiError(
     case 'INVALID_REFRESH_TOKEN':
       return 'Phiên đăng nhập đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại.';
     case 'PAYLOAD_TOO_LARGE':
-      return 'Dữ liệu gửi lên vượt quá dung lượng cho phép (1MB).';
+      if (serverMessage.toLowerCase().includes('5mb') || serverMessage.toLowerCase().includes('5 mb')) {
+        return 'Dung lượng tệp hoặc dữ liệu tải lên vượt quá giới hạn tối đa (5MB).';
+      }
+      return 'Dữ liệu gửi lên vượt quá dung lượng cho phép.';
+    case 'EXAM_NOT_FOUND':
+      return 'Không tìm thấy kỳ thi hoặc kỳ thi đã bị xóa.';
+    case 'EXAM_CODE_CONFLICT':
+      return 'Mã kỳ thi đã tồn tại trong hệ thống. Vui lòng chọn mã khác.';
+    case 'EXAM_NOT_DRAFT':
+      return 'Chỉ có thể chỉnh sửa cấu hình hoặc xóa kỳ thi khi đang ở trạng thái Bản nháp.';
+    case 'EXAM_HAS_VARIANTS':
+      return 'Kỳ thi đã phát sinh mã đề nên không thể xóa trực tiếp.';
+    case 'INVALID_EXAM_TIME_RANGE':
+      return 'Thời điểm đóng đề phải diễn ra sau thời điểm mở đề.';
+    case 'FORM_TEMPLATE_REQUIRED':
+      return 'Hình thức thi trên giấy hoặc kết hợp yêu cầu mã mẫu phiếu OMR (UUID) hợp lệ.';
+    case 'EXAM_MATRIX_EMPTY':
+      return 'Ma trận đề thi đang trống. Vui lòng thêm ít nhất một dòng cấu hình.';
+    case 'EXAM_TOTAL_QUESTIONS_MISMATCH':
+      return 'Tổng số câu hỏi của ma trận hoặc đề gốc chưa khớp với tổng số câu của kỳ thi.';
+    case 'EXAM_TOTAL_SCORE_MISMATCH':
+      return 'Tổng điểm của ma trận hoặc đề gốc chưa khớp với tổng điểm kỳ thi.';
+    case 'EXAM_QUESTION_POOL_INSUFFICIENT':
+      return 'Ngân hàng câu hỏi đã duyệt chưa đủ số lượng cho cấu hình ma trận hiện tại.';
+    case 'GRADING_RULES_MISSING':
+      return 'Thiếu quy tắc chấm điểm cho ít nhất một dạng câu hỏi có trong đề. Vui lòng lưu quy tắc chấm trước khi sinh mã đề.';
+    case 'NEGATIVE_MARKING_DISALLOWED':
+      return 'Hệ thống không cho phép cấu hình điểm trừ âm.';
+    case 'TOPIC_POOL_INSUFFICIENT':
+      return 'Số lượng chủ đề khác nhau trong ngân hàng câu hỏi chưa đủ cho tùy chọn chống trùng chủ đề.';
+    case 'EXAM_PREVIEW_CHANGED':
+      return 'Dữ liệu ngân hàng câu hỏi hoặc ma trận đã thay đổi sau lần xem trước. Vui lòng bấm Xem trước lại.';
+    case 'EXAM_NOT_OPEN':
+      return 'Chưa đến thời gian mở đề nên chưa thể bắt đầu kỳ thi.';
+    case 'INVALID_EXAM_STATUS':
+      return 'Trạng thái hiện tại của kỳ thi không cho phép thực hiện thao tác này.';
+    case 'ROOT_VARIANT_REQUIRED':
+      return 'Kỳ thi chưa có đề gốc cố định. Vui lòng tạo hoặc lưu đề gốc trước.';
+    case 'ERR_PARTICIPANT_ALREADY_EXISTS':
+      return 'Thí sinh với mã số này đã được ghi danh vào kỳ thi.';
+    case 'PARTICIPANT_NOT_FOUND':
+      return 'Không tìm thấy thí sinh trong kỳ thi.';
+    case 'ERR_UNSUPPORTED_IMPORT_FILE':
+      return 'Định dạng tệp chưa được hỗ trợ. Vui lòng chỉ chọn tệp .csv hoặc .xlsx.';
+    case 'ERR_INVALID_IMPORT_FILE':
+      return 'Tệp danh sách thí sinh không hợp lệ hoặc không thể đọc dữ liệu.';
+    case 'ERR_INVALID_IMPORT_HEADERS':
+      return 'Tệp thiếu cột bắt buộc (cần có cột mã sinh viên và họ tên: student_code, full_name).';
+    case 'INVALID_IMPORT_TOKEN':
+      return 'Phiên xem trước dữ liệu import đã hết hạn hoặc không còn hợp lệ. Vui lòng tải tệp và xem trước lại.';
     case 'VALIDATION_FAILED':
     case 'VALIDATION_ERROR': {
       if (serverMessage.includes('password must have at least 8 characters') || serverMessage.includes('New password must have at least 8 characters')) {
