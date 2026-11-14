@@ -1,54 +1,32 @@
 # OLMS Database
 
-Thư mục này chứa mã SQL phục vụ xây dựng cơ sở dữ liệu của hệ thống OLMS.
+SQL dùng cho Supabase/PostgreSQL 17. `schema-pg17/` là schema triển khai; `migrations/` chứa thay đổi gia tăng. `migrations-original/` là nguồn tham khảo, không phải entry point để cài database mới.
 
-## Cấu trúc thư mục
+## Database mới
 
-### `migrations-original/`
+Dùng database trống dành riêng cho OLMS. Với `psql` đã cấu hình kết nối tới database đích:
 
-Lưu bộ SQL gốc từ tài liệu thiết kế, dùng để tham khảo và đối chiếu.
+```bash
+psql -X -v ON_ERROR_STOP=1 -f database/schema-pg17/00_apply_fresh.sql
+psql -X -v ON_ERROR_STOP=1 -f database/migrations/001_create_refresh_tokens.sql
+psql -X -v ON_ERROR_STOP=1 -f database/migrations/002_rotate_refresh_token.sql
+psql -X -v ON_ERROR_STOP=1 -f database/migrations/003_arc02_topic_balancing.sql
+psql -X -v ON_ERROR_STOP=1 -f database/migrations/004_generate_exam_variants.sql
+psql -X -v ON_ERROR_STOP=1 -f database/migrations/005_allow_variant_question_pool_selection.sql
+psql -X -v ON_ERROR_STOP=1 -f database/migrations/006_create_participant_import_previews.sql
+psql -X -v ON_ERROR_STOP=1 -f database/schema-pg17/07_security_postcheck.sql
+```
 
-Không chỉnh sửa trực tiếp các file trong thư mục này khi cần thay đổi cấu hình triển khai.
+Các lệnh sử dụng cấu hình kết nối PostgreSQL của bạn; không đưa connection string chứa mật khẩu vào repository. Kiểm tra kết quả từng lệnh và dừng khi có lỗi. Fresh schema không tự chạy migration hoặc postcheck.
 
-### `schema-pg17/`
+Nếu dùng Supabase SQL Editor, chạy nội dung các file thành phần theo thứ tự trong `00_apply_fresh.sql`, sau đó các migration và postcheck. SQL Editor không thực thi lệnh `\ir` của psql.
 
-Chứa bộ SQL đã điều chỉnh để triển khai trên PostgreSQL 17 thông qua Supabase (bao gồm cả cập nhật ARC-02 chống lệch tủ đề thi).
+## Database đã có dữ liệu
 
-Các điều chỉnh hiện tại bao gồm:
+Không chạy lại fresh schema. Đối chiếu migration đã áp dụng, backup trước khi nâng cấp và chỉ chạy các migration còn thiếu theo thứ tự. Kiểm chứng trên database test trước khi áp dụng cho dữ liệu đang sử dụng.
 
-- Sử dụng `gen_random_uuid()` thay cho `uuidv7()` để tương thích với PostgreSQL 17.
-- Bổ sung cột `questions.topic_tag`, `exam_matrices.max_questions_per_topic` và index/constraint đi kèm (`ARC-02`).
-- Bổ sung cấu hình thu hồi quyền thực thi routine trực tiếp của `anon` và `authenticated`.
-- Giữ các cấu hình phân quyền dành cho API, Worker và Readonly.
+## Cấu hình ứng dụng
 
-### `migrations/`
+Điền `SUPABASE_URL` và `SUPABASE_SERVICE_ROLE_KEY` trong `backend/.env`. Backend sử dụng JWT riêng của OLMS; tài khoản ứng dụng không phải Supabase Auth user.
 
-Chứa các file migration gia tăng áp dụng trên môi trường Supabase/PostgreSQL 17:
-
-- `001_create_refresh_tokens.sql`: Tạo bảng `public.refresh_tokens` phục vụ xoay vòng phiên đăng nhập (IAM) kèm RLS.
-- `002_rotate_refresh_token.sql`: Hàm `public.rotate_refresh_token` xử lý xoay vòng refresh token an toàn chống race condition.
-- `003_arc02_topic_balancing.sql`: Migration bổ sung `questions.topic_tag`, `exam_matrices.max_questions_per_topic` và cập nhật hàm `get_exam_publish_readiness` theo ARC-02.
-- `004_generate_exam_variants.sql`: Định nghĩa hàm sinh mã đề nguyên tử. Service Express hiện chưa gọi RPC này; luồng JavaScript vẫn ghi nhiều request riêng và cần kiểm thử atomicity/rollback.
-
-Bộ fresh schema có 23 bảng nghiệp vụ; migration 001 bổ sung `refresh_tokens`, tổng cộng 24 bảng. `00_apply_fresh.sql` không tự chạy các migration 001–004 hoặc file `07_security_postcheck.sql`; phải đối chiếu môi trường và chạy postcheck riêng. Các cột ARC-02 đã nằm trong fresh schema, migration 003 phục vụ nâng cấp database cũ.
-
-## Môi trường phát triển
-
-- Nền tảng cơ sở dữ liệu: Supabase
-- Hệ quản trị cơ sở dữ liệu: PostgreSQL 17
-- Supabase project: `olms-dev`
-
-## Lưu ý triển khai
-
-- `00_apply_fresh.sql` sử dụng lệnh `\ir` dành cho `psql`, không chạy trực tiếp toàn bộ file này trong Supabase SQL Editor.
-- Khi sử dụng Supabase SQL Editor, cần thực thi các file SQL thành phần theo đúng thứ tự và xử lý các phụ thuộc giữa chúng.
-- File `07_security_postcheck.sql` được sử dụng để kiểm tra một số điều kiện phân quyền sau triển khai.
-- Không đưa database password, connection string chứa mật khẩu hoặc Supabase service role key vào Git.
-
-## Trạng thái
-
-Cấu trúc cơ sở dữ liệu và phân quyền ban đầu đã được triển khai trên môi trường phát triển. Các kiểm thử nghiệp vụ và bảo mật toàn diện vẫn cần được thực hiện trước khi sử dụng trong production.
-
-## Thiết kế ngân hàng và mã đề 2.0
-
-Mô hình topic/nhóm/duyệt version/preview/slot và kế hoạch backfill được mô tả ở [đặc tả 2.0](../docs/16_Ngan_Hang_Cau_Hoi_Va_Ma_De.md), mục 7 và 10, cùng [ERD đích](../docs/17_ERD_Ngan_Hang_2.0.dbml). Trạng thái SPECIFIED. Các SQL schema/migration liệt kê phía trên vẫn là implementation hiện có; cần xây dựng migration và kiểm chứng riêng khi triển khai mô hình mới.
+Database password, connection string, service-role key và dump dữ liệu chỉ lưu local. Bộ kiểm thử API cần database test riêng vì có tạo tài khoản và dữ liệu nghiệp vụ.

@@ -6,6 +6,8 @@ coverage/
 __pycache__/
 *.pyc
 /graphify-out/
+/output/playwright/
+/.playwright-cli/
 
 # Local environment and credentials (templates remain public)
 .env
@@ -72,6 +74,15 @@ AGENTS.md
 GEMINI.md
 .agents/
 .gemini/
+
+# Local product/design context and agent notes
+/DESIGN.md
+/PRODUCT.md
+/DESIGN.*.md
+/PRODUCT.*.md
+/design.md
+/product.md
+/.impeccable/
 
 # Editor and OS files
 *.code-workspace

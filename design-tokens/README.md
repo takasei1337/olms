@@ -1,6 +1,6 @@
 # OLMS Design System & Token Architecture
 
-Hệ thống Design Tokens chuẩn hóa cho giao diện Frontend OLMS (Online Learning & Examination Management System), được thiết kế theo kiến trúc 3 tầng (3-Layer Token Architecture) tuân thủ skill `design-system` và `ui-styling`.
+Hệ thống Design Tokens chuẩn hóa cho giao diện Frontend OLMS (Online Learning & Examination Management System), theo kiến trúc 3 tầng. Sử dụng semantic token trong component; cập nhật nguồn và adapter nhất quán khi bổ sung token.
 
 ---
 
@@ -22,7 +22,7 @@ flowchart TD
    - Trạng thái bề mặt (`--olms-surface-canvas` / `surface-canvas`, `--olms-surface-card` / `surface-card`, `--olms-surface-border` / `surface-border`).
    - Ngữ cảnh học tập & thi cử:
      - **Exam Autosave Status**: `--olms-exam-status-saved` / `exam-saved` (xanh lá), `--olms-exam-status-saving` / `exam-saving` (hổ phách), `--olms-exam-status-unanswered` / `exam-unanswered` (xám viền đứt), `--olms-exam-status-flagged` / `exam-flagged` (tím nhạt).
-     - **Exam Countdown Timer**: `--olms-timer-normal` / `timer-normal` (xanh ngọc bình thường), `--olms-timer-warning` / `timer-warning` (< 5 phút), `--olms-timer-critical` / `timer-critical` (< 1 phút đập nhịp).
+     - **Exam Countdown Timer**: `--olms-timer-normal` / `timer-normal` (bình thường), `--olms-timer-warning` / `timer-warning` (< 5 phút), `--olms-timer-critical` / `timer-critical` (< 1 phút, kèm cảnh báo chữ, không nhấp nháy).
      - **AI Similarity Warning**: `--olms-ai-similarity-badge` / `ai-similarity` & `--olms-ai-override-notice` / `ai-override` phục vụ cảnh báo trùng ý tưởng câu hỏi.
      - **OMR Bubble Status**: `--olms-omr-valid` / `omr-valid`, `--olms-omr-invalid` / `omr-invalid`, `--olms-omr-ambiguous` / `omr-ambiguous` (chấm phiếu trắc nghiệm).
 3. **Component Specs (`tokens.json` -> `component`)**:
@@ -40,7 +40,7 @@ Import trực tiếp vào file CSS gốc (`index.css` hoặc `globals.css`):
 Hỗ trợ chuyển đổi giao diện sáng/tối tự động bằng cách gán class `.dark` vào thẻ `<html>` hoặc `<body>`.
 
 ### Cách 2: Tích hợp với Tailwind CSS (`tailwind.config.js`)
-Trong file `tailwind.config.js` của ứng dụng Frontend:
+Ví dụ cấu hình theo kiểu Tailwind 3; kiểm tra major version đã cài trước khi tích hợp, không chép nguyên sang Tailwind 4. Điều chỉnh đường dẫn import theo vị trí frontend thực tế. Trong file `tailwind.config.js`:
 ```javascript
 const olmsTokens = require('./design-tokens/tailwind.tokens.js');
 
@@ -66,9 +66,9 @@ export function QuestionCard({ questionNo, status, content, children }) {
   // status: 'saved' | 'saving' | 'unanswered' | 'flagged'
   const borderStyles = {
     saved: 'border-exam-saved bg-surface-card',
-    saving: 'border-exam-saving animate-pulse',
+    saving: 'border-exam-saving bg-surface-card',
     unanswered: 'border-surface-border border-dashed',
-    flagged: 'border-exam-flagged bg-purple-50/10',
+    flagged: 'border-exam-flagged bg-surface-card',
   };
 
   return (
@@ -91,7 +91,7 @@ export function ExamTimer({ remainingSeconds }) {
   const isWarning = remainingSeconds < 300 && !isCritical;
 
   const timerColor = isCritical
-    ? 'text-timer-critical animate-bounce'
+    ? 'text-timer-critical'
     : isWarning
     ? 'text-timer-warning'
     : 'text-timer-normal';
@@ -103,8 +103,9 @@ export function ExamTimer({ remainingSeconds }) {
   };
 
   return (
-    <div className="flex items-center space-x-2 font-mono text-lg font-bold">
+    <div role="timer" aria-label="Thời gian còn lại" aria-live="off" className="flex items-center space-x-2 font-mono text-lg font-bold tabular-nums">
       <span className={timerColor}>{formatTime(remainingSeconds)}</span>
+      {isCritical && <span className="text-text-primary">Còn dưới 1 phút</span>}
     </div>
   );
 }

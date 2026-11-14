@@ -1,6 +1,6 @@
 # Kiểm thử OLMS bằng Bruno
 
-Collection **OLMS Backend** dùng OpenCollection YAML và Bruno CLI **4.3.0** được pin trong package-lock.json. Đây là HTTP integration với ứng dụng Express và Supabase/PostgreSQL thật từ backend/.env. Các file `backend/test-*.js` cũ đã được bỏ; lệnh test của backend chuyển tiếp sang bộ Bruno này. Các script `.cjs` tại `api-tests/scripts/` vẫn cần để setup fixture, dựng collection, chạy CLI và xuất báo cáo.
+Collection **OLMS Backend** dùng OpenCollection YAML và Bruno CLI **4.3.0** được pin trong package-lock.json. Đây là HTTP integration với ứng dụng Express và Supabase/PostgreSQL thật từ backend/.env. Lệnh test của backend chuyển tiếp sang bộ Bruno này. Các script `.cjs` tại `api-tests/scripts/` vẫn cần để setup fixture, dựng collection, chạy CLI và xuất báo cáo.
 
 Phạm vi hiện tại là kiểm thử API. Bộ này chưa thay thế các ca unit riêng cho embedding/cosine, ranh giới timeout, xung đột đồng thời và những logic nội bộ không quan sát được đầy đủ qua HTTP.
 
@@ -18,7 +18,7 @@ Runner sẽ:
 
 1. Đọc cấu hình database/JWT từ `backend/.env`.
 2. Tạo hoặc xác minh bốn tài khoản riêng cho Bruno: ADMIN, TEACHER, một TEACHER khác chủ và STUDENT. Bootstrap bằng Supabase service-role chỉ phục vụ fixture; các request cần xác thực vẫn login qua API thật.
-3. Sinh run_id và mật khẩu user kiểm thử; ghi biến local vào `OLMS Backend/.env`, giữ nguyên các biến không thuộc runner đã có trong file đó. Tạo thêm fixture exam riêng ở RESULT_PUBLISHED để test archive thành công; đây là tiền điều kiện seed trong DB, không phải API công bố kết quả đã triển khai.
+3. Sinh run_id và mật khẩu user kiểm thử; ghi biến local vào `OLMS Backend/.env`, giữ nguyên các biến không thuộc runner đã có trong file đó. Tạo thêm fixture exam riêng ở RESULT_PUBLISHED để test archive thành công; đây là tiền điều kiện seed trong DB cho kịch bản archive.
 4. Dựng collection từ `scripts/cases.cjs`; mở backend localhost cổng 3301 nếu chưa có server phù hợp.
 5. Chạy các request tuần tự bằng Bruno CLI safe sandbox, tự lưu/gửi cookie, tự lấy token và ID từ response.
 6. Ghi JSON/JUnit/log, cập nhật `docs/completed_api.md` và lưu bằng chứng JSON đã lược dữ liệu nhạy cảm.
@@ -75,13 +75,15 @@ File `API.yml` cũ gọi dịch vụ AI bên ngoài OLMS được giữ để d�
 
 ## Phạm vi và dữ liệu fixture
 
-Các scenario bao phủ mọi method/path có handler ở thời điểm xây dựng collection: auth, users, catalog, question types, questions/AI/clone/versions, exams/matrix/grading rules/generate/lifecycle và health. Có thêm các nhánh thiếu JWT, sai role, sai owner, UUID/answer_spec sai và chuyển trạng thái DRAFT không hợp lệ. Không tính 32 scaffold 501 là tính năng đã hoàn thành.
+Các scenario bao phủ mọi method/path có handler ở thời điểm xây dựng collection: auth, users, catalog, question types, questions/AI/clone/versions, exams/matrix/grading rules/generate/lifecycle và health. Có thêm các nhánh thiếu JWT, sai role, sai owner, UUID/answer_spec sai và chuyển trạng thái DRAFT không hợp lệ. Endpoint trả 501 chưa phải tính năng sử dụng được.
 
 Mỗi lần chạy tạo dữ liệu có code/name theo run_id. CRUD xóa mềm được test bằng tài nguyên riêng chưa dùng. Những câu hỏi/snapshot đã dùng sinh đề, kỳ thi và user test được giữ để đối soát, không hard-delete dữ liệu frozen hay thay dữ liệu người dùng sẵn có. Bốn tài khoản bootstrap được tái sử dụng qua file state local; mỗi lượt tạo user đổi mật khẩu riêng rồi khôi phục mật khẩu test.
 
 Kịch bản xuất đề giấy kiểm tra HTTP 501 NOT_IMPLEMENTED. Kịch bản bắt đầu thi kiểm tra cả trước và sau opens_at. Archive đã đồng bộ theo SQL: ENDED trả 409, RESULT_PUBLISHED → ARCHIVED trả 200, gọi archive lần nữa trả 409. Collection kiểm cả ba nhánh, không thay lỗi 500 thành expected success. Xem kết quả thực tế trong báo cáo.
 
-## Kết quả và bảo trì
+## Báo cáo local và bảo trì
+
+Các file dưới đây do runner sinh tại máy, không cần có sẵn khi clone và không đưa lên Git:
 
 - `docs/completed_api.md`: bảng từng API và các lỗi/bước bị chặn.
 - `docs/verification/bruno-<run_id>.json`: bằng chứng an toàn, không chứa body/header/secret.
@@ -89,7 +91,3 @@ Kịch bản xuất đề giấy kiểm tra HTTP 501 NOT_IMPLEMENTED. Kịch b�
 - `api-tests/reports/latest.json`: summary của lần gần nhất.
 
 Khi thêm API, bổ sung scenario trong `scripts/cases.cjs`; `npm test` dựng lại YAML từ nguồn này. Các request thử nghiệm ngoài danh sách không tự được wrapper chạy. Muốn chuẩn bị collection mà chưa chạy: `node api-tests/scripts/build-collection.cjs`. Tài liệu tham khảo: [Bruno CLI run](https://docs.usebruno.com/bru-cli/run/overview) và [reporter options](https://docs.usebruno.com/bru-cli/run/options).
-
-## Thiết kế ngân hàng 2.0
-
-Bộ Bruno hiện tại kiểm backend 1.x. Các ca cần bổ sung cho topic, nhóm tương đương và mã đề khác dữ kiện nằm ở mục 11 của [đặc tả 2.0](../docs/16_Ngan_Hang_Cau_Hoi_Va_Ma_De.md). Chỉ tính nghiệm thu 2.0 sau khi triển khai và chạy các ca BANK2/MAT2/GEN2/MIG2 trên fixture mới.
