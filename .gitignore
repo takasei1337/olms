@@ -5,6 +5,7 @@ coverage/
 .cache/
 __pycache__/
 *.pyc
+/graphify-out/
 
 # Local environment and credentials (templates remain public)
 .env
@@ -45,8 +46,9 @@ service-account*.json
 *.log
 npm-debug.log*
 
-# Public docs: keep Markdown, OpenAPI, ERD, JSON schemas and sanitized reports.
-# Word/PDF/ZIP exports and the recovered historical bundle remain local.
+# Project documentation stays local and is not published to GitHub.
+/docs/
+# Local document exports and historical bundles.
 /docs/**/*.docx
 /docs/**/*.pdf
 /docs/**/*.zip
