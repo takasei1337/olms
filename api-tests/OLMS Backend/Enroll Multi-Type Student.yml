@@ -1,7 +1,7 @@
 info:
   name: Enroll Multi-Type Student
   type: http
-  seq: 155
+  seq: 157
   tags:
     - olms
     - positive

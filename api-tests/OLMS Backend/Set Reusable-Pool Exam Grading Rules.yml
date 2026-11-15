@@ -1,7 +1,7 @@
 info:
   name: Set Reusable-Pool Exam Grading Rules
   type: http
-  seq: 126
+  seq: 128
   tags:
     - olms
     - positive

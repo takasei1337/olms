@@ -1,7 +1,7 @@
 info:
   name: Activate Multi Choice Question
   type: http
-  seq: 140
+  seq: 142
   tags:
     - olms
     - positive

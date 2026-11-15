@@ -1,7 +1,7 @@
 info:
   name: Set Strict-Topic Exam Grading Rules
   type: http
-  seq: 122
+  seq: 124
   tags:
     - olms
     - positive

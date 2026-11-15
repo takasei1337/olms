@@ -1,7 +1,7 @@
 info:
   name: Create Delete Exam
   type: http
-  seq: 116
+  seq: 118
   tags:
     - olms
     - positive

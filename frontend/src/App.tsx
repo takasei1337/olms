@@ -17,11 +17,12 @@ import { StudentExamSessionPage } from './features/student-exams/pages/StudentEx
 import { StudentExamsPage } from './features/student-exams/pages/StudentExamsPage';
 import { StudentResultDetailPage } from './features/results/pages/StudentResultDetailPage';
 import { StudentResultsPage } from './features/results/pages/StudentResultsPage';
+import { AuditLogsPage } from './features/audit-logs/pages/AuditLogsPage';
+import { QuestionTypesPage } from './features/question-types/pages/QuestionTypesPage';
 import { UsersManagementPage } from './features/users/pages/UsersManagementPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
-import { OlmsUiShowcasePage } from './features/showcase/OlmsUiShowcasePage';
 import { ThemeProvider } from './features/theme/ThemeContext';
 
 function LegacyBankRedirect() {
@@ -32,9 +33,6 @@ function LegacyBankRedirect() {
 export function AppRoutes() {
   return (
     <Routes>
-      {import.meta.env.DEV && (
-        <Route path="/ui-showcase" element={<OlmsUiShowcasePage />} />
-      )}
       <Route
         path="/login"
         element={
@@ -141,6 +139,22 @@ export function AppRoutes() {
             element={
               <RequireRole allowedRoles={['ADMIN']}>
                 <UsersManagementPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="admin/question-types"
+            element={
+              <RequireRole allowedRoles={['ADMIN']}>
+                <QuestionTypesPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="admin/audit-logs"
+            element={
+              <RequireRole allowedRoles={['ADMIN']}>
+                <AuditLogsPage />
               </RequireRole>
             }
           />

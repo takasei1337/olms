@@ -3,6 +3,7 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const supabase = require('../config/supabase');
 const {hashPassword} = require('./auth.service');
+const {recordAuditLog} = require('./audit-logs.service');
 
 const PRE_START_EXAM_STATUSES = ['DRAFT', 'GENERATED', 'PUBLISHED'];
 const VALID_PARTICIPANT_STATUSES = ['REGISTERED', 'IN_PROGRESS', 'COMPLETED'];
@@ -91,26 +92,6 @@ async function generateUniqueUsername(studentCode, examCode) {
     }
 
     return `sv_${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
-}
-
-async function recordAuditLog({actorUserId, action, entityName, entityId, oldValue = null, newValue = null, requestMeta = {}}) {
-    try {
-        await supabase
-            .from('audit_logs')
-            .insert({
-                actor_user_id: actorUserId || null,
-                action,
-                entity_name: entityName,
-                entity_id: entityId || null,
-                old_value: oldValue,
-                new_value: newValue,
-                ip_address: requestMeta.ip || null,
-                user_agent: requestMeta.userAgent ? String(requestMeta.userAgent).slice(0, 255) : null,
-                created_at: new Date().toISOString()
-            });
-    } catch (_) {
-        // Non-blocking audit fallback
-    }
 }
 
 async function findOrCreateStudentProfile({student_code, full_name, email = null}) {

@@ -5,10 +5,12 @@ import {
   BookOpen,
   ClipboardList,
   HelpCircle,
+  History,
   KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
+  Shapes,
   Users,
   X,
 } from 'lucide-react';
@@ -144,7 +146,7 @@ export function AppShell() {
             to="/"
             className="inline-flex min-w-0 items-center gap-2 text-sm font-bold text-text-primary"
           >
-            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-brand-600 text-xs font-bold text-white">
+            <span className="inline-flex h-7 shrink-0 items-center justify-center rounded-md bg-brand-600 px-2 text-[11px] font-bold tracking-tight text-white">
               OLMS
             </span>
             <span className="truncate">Hệ thống Khảo thí OLMS</span>
@@ -185,7 +187,7 @@ export function AppShell() {
             to="/"
             className="inline-flex min-w-0 items-center gap-2.5 text-base font-bold text-text-primary hover:text-brand-600 dark:hover:text-brand-200"
           >
-            <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-brand-600 text-xs font-bold text-white shadow-sm">
+            <span className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-brand-600 px-2 text-xs font-bold tracking-tight text-white shadow-sm">
               OLMS
             </span>
             <span className="truncate">Khảo thí OLMS</span>
@@ -244,10 +246,20 @@ export function AppShell() {
             ) : null}
 
             {canManageUsers ? (
-              <NavLink to="/admin/users" className={navLinkClass}>
-                <Users aria-hidden="true" className="size-4 shrink-0" />
-                <span>Quản lý tài khoản</span>
-              </NavLink>
+              <>
+                <NavLink to="/admin/users" className={navLinkClass}>
+                  <Users aria-hidden="true" className="size-4 shrink-0" />
+                  <span>Quản lý tài khoản</span>
+                </NavLink>
+                <NavLink to="/admin/question-types" className={navLinkClass}>
+                  <Shapes aria-hidden="true" className="size-4 shrink-0" />
+                  <span>Dạng câu hỏi</span>
+                </NavLink>
+                <NavLink to="/admin/audit-logs" className={navLinkClass}>
+                  <History aria-hidden="true" className="size-4 shrink-0" />
+                  <span>Nhật ký hệ thống</span>
+                </NavLink>
+              </>
             ) : null}
 
             {canChangePassword ? (

@@ -5,7 +5,9 @@ import {
   BookOpen,
   ClipboardList,
   HelpCircle,
+  History,
   KeyRound,
+  Shapes,
   ShieldCheck,
   UserCheck,
   Users,
@@ -161,6 +163,58 @@ export function HomePage() {
                       )}
                     >
                       <span>Quản lý tài khoản</span>
+                      <ArrowRight aria-hidden="true" className="size-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
+                        <Shapes aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-text-primary">
+                          Danh mục dạng câu hỏi
+                        </h3>
+                        <p className="max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                          Theo dõi và quản lý các mã dạng câu hỏi chuẩn hóa dùng trong ngân hàng câu hỏi và đề thi.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/admin/question-types"
+                      className={cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'shrink-0 font-semibold'
+                      )}
+                    >
+                      <span>Dạng câu hỏi</span>
+                      <ArrowRight aria-hidden="true" className="size-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-500/30 bg-semantic-info-bg text-brand-600 dark:text-brand-200">
+                        <History aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-text-primary">
+                          Nhật ký hệ thống
+                        </h3>
+                        <p className="max-w-xl text-xs leading-relaxed text-pretty text-text-secondary">
+                          Tra cứu nhật ký thao tác hệ thống theo đối tượng, hành động, người thực hiện và khoảng thời gian.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/admin/audit-logs"
+                      className={cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'shrink-0 font-semibold'
+                      )}
+                    >
+                      <span>Xem nhật ký</span>
                       <ArrowRight aria-hidden="true" className="size-3.5" />
                     </Link>
                   </div>

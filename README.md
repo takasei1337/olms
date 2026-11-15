@@ -2,7 +2,7 @@
 
 Hệ thống quản lý ngân hàng câu hỏi, tạo đề, tổ chức thi trực tuyến và chấm điểm. Backend dùng Node.js, Express và Supabase/PostgreSQL; xác thực bằng JWT của ứng dụng.
 
-Có các luồng quản lý tài khoản, môn/chương/bài, câu hỏi, kỳ thi, thí sinh, làm bài và xem kết quả. Frontend sử dụng React + Vite (`frontend/`), hiện cung cấp luồng đăng nhập, khôi phục phiên/làm mới token, phân quyền điều hướng (`ADMIN`, `TEACHER`, `STUDENT`), quản lý tài khoản dành cho `ADMIN` và đổi mật khẩu cá nhân cho `ADMIN`/`TEACHER`. In đề giấy và OMR chưa hoàn thiện; các endpoint tương ứng trả `501 NOT_IMPLEMENTED`.
+Có các luồng quản lý tài khoản, dạng câu hỏi, nhật ký hệ thống (`ADMIN`), môn/chương/bài, câu hỏi 5 dạng, kỳ thi và điều khiển thời gian thi, thí sinh, bảng điểm/thống kê (`ADMIN`/`TEACHER`), thi trực tuyến và xem kết quả (`STUDENT`). Frontend dùng React + Vite (`frontend/`), cung cấp đầy đủ giao diện cho các phân hệ trực tuyến nêu trên. Phần thi giấy (`print-files`) và chấm phiếu OMR (`/omr/*`) chưa hoàn thiện; các endpoint tương ứng trả `501 NOT_IMPLEMENTED`.
 
 ## Yêu cầu
 
@@ -37,7 +37,7 @@ npm --prefix backend start
 - API base URL: `http://localhost:3000/api/v1`.
 - Hợp đồng API: [OpenAPI](api-tests/06_OpenAPI_3.0.yaml).
 
-Backend khởi chạy worker xử lý kỳ thi/bài thi hết hạn cùng process. Không có tài khoản đăng nhập mặc định hoặc dữ liệu cá nhân kèm repository; bộ kiểm thử có thể chuẩn bị tài khoản fixture trên database test riêng.
+Backend khởi chạy worker xử lý kỳ thi/bài thi hết hạn cùng process (có thể tùy chỉnh qua các biến tùy chọn trong `backend/.env.example` như `WORKER_ENABLED`, `AI_RETRY_ENABLED`, `DEADLINE_SWEEP_*`, `LOGIN_RATE_LIMIT_*`, `LOGIN_MAX_FAILED_ATTEMPTS`). Không có tài khoản đăng nhập mặc định hoặc dữ liệu cá nhân kèm repository; bộ kiểm thử có thể chuẩn bị tài khoản fixture trên database test riêng.
 
 ## Chạy frontend
 
@@ -67,11 +67,13 @@ npm --prefix frontend run build
 
 ## Dữ liệu demo minh họa
 
-Seed bộ môn/chương/bài/câu hỏi minh họa (chỉ tạo/cập nhật bản ghi thuộc dataset demo, có `--dry-run` mặc định):
+Kiểm tra tính nhất quán dataset, xem trước (`--dry-run` mặc định), áp dụng (`--apply`) hoặc hoàn tác (`--rollback`) dữ liệu demo minh họa (chỉ tác động bản ghi thuộc dataset demo):
 
 ```bash
+node backend/scripts/seed-demo.js --validate-only
 node backend/scripts/seed-demo.js --dry-run
 node backend/scripts/seed-demo.js --apply
+node backend/scripts/seed-demo.js --rollback
 ```
 
 ## Kiểm thử API
@@ -81,7 +83,7 @@ npm --prefix api-tests ci
 npm --prefix api-tests test
 ```
 
-Bộ Bruno yêu cầu cấu hình database test riêng trong `api-tests/.env` (không fallback sang `backend/.env` để tránh ghi fixture vào database dev/demo); xem [cấu hình và cách chạy](api-tests/README.md). Báo cáo và manifest từng lượt chạy được sinh local.
+Bộ Bruno yêu cầu cấu hình database test riêng trong `api-tests/.env` kèm xác nhận cô lập `OLMS_TEST_DB_CONFIRM=isolated-test-db` (không fallback sang `backend/.env` để tránh ghi fixture vào database dev/demo); xem [cấu hình và cách chạy](api-tests/README.md). Báo cáo và manifest từng lượt chạy được sinh local.
 
 ## Cấu trúc
 

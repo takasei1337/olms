@@ -27,8 +27,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { PaginationFooter } from '@/components/ui/PaginationFooter';
 import { useAuth } from '../../auth/AuthContext';
-import type { Chapter, Lesson, LessonTopic, Subject } from '../types';
+import type {
+  CatalogPaginationMeta,
+  Chapter,
+  Lesson,
+  LessonTopic,
+  Subject,
+} from '../types';
 import {
   getChaptersBySubjectApi,
   getLessonsByChapterApi,
@@ -80,9 +87,11 @@ export function CatalogPage() {
   const [reloadTick, setReloadTick] = useState(0);
   const fetchSubjectsAbortRef = useRef<AbortController | null>(null);
 
-  // Search input for subjects
+  // Search & pagination for subjects
   const [subjectSearch, setSubjectSearch] = useState('');
   const [debouncedSubjectSearch, setDebouncedSubjectSearch] = useState('');
+  const [subjectPage, setSubjectPage] = useState(1);
+  const [subjectsMeta, setSubjectsMeta] = useState<CatalogPaginationMeta | null>(null);
 
   // Modals state
   const [subjectModalState, setSubjectModalState] = useState<{
@@ -109,13 +118,17 @@ export function CatalogPage() {
   const fetchLessonsAbortRef = useRef<AbortController | null>(null);
   const fetchTopicsAbortRef = useRef<AbortController | null>(null);
 
-  // Debounce subject search
+  // Debounce subject search and reset page when keyword changes
   useEffect(() => {
+    const trimmed = subjectSearch.trim();
     const timer = setTimeout(() => {
-      setDebouncedSubjectSearch(subjectSearch.trim());
+      if (trimmed !== debouncedSubjectSearch) {
+        setSubjectPage(1);
+        setDebouncedSubjectSearch(trimmed);
+      }
     }, 250);
     return () => clearTimeout(timer);
-  }, [subjectSearch]);
+  }, [subjectSearch, debouncedSubjectSearch]);
 
   // Sync selected state to URL query params
   useEffect(() => {
@@ -136,12 +149,13 @@ export function CatalogPage() {
     try {
       const res = await getSubjectsApi({
         q: debouncedSubjectSearch || undefined,
-        page: 1,
-        page_size: 100,
+        page: subjectPage,
+        page_size: 50,
       }, controller.signal);
       if (controller.signal.aborted) return;
       const list = res.data ?? [];
       setSubjects(list);
+      setSubjectsMeta(res.meta ?? null);
       setSelectedSubjectId((current) => current ?? list[0]?.id ?? null);
     } catch {
       if (!controller.signal.aborted) {
@@ -150,7 +164,7 @@ export function CatalogPage() {
     } finally {
       if (!controller.signal.aborted) setIsLoadingSubjects(false);
     }
-  }, [debouncedSubjectSearch]);
+  }, [debouncedSubjectSearch, subjectPage]);
 
   useEffect(() => {
     void loadSubjects();
@@ -530,8 +544,8 @@ export function CatalogPage() {
               <CardTitle className="flex items-center gap-2 text-sm font-bold text-text-primary">
                 <BookOpen aria-hidden="true" className="size-4 text-brand-600" />
                 <span>Môn học</span>
-                <Badge variant="outline" className="ml-1 text-[11px]">
-                  {subjects.length}
+                <Badge variant="outline" className="ml-1 text-[11px] tabular-nums">
+                  {subjectsMeta?.total_items ?? subjects.length}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -544,6 +558,7 @@ export function CatalogPage() {
                 />
                 <Input
                   type="search"
+                  aria-label="Tìm kiếm môn học"
                   value={subjectSearch}
                   onChange={(e) => setSubjectSearch(e.target.value)}
                   placeholder="Tìm theo tên hoặc mã môn..."
@@ -664,6 +679,18 @@ export function CatalogPage() {
                   })
                 )}
               </div>
+
+              {subjectsMeta && subjectsMeta.total_pages > 1 ? (
+                <PaginationFooter
+                  page={subjectPage}
+                  meta={subjectsMeta}
+                  itemLabel="môn học"
+                  compact
+                  isLoading={isLoadingSubjects}
+                  onPageChange={setSubjectPage}
+                  ariaLabel="Phân trang danh sách môn học"
+                />
+              ) : null}
             </CardContent>
           </Card>
         </div>

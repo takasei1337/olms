@@ -9,6 +9,9 @@ const pendingRoutes = require('./routes/pending.routes');
 
 const app = express();
 
+// Honor X-Forwarded-Proto and X-Forwarded-For behind Render/Vercel reverse proxies
+app.set('trust proxy', 1);
+
 // Disable information leakage header
 app.disable('x-powered-by');
 

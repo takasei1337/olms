@@ -274,13 +274,16 @@ export function UsersManagementPage() {
   }, []);
 
   const currentUserId = currentUser?.id ?? '';
-  const totalPages = Math.max(1, meta.total_pages);
+  const totalPages = Math.max(1, Number.isFinite(meta.total_pages) ? meta.total_pages : 1);
+  const safeTotalItems = Number.isFinite(meta.total_items) ? meta.total_items : users.length;
+  const safePage = Number.isFinite(meta.page) ? meta.page : page;
+  const safePageSize = Number.isFinite(meta.page_size) ? meta.page_size : pageSize;
   const startIndex =
-    meta.total_items === 0 ? 0 : (meta.page - 1) * meta.page_size + 1;
+    safeTotalItems === 0 ? 0 : (safePage - 1) * safePageSize + 1;
   const endIndex =
-    meta.total_items === 0
+    safeTotalItems === 0
       ? 0
-      : Math.min(meta.total_items, startIndex + users.length - 1);
+      : Math.min(safeTotalItems, startIndex + users.length - 1);
 
   return (
     <div className="space-y-5">

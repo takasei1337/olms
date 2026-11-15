@@ -303,15 +303,25 @@ export function QuestionEditorPage() {
       return;
     }
 
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    setErrorDetails(null);
-
     const sanitizedSpec = sanitizeAnswerSpecPayload(answerSpec);
     const normalizedTopicTag = topicTag.trim() || null;
     const normalizedMediaUrl = mediaUrl.trim() || null;
+    if (normalizedMediaUrl) {
+      if (normalizedMediaUrl.length > 500) {
+        setErrorMessage('Đường dẫn hình ảnh không được vượt quá 500 ký tự.');
+        return;
+      }
+      if (!/^(https?:\/\/\S+|\/\S+)$/i.test(normalizedMediaUrl)) {
+        setErrorMessage('Đường dẫn hình ảnh phải bắt đầu bằng https://, http:// hoặc đường dẫn nội bộ /...');
+        return;
+      }
+    }
     const normalizedExplanation = explanation.trim() || null;
     const normalizedLessonId = selectedLessonId || null;
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setErrorDetails(null);
 
     try {
       if (isEdit && questionId) {

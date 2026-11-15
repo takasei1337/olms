@@ -1,7 +1,7 @@
 info:
   name: Change Result Visibility To Status
   type: http
-  seq: 104
+  seq: 106
   tags:
     - olms
     - positive

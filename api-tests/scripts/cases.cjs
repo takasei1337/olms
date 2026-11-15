@@ -119,6 +119,8 @@ add('Reject Publish Before Exam Closes','POST','/exams/{{exam_id}}/results/publi
 add('Get Exam Results','GET','/exams/{{exam_id}}/results',200,{deps:['exam_id','started','submission_id'],check:'expect(body.data).to.be.an("array");const row = body.data.find((item) => item.submission_id === bru.getVar("submission_id"));expect(row).to.be.an("object");expect(row.status).to.equal("GRADED");expect(row.score).to.be.a("number");'});
 add('Get Submission Result Detail','GET','/exams/{{exam_id}}/results/{{submission_id}}',200,{deps:['exam_id','started','submission_id'],check:'expect(body.data.summary.result_available).to.equal(true);expect(body.data.answers).to.have.lengthOf(1);expect(body.data.answers[0].correct_answer).to.be.an("object");'});
 add('Get Exam Statistics','GET','/exams/{{exam_id}}/statistics',200,{deps:['exam_id','started','submission_id'],check:'expect(body.data.graded_count).to.equal(1);expect(body.data.distribution).to.have.lengthOf(5);'});
+add('Reject Invalid Exam Close Time','PATCH','/exams/{{exam_id}}/close-time',400,{deps:['exam_id','started'],body:{closes_at:'{{already_open_at}}',reason:'Bruno regression test invalid close time'},check:'expect(body.code).to.equal("INVALID_CLOSE_TIME");'});
+add('Extend Exam Close Time','PATCH','/exams/{{exam_id}}/close-time',200,{deps:['exam_id','started'],before:'bru.setVar("extended_closes_at", new Date(Date.now() + 93600000).toISOString());',body:{closes_at:'{{extended_closes_at}}',reason:'Bruno regression extend close time window'},check:'expect(body.data.id).to.equal(bru.getVar("exam_id"));'});
 add('Student Result Before Publish','GET','/me/results/{{exam_id}}',200,{auth:'enrolled_student_token',deps:['enrolled_student_token','exam_id'],check:'expect(body.data.result_published).to.equal(false);expect(body.data.result_available).to.equal(false);expect(body.data.total_score).to.equal(undefined);'});
 add('Reject Student Review Before Publish','GET','/me/results/{{exam_id}}/review',409,{auth:'enrolled_student_token',deps:['enrolled_student_token','exam_id'],check:'expect(body.code).to.equal("RESULT_NOT_READY");'});
 add('Login Student','POST','/auth/login',200,{...auth,body:login('student'),token:'student_token'});
@@ -223,6 +225,8 @@ expect(inp.grading_status).to.equal("CORRECT");
 expect(inp.earned_score).to.equal(1);
 expect(mat.grading_status).to.equal("CORRECT");
 expect(mat.earned_score).to.equal(1);`});
+add('End Exam Early','POST','/exams/{{mt_exam_id}}/end-early',200,{deps:['mt_exam_id','mt_started'],body:{reason:'Bruno regression early completion after all submissions'},check:'expect(body.data.status).to.equal("ENDED");'});
+add('Reject Repeated End Exam Early','POST','/exams/{{mt_exam_id}}/end-early',409,{deps:['mt_exam_id','mt_started'],body:{reason:'Cannot end an already ended exam'},check:'expect(body.code).to.equal("INVALID_EXAM_STATUS");'});
 add('Delete Exam','DELETE','/exams/{{delete_exam_id}}',200,{deps:['delete_exam_id']});
 for(const action of ['publish','start','archive'])add('Reject Draft '+action,'POST',`/exams/{{delete_exam_id}}/${action}`,409,{deps:['delete_exam_id'],beforeDelete:true});
 add('Create Cleanup Subject','POST','/subjects',201,{body:{code:'{{run_id}}_C',name:'Bruno cleanup subject'},capture:'cleanup_subject_id'});

@@ -7,7 +7,7 @@ const {clearLoginFailures} = require('./login-guard.service');
 async function findUsers(from, to, q, role, status) {
     let query = supabase
     .from('users')
-    .select('id, username, full_name, role, status', {count : 'exact'})
+    .select('id, username, full_name, email, phone, role, status, created_at, updated_at', {count : 'exact'})
     .is('deleted_at', null);
 
     if (q) {
@@ -36,7 +36,7 @@ async function findUsers(from, to, q, role, status) {
 async function findUserById(userId) {
     const {data, error} = await supabase
     .from('users')
-    .select('id, username, full_name, role, status')
+    .select('id, username, full_name, email, phone, role, status, created_at, updated_at')
     .eq('id', userId)
     .is('deleted_at', null)
     .maybeSingle();
@@ -58,7 +58,7 @@ async function createUser(username, password, fullName, email, role) {
         email, role, status: 'ACTIVE',
         created_at: now, updated_at: now
     })
-    .select('id, username, full_name, email, role, status, created_at')
+    .select('id, username, full_name, email, phone, role, status, created_at, updated_at')
     .single();
 
     if (error) throw error;
@@ -75,7 +75,7 @@ async function updateUser(id, updates) {
     })
     .eq('id', id)
     .is('deleted_at', null)
-    .select('id, username, full_name, email, phone, role, status, updated_at')
+    .select('id, username, full_name, email, phone, role, status, created_at, updated_at')
     .maybeSingle();
 
     if (error) throw error;
@@ -95,7 +95,7 @@ async function updateUserStatus(userId, status, actorUserId, requestMeta = {}) {
         })
         .eq('id', userId)
         .is('deleted_at', null)
-        .select('id, username, full_name, email, phone, role, status, created_at')
+        .select('id, username, full_name, email, phone, role, status, created_at, updated_at')
         .maybeSingle();
 
     if (error) throw error;

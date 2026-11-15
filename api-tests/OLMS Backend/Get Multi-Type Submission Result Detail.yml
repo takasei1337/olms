@@ -1,7 +1,7 @@
 info:
   name: Get Multi-Type Submission Result Detail
   type: http
-  seq: 164
+  seq: 166
   tags:
     - olms
     - positive

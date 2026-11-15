@@ -1,7 +1,7 @@
 info:
   name: Reject Student Review Under Score Only
   type: http
-  seq: 103
+  seq: 105
   tags:
     - olms
     - negative

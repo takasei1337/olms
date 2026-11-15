@@ -1,7 +1,7 @@
 info:
   name: Set Matrix-Root-Shuffle Grading Rules
   type: http
-  seq: 136
+  seq: 138
   tags:
     - olms
     - positive

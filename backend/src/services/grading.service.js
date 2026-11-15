@@ -4,7 +4,7 @@ const {
     indexToDisplayLabel,
     getOrderedChoices,
     buildStudentRenderSpec
-} = require('./student-exam.service');
+} = require('./exam-render.helper');
 
 function applyRounding(value, rule) {
     const precision = Number.isInteger(rule?.rounding_precision) ? rule.rounding_precision : 2;

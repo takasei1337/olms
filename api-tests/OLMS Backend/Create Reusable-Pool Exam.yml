@@ -1,7 +1,7 @@
 info:
   name: Create Reusable-Pool Exam
   type: http
-  seq: 124
+  seq: 126
   tags:
     - olms
     - positive

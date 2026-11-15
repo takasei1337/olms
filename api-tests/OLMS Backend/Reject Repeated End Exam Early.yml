@@ -1,0 +1,45 @@
+info:
+  name: Reject Repeated End Exam Early
+  type: http
+  seq: 168
+  tags:
+    - olms
+    - negative
+http:
+  method: POST
+  url: "{{base_url}}/exams/{{mt_exam_id}}/end-early"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "reason": "Cannot end an already ended exam"
+      }
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const missing = ["mt_exam_id","mt_started"].filter((key) => !bru.getVar(key));
+        if (missing.length) {
+          bru.runner.skipRequest();
+        }
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("HTTP 409 (actual " + res.getStatus() + " " + (body?.code || body?.status || "") + ")", () => {
+          expect(res.getStatus()).to.equal(409);
+        });
+
+        test("response success flag", () => {
+          expect(body.success).to.equal(false);
+        });
+
+        test("response contract", () => {
+          expect(body.code).to.equal("INVALID_EXAM_STATUS");
+        });
+settings:
+  encodeUrl: true
+  timeout: 30000
+  followRedirects: false
+docs: "Expected HTTP 409. Requires runtime variables: mt_exam_id, mt_started. Run the collection sequentially with Local environment."

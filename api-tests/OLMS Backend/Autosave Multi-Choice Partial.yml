@@ -1,7 +1,7 @@
 info:
   name: Autosave Multi-Choice Partial
   type: http
-  seq: 159
+  seq: 161
   tags:
     - olms
     - positive

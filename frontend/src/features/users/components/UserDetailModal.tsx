@@ -157,9 +157,7 @@ export function UserDetailModal({
               {activeUser.email ? (
                 activeUser.email
               ) : (
-                <span className="text-text-secondary">
-                  Chưa hiển thị (bấm Chỉnh sửa thông tin để cập nhật)
-                </span>
+                <span className="text-text-secondary">Chưa cập nhật</span>
               )}
             </dd>
           </div>

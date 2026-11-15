@@ -1,7 +1,7 @@
 info:
   name: Reject Student Session Before Opening
   type: http
-  seq: 180
+  seq: 184
   tags:
     - olms
     - negative

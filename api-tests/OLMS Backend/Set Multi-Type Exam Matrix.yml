@@ -1,7 +1,7 @@
 info:
   name: Set Multi-Type Exam Matrix
   type: http
-  seq: 151
+  seq: 153
   tags:
     - olms
     - positive

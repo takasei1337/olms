@@ -136,7 +136,7 @@ export function LoginPage() {
         >
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2.5">
-              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-brand-600 text-xs font-bold text-white shadow-sm">
+              <span className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-brand-600 px-2.5 text-xs font-bold tracking-tight text-white shadow-sm">
                 OLMS
               </span>
               <span className="text-sm font-semibold text-blue-100">

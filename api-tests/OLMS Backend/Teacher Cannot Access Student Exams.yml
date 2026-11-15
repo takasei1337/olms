@@ -1,7 +1,7 @@
 info:
   name: Teacher Cannot Access Student Exams
   type: http
-  seq: 181
+  seq: 185
   tags:
     - olms
     - negative

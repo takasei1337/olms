@@ -1,7 +1,7 @@
 info:
   name: Set Root Exam Grading Rules
   type: http
-  seq: 131
+  seq: 133
   tags:
     - olms
     - positive

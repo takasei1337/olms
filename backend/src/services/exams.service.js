@@ -1,20 +1,12 @@
 const {createHash, createHmac, randomUUID} = require('node:crypto');
 const supabase = require('../config/supabase');
+const gradingService = require('./grading.service');
+const {requireExamOpened} = require('./exam-timing.helper');
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VALID_DELIVERY_MODES = ['ONLINE', 'PAPER', 'BOTH'];
 const VALID_RESULT_VISIBILITY_MODES = ['HIDDEN', 'SCORE_ONLY', 'SCORE_AND_STATUS', 'FULL_REVIEW'];
 const VALID_STATUSES = ['DRAFT', 'GENERATED', 'PUBLISHED', 'IN_PROGRESS', 'ENDED', 'RESULT_PUBLISHED', 'ARCHIVED', 'CANCELLED'];
-
-
-function requireExamOpened(exam) {
-    if (Date.now() < Date.parse(exam.opens_at)) {
-        const error = new Error('The exam cannot start before opens_at.');
-        error.code = 'EXAM_NOT_OPEN';
-        error.status = 409;
-        throw error;
-    }
-}
 
 function isValidUUID(id) {
     return typeof id === 'string' && UUID_REGEX.test(id);
@@ -2175,8 +2167,6 @@ async function endExamEarly(examId, {reason} = {}, currentUser, requestMeta = {}
         if (forceError) throw forceError;
     }
 
-    // Lazy load avoids the exams -> grading -> student-exam -> exams module cycle.
-    const gradingService = require('./grading.service');
     await gradingService.gradePendingOnlineSubmissionsForExam(examId, {gradedBy: currentUser?.id || null});
 
     const {data: pending, error: pendingError} = await supabase

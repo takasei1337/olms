@@ -1,7 +1,7 @@
 info:
   name: Teacher Cannot Manage Users
   type: http
-  seq: 175
+  seq: 179
   tags:
     - olms
     - negative

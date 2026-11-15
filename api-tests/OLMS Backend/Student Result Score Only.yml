@@ -1,7 +1,7 @@
 info:
   name: Student Result Score Only
   type: http
-  seq: 102
+  seq: 104
   tags:
     - olms
     - positive
