@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import { ApiError } from '../../../api/client';
 import { CopyButton } from '../../../components/ui/CopyButton';
 import { TechnicalDetails } from '../../../components/ui/TechnicalDetails';
@@ -35,7 +36,9 @@ const CORE_CODE_SET = new Set<string>(CORE_QUESTION_TYPE_CODES);
 export function QuestionTypesPage() {
   const searchInputId = useId();
   const codeInputId = useId();
+  const codeErrorId = useId();
   const nameInputId = useId();
+  const nameErrorId = useId();
   const descInputId = useId();
 
   const [items, setItems] = useState<QuestionTypeAdminRecord[]>([]);
@@ -57,6 +60,10 @@ export function QuestionTypesPage() {
   const [draftCode, setDraftCode] = useState('');
   const [draftName, setDraftName] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{
+    code?: string;
+    name?: string;
+  }>({});
   const [formError, setFormError] = useState<{
     message: string;
     code?: string;
@@ -119,6 +126,7 @@ export function QuestionTypesPage() {
     setDraftCode('');
     setDraftName('');
     setDraftDescription('');
+    setFieldErrors({});
     setFormError(null);
     setFormState({ mode: 'create', record: null });
   };
@@ -127,36 +135,40 @@ export function QuestionTypesPage() {
     setDraftCode(record.code);
     setDraftName(record.name);
     setDraftDescription(record.description ?? '');
+    setFieldErrors({});
     setFormError(null);
     setFormState({ mode: 'edit', record });
   };
 
   const handleSaveForm = async (e: FormEvent) => {
     e.preventDefault();
-    if (!formState) return;
+    if (!formState || isSaving) return;
 
     const normalizedCode = draftCode.trim().toUpperCase();
     const normalizedName = draftName.trim();
     const normalizedDesc = draftDescription.trim() ? draftDescription.trim() : null;
 
+    const nextFieldErrors: { code?: string; name?: string } = {};
     if (!normalizedCode) {
-      setFormError({ message: 'Mã dạng câu hỏi không được để trống.' });
-      return;
+      nextFieldErrors.code = 'Mã dạng câu hỏi không được để trống.';
+    } else if (normalizedCode.length > 30) {
+      nextFieldErrors.code = 'Mã dạng câu hỏi tối đa 30 ký tự.';
     }
-    if (normalizedCode.length > 30) {
-      setFormError({ message: 'Mã dạng câu hỏi tối đa 30 ký tự.' });
-      return;
-    }
+
     if (!normalizedName) {
-      setFormError({ message: 'Tên hiển thị dạng câu hỏi không được để trống.' });
-      return;
+      nextFieldErrors.name = 'Tên hiển thị dạng câu hỏi không được để trống.';
+    } else if (normalizedName.length > 100) {
+      nextFieldErrors.name = 'Tên hiển thị tối đa 100 ký tự.';
     }
-    if (normalizedName.length > 100) {
-      setFormError({ message: 'Tên hiển thị tối đa 100 ký tự.' });
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      setFormError(null);
       return;
     }
 
     setIsSaving(true);
+    setFieldErrors({});
     setFormError(null);
 
     try {
@@ -187,6 +199,7 @@ export function QuestionTypesPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === 'CONFLICT') {
+          setFieldErrors({ code: 'Mã dạng câu hỏi này đã tồn tại.' });
           setFormError({
             message: `Mã dạng câu hỏi '${normalizedCode}' đã tồn tại trong hệ thống.`,
             code: err.code,
@@ -548,6 +561,7 @@ export function QuestionTypesPage() {
       {/* Create / Edit Modal */}
       <AccessibleModal
         isOpen={Boolean(formState)}
+        isBusy={isSaving}
         onClose={() => !isSaving && setFormState(null)}
         title={
           formState?.mode === 'edit'
@@ -567,45 +581,101 @@ export function QuestionTypesPage() {
           ) : null}
 
           <div>
-            <label
-              htmlFor={codeInputId}
-              className="mb-1 block text-xs font-semibold text-text-primary"
-            >
-              Mã dạng câu hỏi <span className="text-semantic-error">*</span>
-            </label>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label
+                htmlFor={codeInputId}
+                className="block text-xs font-semibold text-text-primary"
+              >
+                Mã dạng câu hỏi <span className="text-semantic-error">*</span>
+              </label>
+              <span
+                className={cn(
+                  'text-[11px] tabular-nums',
+                  draftCode.trim().length > 30
+                    ? 'font-semibold text-semantic-error'
+                    : 'text-text-secondary'
+                )}
+              >
+                {draftCode.trim().length} / 30
+              </span>
+            </div>
             <Input
               id={codeInputId}
               value={draftCode}
               onChange={(e) => {
                 setDraftCode(e.target.value.toUpperCase());
+                if (fieldErrors.code) {
+                  setFieldErrors((prev) => ({ ...prev, code: undefined }));
+                }
                 if (formError) setFormError(null);
               }}
               placeholder="Ví dụ: ORDERING hoặc TRUE_FALSE"
-              maxLength={30}
-              className="h-9 font-mono text-xs uppercase"
+              aria-invalid={Boolean(fieldErrors.code)}
+              aria-describedby={fieldErrors.code ? codeErrorId : undefined}
+              className={cn(
+                'h-9 font-mono text-xs uppercase',
+                fieldErrors.code && 'border-semantic-error focus-visible:ring-semantic-error'
+              )}
               required
             />
+            {fieldErrors.code ? (
+              <p
+                id={codeErrorId}
+                role="alert"
+                className="mt-1 text-xs font-medium text-semantic-error"
+              >
+                {fieldErrors.code}
+              </p>
+            ) : null}
           </div>
 
           <div>
-            <label
-              htmlFor={nameInputId}
-              className="mb-1 block text-xs font-semibold text-text-primary"
-            >
-              Tên hiển thị <span className="text-semantic-error">*</span>
-            </label>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label
+                htmlFor={nameInputId}
+                className="block text-xs font-semibold text-text-primary"
+              >
+                Tên hiển thị <span className="text-semantic-error">*</span>
+              </label>
+              <span
+                className={cn(
+                  'text-[11px] tabular-nums',
+                  draftName.trim().length > 100
+                    ? 'font-semibold text-semantic-error'
+                    : 'text-text-secondary'
+                )}
+              >
+                {draftName.trim().length} / 100
+              </span>
+            </div>
             <Input
               id={nameInputId}
               value={draftName}
               onChange={(e) => {
                 setDraftName(e.target.value);
+                if (fieldErrors.name) {
+                  setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                }
                 if (formError) setFormError(null);
               }}
               placeholder="Ví dụ: Sắp xếp thứ tự"
-              maxLength={100}
-              className="h-9 text-xs"
+              aria-invalid={Boolean(fieldErrors.name)}
+              aria-describedby={fieldErrors.name ? nameErrorId : undefined}
+              className={cn(
+                'h-9 text-xs',
+                fieldErrors.name && 'border-semantic-error focus-visible:ring-semantic-error'
+              )}
               required
             />
+            {fieldErrors.name ? (
+              <p
+                id={nameErrorId}
+                role="alert"
+                className="mt-1 text-xs font-medium text-semantic-error"
+              >
+                {fieldErrors.name}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -669,6 +739,7 @@ export function QuestionTypesPage() {
       {/* Delete Confirmation Modal */}
       <AccessibleModal
         isOpen={Boolean(deleteTarget)}
+        isBusy={isDeleting}
         onClose={() => !isDeleting && setDeleteTarget(null)}
         title="Xác nhận xóa dạng câu hỏi"
         description={

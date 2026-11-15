@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { formatDateTime } from '@/lib/utils';
 import { ApiError } from '../../../api/client';
 import { CopyButton } from '../../../components/ui/CopyButton';
 import type { UserRecord } from '../types';
@@ -152,6 +153,17 @@ export function UserDetailModal({
           </div>
 
           <div>
+            <dt className="text-xs font-medium text-text-secondary">Số điện thoại</dt>
+            <dd className="mt-1 font-mono text-xs text-text-primary">
+              {activeUser.phone ? (
+                activeUser.phone
+              ) : (
+                <span className="font-sans text-text-secondary">Chưa cập nhật</span>
+              )}
+            </dd>
+          </div>
+
+          <div className="sm:col-span-2">
             <dt className="text-xs font-medium text-text-secondary">Địa chỉ Email</dt>
             <dd className="mt-1 break-all text-xs text-text-primary">
               {activeUser.email ? (
@@ -163,10 +175,21 @@ export function UserDetailModal({
           </div>
 
           <div>
-            <dt className="text-xs font-medium text-text-secondary">Số điện thoại</dt>
-            <dd className="mt-1 font-mono text-xs text-text-primary">
-              {activeUser.phone ? (
-                activeUser.phone
+            <dt className="text-xs font-medium text-text-secondary">Ngày tạo tài khoản</dt>
+            <dd className="mt-1 font-mono text-xs tabular-nums text-text-primary">
+              {activeUser.created_at ? (
+                formatDateTime(activeUser.created_at)
+              ) : (
+                <span className="font-sans text-text-secondary">Chưa cập nhật</span>
+              )}
+            </dd>
+          </div>
+
+          <div>
+            <dt className="text-xs font-medium text-text-secondary">Cập nhật lần cuối</dt>
+            <dd className="mt-1 font-mono text-xs tabular-nums text-text-primary">
+              {activeUser.updated_at ? (
+                formatDateTime(activeUser.updated_at)
               ) : (
                 <span className="font-sans text-text-secondary">Chưa cập nhật</span>
               )}
