@@ -6,9 +6,11 @@ import {
   ArrowLeft,
   Ban,
   CheckCircle2,
+  Clock3,
   FileEdit,
   Globe,
   Lock,
+  Octagon,
   PlayCircle,
   RefreshCw,
   Trash2,
@@ -33,6 +35,10 @@ import {
 } from '../components/ExamLifecycleModal';
 import { ExamMatrixAndRootTab } from '../components/ExamMatrixAndRootTab';
 import { ExamParticipantsTab } from '../components/ExamParticipantsTab';
+import {
+  ExamTimingModal,
+  type ExamTimingActionType,
+} from '../components/ExamTimingModal';
 import { ExamResultsTab } from '../../results/components/ExamResultsTab';
 import {
   DeliveryModeBadge,
@@ -86,6 +92,8 @@ export function ExamDetailPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [lifecycleAction, setLifecycleAction] =
     useState<ExamLifecycleActionType | null>(null);
+  const [timingAction, setTimingAction] =
+    useState<ExamTimingActionType | null>(null);
   const [feedbackBanner, setFeedbackBanner] = useState<string | null>(null);
 
   const loadExamWorkspace = useCallback(
@@ -250,6 +258,9 @@ export function ExamDetailPage() {
   const canArchive = canManage && exam.status === 'RESULT_PUBLISHED';
   const canCancel =
     canManage && CANCELLABLE_EXAM_STATUSES.includes(exam.status);
+  const canAdjustCloseTime =
+    canManage && (exam.status === 'PUBLISHED' || exam.status === 'IN_PROGRESS');
+  const canEndEarly = canManage && exam.status === 'IN_PROGRESS';
 
   return (
     <div className="space-y-5">
@@ -352,6 +363,32 @@ export function ExamDetailPage() {
                 >
                   <PlayCircle aria-hidden="true" className="size-3.5" />
                   <span>Bắt đầu kỳ thi</span>
+                </Button>
+              ) : null}
+
+              {canAdjustCloseTime ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTimingAction('change-close')}
+                  className="h-8 gap-1.5 text-xs font-medium"
+                >
+                  <Clock3 aria-hidden="true" className="size-3.5" />
+                  <span>Điều chỉnh giờ đóng</span>
+                </Button>
+              ) : null}
+
+              {canEndEarly ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTimingAction('end-early')}
+                  className="h-8 gap-1.5 text-xs font-medium text-semantic-danger hover:bg-semantic-danger-bg hover:text-semantic-danger"
+                >
+                  <Octagon aria-hidden="true" className="size-3.5" />
+                  <span>Kết thúc sớm</span>
                 </Button>
               ) : null}
 
@@ -527,6 +564,24 @@ export function ExamDetailPage() {
         onClose={() => setLifecycleAction(null)}
         onSuccess={handleLifecycleSuccess}
       />
+
+      {timingAction ? (
+        <ExamTimingModal
+          action={timingAction}
+          exam={exam}
+          onClose={() => setTimingAction(null)}
+          onSuccess={(action, updatedExam) => {
+            setExam((current) =>
+              current ? { ...updatedExam, subjects: current.subjects } : updatedExam
+            );
+            setFeedbackBanner(
+              action === 'end-early'
+                ? 'Kỳ thi đã kết thúc sớm. Các bài đang làm đã được thu và chấm; kết quả chưa được công bố.'
+                : 'Đã cập nhật giờ đóng kỳ thi.'
+            );
+          }}
+        />
+      ) : null}
     </div>
   );
 }

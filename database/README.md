@@ -14,6 +14,7 @@ psql -X -v ON_ERROR_STOP=1 -f database/migrations/003_arc02_topic_balancing.sql
 psql -X -v ON_ERROR_STOP=1 -f database/migrations/004_generate_exam_variants.sql
 psql -X -v ON_ERROR_STOP=1 -f database/migrations/005_allow_variant_question_pool_selection.sql
 psql -X -v ON_ERROR_STOP=1 -f database/migrations/006_create_participant_import_previews.sql
+psql -X -v ON_ERROR_STOP=1 -f database/migrations/007_balance_exam_variants_and_control_timing.sql
 psql -X -v ON_ERROR_STOP=1 -f database/schema-pg17/07_security_postcheck.sql
 ```
 

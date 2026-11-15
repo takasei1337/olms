@@ -3748,6 +3748,128 @@ paths:
         source-commit: b7721318db957f9a2ba31103bcf0e8ea99a4e116
         schema-contract-validation: not-comprehensively-runtime-verified
       x-current-role-gate: *id051
+  /exams/{examId}/close-time:
+    patch:
+      tags:
+      - Exams
+      summary: Điều chỉnh giờ đóng kỳ thi có kiểm soát
+      operationId: patch_exams__examId__close_time
+      description: Chỉ ADMIN hoặc giáo viên sở hữu kỳ thi được đổi giờ đóng khi kỳ thi ở trạng thái PUBLISHED hoặc IN_PROGRESS. Thời điểm mới phải ở tương lai; lý do được ghi vào audit log.
+      x-roles:
+      - ADMIN
+      - TEACHER
+      x-use-case: Exams
+      parameters:
+      - in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - closes_at
+              - reason
+              properties:
+                closes_at:
+                  type: string
+                  format: date-time
+                reason:
+                  type: string
+                  minLength: 5
+                  maxLength: 500
+      responses:
+        '200':
+          description: Đã cập nhật giờ đóng
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/Exam'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-implementation:
+        status: implemented
+        source: backend/src/routes/exams.routes.js
+        schema-contract-validation: frontend-unit-verified-database-migration-pending
+  /exams/{examId}/end-early:
+    post:
+      tags:
+      - Exams
+      summary: Kết thúc kỳ thi sớm có kiểm soát
+      operationId: post_exams__examId__end_early
+      description: Chỉ ADMIN hoặc giáo viên sở hữu kỳ thi đang IN_PROGRESS được thực hiện. Hệ thống đóng nhận bài, thu các bài trực tuyến đang làm, chấm tự động và chuyển kỳ thi sang ENDED; không tự công bố kết quả.
+      x-roles:
+      - ADMIN
+      - TEACHER
+      x-use-case: Exams
+      parameters:
+      - in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - reason
+              properties:
+                reason:
+                  type: string
+                  minLength: 5
+                  maxLength: 500
+      responses:
+        '200':
+          description: Kỳ thi đã kết thúc; kết quả chưa được công bố
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/Exam'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-implementation:
+        status: implemented
+        source: backend/src/routes/exams.routes.js
+        schema-contract-validation: frontend-unit-verified-database-migration-pending
   /exams/{examId}/results/publish:
     post:
       tags:

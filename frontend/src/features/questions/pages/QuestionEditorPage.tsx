@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { ApiError } from '../../../api/client';
 import { TechnicalDetails } from '../../../components/ui/TechnicalDetails';
 import { useAuth } from '../../auth/AuthContext';
@@ -285,6 +286,15 @@ export function QuestionEditorPage() {
       setErrorMessage('Nội dung câu hỏi không được để trống.');
       return;
     }
+    // Nếu đã chọn Môn học hoặc Chương nhưng chưa chọn Bài học,
+    // câu hỏi sẽ bị lưu với lesson_id = null và không thể dùng trong kỳ thi.
+    if ((selectedSubjectId || selectedChapterId) && !selectedLessonId) {
+      setErrorMessage(
+        'Vui lòng chọn Bài học để gắn câu hỏi vào đúng vị trí trong cây kiến thức. ' +
+          'Câu hỏi chưa gắn bài học sẽ không thể sử dụng trong ma trận kỳ thi.'
+      );
+      return;
+    }
 
     // Validate answer_spec strictly against backend validator rules
     const specValidationError = validateAnswerSpecDraft(answerSpec, content.trim());
@@ -552,6 +562,11 @@ export function QuestionEditorPage() {
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-text-primary">
                       Bài học
+                      {selectedChapterId && !selectedLessonId && (
+                        <span className="ml-1 font-normal text-semantic-warning">
+                          — cần chọn để dùng trong kỳ thi
+                        </span>
+                      )}
                     </label>
                     <Select
                       value={selectedLessonId || 'NONE'}
@@ -561,7 +576,14 @@ export function QuestionEditorPage() {
                       }}
                       disabled={!selectedChapterId}
                     >
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger
+                        className={cn(
+                          'h-9 text-xs',
+                          selectedChapterId && !selectedLessonId
+                            ? 'border-semantic-warning/60 ring-semantic-warning/20'
+                            : ''
+                        )}
+                      >
                         <SelectValue placeholder="Chọn bài học" />
                       </SelectTrigger>
                       <SelectContent>
@@ -573,6 +595,11 @@ export function QuestionEditorPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {selectedChapterId && !selectedLessonId && (
+                      <p className="mt-1 text-[11px] text-semantic-warning">
+                        Câu hỏi chưa gắn bài học sẽ không xuất hiện trong ma trận kỳ thi.
+                      </p>
+                    )}
                   </div>
                 </div>
 

@@ -2069,6 +2069,141 @@ async function cancelExam(examId, { reason } = {}, currentUser) {
     return updateExamStatus(examId, 'CANCELLED', ['DRAFT', 'GENERATED', 'PUBLISHED', 'IN_PROGRESS'], currentUser);
 }
 
+function requireTimingReason(reason) {
+    const normalized = typeof reason === 'string' ? reason.trim() : '';
+    if (normalized.length < 5 || normalized.length > 500) {
+        const err = new Error('reason must contain between 5 and 500 characters.');
+        err.code = 'INVALID_TIMING_REASON';
+        err.status = 400;
+        throw err;
+    }
+    return normalized;
+}
+
+async function requireExamTimingAccess(examId, currentUser) {
+    if (!isValidUUID(examId)) {
+        const err = new Error('examId must be a valid UUID.');
+        err.code = 'INVALID_ID_FORMAT';
+        err.status = 400;
+        throw err;
+    }
+
+    const exam = await findExamById(examId);
+    if (!exam) {
+        const err = new Error('Exam not found.');
+        err.code = 'EXAM_NOT_FOUND';
+        err.status = 404;
+        throw err;
+    }
+    if (currentUser?.role === 'TEACHER' && exam.created_by !== currentUser.id) {
+        const err = new Error('You do not have permission to change this exam schedule.');
+        err.code = 'FORBIDDEN';
+        err.status = 403;
+        throw err;
+    }
+    return exam;
+}
+
+function mapTimingRpcError(error) {
+    const message = String(error?.message || '');
+    const known = [
+        ['INVALID_TIMING_REASON', 400, 'Lý do phải có từ 5 đến 500 ký tự.'],
+        ['INVALID_TIMING_ACTION', 400, 'Thao tác điều chỉnh thời gian không hợp lệ.'],
+        ['INVALID_CLOSE_TIME', 400, 'Giờ đóng mới phải ở trong tương lai và sau giờ mở đề.'],
+        ['EXAM_NOT_FOUND', 404, 'Không tìm thấy kỳ thi.'],
+        ['INVALID_EXAM_STATUS', 409, 'Trạng thái hiện tại của kỳ thi không cho phép thao tác này.']
+    ].find(([code]) => message.includes(code));
+    if (!known) return error;
+
+    const err = new Error(known[2]);
+    err.code = known[0];
+    err.status = known[1];
+    return err;
+}
+
+async function runTimingControl(examId, action, closesAt, reason, currentUser, requestMeta = {}) {
+    await requireExamTimingAccess(examId, currentUser);
+    const normalizedReason = requireTimingReason(reason);
+
+    const {data, error} = await supabase.rpc('olms_control_exam_timing', {
+        p_exam_id: examId,
+        p_actor_user_id: currentUser?.id || null,
+        p_action: action,
+        p_closes_at: closesAt,
+        p_reason: normalizedReason,
+        p_ip_address: requestMeta.ip || null,
+        p_user_agent: requestMeta.userAgent || null
+    });
+    if (error) throw mapTimingRpcError(error);
+
+    const updated = Array.isArray(data) ? data[0] : data;
+    if (!updated) {
+        const err = new Error('Exam timing update did not return a result.');
+        err.code = 'EXAM_TIMING_UPDATE_FAILED';
+        err.status = 500;
+        throw err;
+    }
+    return updated;
+}
+
+async function changeExamCloseTime(examId, {closes_at, reason} = {}, currentUser, requestMeta = {}) {
+    const closeMs = Date.parse(closes_at);
+    if (!closes_at || !Number.isFinite(closeMs) || closeMs <= Date.now()) {
+        const err = new Error('closes_at must be a valid future timestamp.');
+        err.code = 'INVALID_CLOSE_TIME';
+        err.status = 400;
+        throw err;
+    }
+    return runTimingControl(examId, 'CHANGE_CLOSE', new Date(closeMs).toISOString(), reason, currentUser, requestMeta);
+}
+
+async function endExamEarly(examId, {reason} = {}, currentUser, requestMeta = {}) {
+    await runTimingControl(examId, 'END_EARLY', null, reason, currentUser, requestMeta);
+
+    const {data: openSubmissions, error: openError} = await supabase
+        .from('submissions')
+        .select('id')
+        .eq('exam_id', examId)
+        .eq('source', 'ONLINE')
+        .eq('status', 'IN_PROGRESS')
+        .order('id', {ascending: true});
+    if (openError) throw openError;
+    for (const submission of openSubmissions || []) {
+        const {error: forceError} = await supabase.rpc('olms_force_submit_expired_online', {
+            p_submission: submission.id
+        });
+        if (forceError) throw forceError;
+    }
+
+    // Lazy load avoids the exams -> grading -> student-exam -> exams module cycle.
+    const gradingService = require('./grading.service');
+    await gradingService.gradePendingOnlineSubmissionsForExam(examId, {gradedBy: currentUser?.id || null});
+
+    const {data: pending, error: pendingError} = await supabase
+        .from('submissions')
+        .select('id')
+        .eq('exam_id', examId)
+        .in('status', ['IN_PROGRESS', 'SUBMITTED', 'GRADING'])
+        .limit(1);
+    if (pendingError) throw pendingError;
+    if (pending && pending.length > 0) {
+        const err = new Error('Exam submissions are still being finalized. Please try again shortly.');
+        err.code = 'EXAM_END_PENDING';
+        err.status = 409;
+        throw err;
+    }
+
+    try {
+        return await updateExamStatus(examId, 'ENDED', ['IN_PROGRESS'], currentUser);
+    } catch (error) {
+        if (error?.code === 'INVALID_EXAM_STATUS') {
+            const currentExam = await findExamById(examId);
+            if (currentExam?.status === 'ENDED') return currentExam;
+        }
+        throw error;
+    }
+}
+
 module.exports = {
     requireExamOpened,
     isValidUUID,
@@ -2090,5 +2225,7 @@ module.exports = {
     publishExam,
     startExam,
     archiveExam,
-    cancelExam
+    cancelExam,
+    changeExamCloseTime,
+    endExamEarly
 };

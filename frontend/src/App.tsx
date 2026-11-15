@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { AuthProvider } from './features/auth/AuthContext';
 import {
@@ -24,6 +24,11 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { OlmsUiShowcasePage } from './features/showcase/OlmsUiShowcasePage';
 import { ThemeProvider } from './features/theme/ThemeContext';
 
+function LegacyBankRedirect() {
+  const { search, hash } = useLocation();
+  return <Navigate to={`/questions${search}${hash}`} replace />;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -42,6 +47,7 @@ export function AppRoutes() {
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route index element={<HomePage />} />
+          <Route path="bank" element={<LegacyBankRedirect />} />
           <Route
             path="catalog"
             element={

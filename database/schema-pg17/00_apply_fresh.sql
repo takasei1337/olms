@@ -8,5 +8,6 @@ BEGIN;
 \ir 04_integrity_hardening.sql
 \ir autosave_cas.sql
 \ir 05_submission_deadline_recovery.sql
+\ir 05_exam_operations.sql
 \ir 06_roles_and_permissions.sql
 COMMIT;

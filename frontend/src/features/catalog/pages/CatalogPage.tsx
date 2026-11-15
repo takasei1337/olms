@@ -76,6 +76,10 @@ export function CatalogPage() {
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
 
+  const [loadErrors, setLoadErrors] = useState<Record<string, string>>({});
+  const [reloadTick, setReloadTick] = useState(0);
+  const fetchSubjectsAbortRef = useRef<AbortController | null>(null);
+
   // Search input for subjects
   const [subjectSearch, setSubjectSearch] = useState('');
   const [debouncedSubjectSearch, setDebouncedSubjectSearch] = useState('');
@@ -122,43 +126,42 @@ export function CatalogPage() {
     setSearchParams(params, { replace: true });
   }, [selectedSubjectId, selectedChapterId, selectedLessonId, setSearchParams]);
 
-  // Load subjects
+  // Cancel superseded requests; use the latest selection, not the request's closure.
   const loadSubjects = useCallback(async () => {
+    fetchSubjectsAbortRef.current?.abort();
+    const controller = new AbortController();
+    fetchSubjectsAbortRef.current = controller;
     setIsLoadingSubjects(true);
+    setLoadErrors((prev) => ({ ...prev, subjects: '' }));
     try {
       const res = await getSubjectsApi({
         q: debouncedSubjectSearch || undefined,
         page: 1,
         page_size: 100,
-      });
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       const list = res.data ?? [];
       setSubjects(list);
-
-      // If currently selected subject is not in list, auto-select first or clear
-      if (list.length > 0) {
-        if (!selectedSubjectId || !list.some((s) => s.id === selectedSubjectId)) {
-          setSelectedSubjectId(list[0].id);
-        }
-      } else {
-        setSelectedSubjectId(null);
-        setChapters([]);
-        setLessons([]);
-        setTopics([]);
-      }
+      setSelectedSubjectId((current) => current ?? list[0]?.id ?? null);
     } catch {
-      // Handled via empty state
+      if (!controller.signal.aborted) {
+        setLoadErrors((prev) => ({ ...prev, subjects: 'Không tải được môn học.' }));
+      }
     } finally {
-      setIsLoadingSubjects(false);
+      if (!controller.signal.aborted) setIsLoadingSubjects(false);
     }
-  }, [debouncedSubjectSearch, selectedSubjectId]);
+  }, [debouncedSubjectSearch]);
 
   useEffect(() => {
-    loadSubjects();
-  }, [debouncedSubjectSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+    void loadSubjects();
+    return () => fetchSubjectsAbortRef.current?.abort();
+  }, [loadSubjects, reloadTick]);
 
   // Load chapters when selectedSubjectId changes
   useEffect(() => {
     if (!selectedSubjectId) {
+      setIsLoadingChapters(false);
+      setLoadErrors((prev) => ({ ...prev, chapters: '' }));
       setChapters([]);
       setSelectedChapterId(null);
       setLessons([]);
@@ -173,39 +176,37 @@ export function CatalogPage() {
     const controller = new AbortController();
     fetchChaptersAbortRef.current = controller;
 
+    setChapters([]);
+    setLoadErrors((prev) => ({ ...prev, chapters: '' }));
     setIsLoadingChapters(true);
     getChaptersBySubjectApi(selectedSubjectId, controller.signal)
       .then((res) => {
+        if (controller.signal.aborted) return;
         const list = res.data ?? [];
         setChapters(list);
-        if (list.length > 0) {
-          if (!selectedChapterId || !list.some((c) => c.id === selectedChapterId)) {
-            setSelectedChapterId(list[0].id);
-          }
-        } else {
-          setSelectedChapterId(null);
-          setLessons([]);
-          setSelectedLessonId(null);
-          setTopics([]);
-        }
+        setSelectedChapterId((current) =>
+          list.some((item) => item.id === current) ? current : list[0]?.id ?? null
+        );
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') {
-          setChapters([]);
+        if (!controller.signal.aborted && err.name !== 'AbortError') {
+          setLoadErrors((prev) => ({ ...prev, chapters: 'Không tải được chương.' }));
         }
       })
       .finally(() => {
-        setIsLoadingChapters(false);
+        if (!controller.signal.aborted) setIsLoadingChapters(false);
       });
 
     return () => {
       controller.abort();
     };
-  }, [selectedSubjectId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedSubjectId, reloadTick]);
 
   // Load lessons when selectedChapterId changes
   useEffect(() => {
     if (!selectedChapterId) {
+      setIsLoadingLessons(false);
+      setLoadErrors((prev) => ({ ...prev, lessons: '' }));
       setLessons([]);
       setSelectedLessonId(null);
       setTopics([]);
@@ -218,37 +219,37 @@ export function CatalogPage() {
     const controller = new AbortController();
     fetchLessonsAbortRef.current = controller;
 
+    setLessons([]);
+    setLoadErrors((prev) => ({ ...prev, lessons: '' }));
     setIsLoadingLessons(true);
     getLessonsByChapterApi(selectedChapterId, controller.signal)
       .then((res) => {
+        if (controller.signal.aborted) return;
         const list = res.data ?? [];
         setLessons(list);
-        if (list.length > 0) {
-          if (!selectedLessonId || !list.some((l) => l.id === selectedLessonId)) {
-            setSelectedLessonId(list[0].id);
-          }
-        } else {
-          setSelectedLessonId(null);
-          setTopics([]);
-        }
+        setSelectedLessonId((current) =>
+          list.some((item) => item.id === current) ? current : list[0]?.id ?? null
+        );
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') {
-          setLessons([]);
+        if (!controller.signal.aborted && err.name !== 'AbortError') {
+          setLoadErrors((prev) => ({ ...prev, lessons: 'Không tải được bài học.' }));
         }
       })
       .finally(() => {
-        setIsLoadingLessons(false);
+        if (!controller.signal.aborted) setIsLoadingLessons(false);
       });
 
     return () => {
       controller.abort();
     };
-  }, [selectedChapterId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedChapterId, reloadTick]);
 
   // Load topics when selectedLessonId changes
   useEffect(() => {
     if (!selectedLessonId) {
+      setIsLoadingTopics(false);
+      setLoadErrors((prev) => ({ ...prev, topics: '' }));
       setTopics([]);
       return;
     }
@@ -259,24 +260,27 @@ export function CatalogPage() {
     const controller = new AbortController();
     fetchTopicsAbortRef.current = controller;
 
+    setTopics([]);
+    setLoadErrors((prev) => ({ ...prev, topics: '' }));
     setIsLoadingTopics(true);
     getLessonTopicsApi(selectedLessonId, controller.signal)
       .then((res) => {
+        if (controller.signal.aborted) return;
         setTopics(res.data ?? []);
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') {
-          setTopics([]);
+        if (!controller.signal.aborted && err.name !== 'AbortError') {
+          setLoadErrors((prev) => ({ ...prev, topics: 'Không tải được chủ đề.' }));
         }
       })
       .finally(() => {
-        setIsLoadingTopics(false);
+        if (!controller.signal.aborted) setIsLoadingTopics(false);
       });
 
     return () => {
       controller.abort();
     };
-  }, [selectedLessonId]);
+  }, [selectedLessonId, reloadTick]);
 
   // Selected item objects
   const selectedSubject =
@@ -385,7 +389,7 @@ export function CatalogPage() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => loadSubjects()}
+            onClick={() => setReloadTick((value) => value + 1)}
             disabled={isLoadingSubjects}
             className="h-9 gap-1.5 text-xs font-medium"
           >
@@ -410,6 +414,13 @@ export function CatalogPage() {
           </Button>
         </div>
       </div>
+
+      {Object.values(loadErrors).some(Boolean) && (
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-md border border-semantic-error/30 bg-semantic-error-bg p-3 text-sm text-text-primary">
+          <p>{Object.values(loadErrors).filter(Boolean).join(' ')} Vui lòng thử tải lại.</p>
+          <Button variant="outline" size="sm" onClick={() => setReloadTick((value) => value + 1)}>Thử lại</Button>
+        </div>
+      )}
 
       {/* Active Breadcrumb Navigation */}
       <nav
@@ -547,6 +558,8 @@ export function CatalogPage() {
                     <Skeleton className="h-14 w-full rounded-md" />
                     <Skeleton className="h-14 w-full rounded-md" />
                   </div>
+                ) : loadErrors.subjects ? (
+                  <p className="p-4 text-sm text-text-secondary">Chưa tải được dữ liệu. Chọn “Thử lại” ở thông báo phía trên.</p>
                 ) : subjects.length === 0 ? (
                   <div className="rounded-md border border-dashed border-surface-border p-6 text-center text-xs text-text-secondary">
                     {subjectSearch
@@ -706,7 +719,9 @@ export function CatalogPage() {
                   <Skeleton className="h-12 w-full rounded-md" />
                   <Skeleton className="h-12 w-full rounded-md" />
                 </div>
-              ) : chapters.length === 0 ? (
+              ) : loadErrors.chapters ? (
+                  <p className="p-4 text-sm text-text-secondary">Chưa tải được dữ liệu. Chọn “Thử lại” ở thông báo phía trên.</p>
+                ) : chapters.length === 0 ? (
                 <div className="rounded-md border border-dashed border-surface-border p-8 text-center text-xs text-text-secondary">
                   Môn học này chưa có chương nào.
                   {canEditSelectedSubject ? (
@@ -880,7 +895,9 @@ export function CatalogPage() {
                   <Skeleton className="h-12 w-full rounded-md" />
                   <Skeleton className="h-12 w-full rounded-md" />
                 </div>
-              ) : lessons.length === 0 ? (
+              ) : loadErrors.lessons ? (
+                  <p className="p-4 text-sm text-text-secondary">Chưa tải được dữ liệu. Chọn “Thử lại” ở thông báo phía trên.</p>
+                ) : lessons.length === 0 ? (
                 <div className="rounded-md border border-dashed border-surface-border p-8 text-center text-xs text-text-secondary">
                   Chương này chưa có bài học nào.
                   {canEditSelectedSubject ? (
@@ -1028,7 +1045,9 @@ export function CatalogPage() {
                         <Skeleton className="h-6 w-full rounded" />
                         <Skeleton className="h-6 w-3/4 rounded" />
                       </div>
-                    ) : topics.length === 0 ? (
+                    ) : loadErrors.topics ? (
+                  <p className="p-4 text-sm text-text-secondary">Chưa tải được dữ liệu. Chọn “Thử lại” ở thông báo phía trên.</p>
+                ) : topics.length === 0 ? (
                       <p className="text-center text-[11px] text-text-secondary">
                         Chưa có chủ đề câu hỏi nào được gán cho bài học này.
                       </p>

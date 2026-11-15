@@ -509,7 +509,8 @@ BEGIN
        (NEW.total_questions IS DISTINCT FROM OLD.total_questions) OR
        (NEW.duration_minutes IS DISTINCT FROM OLD.duration_minutes) OR
        (NEW.opens_at IS DISTINCT FROM OLD.opens_at) OR
-       (NEW.closes_at IS DISTINCT FROM OLD.closes_at) OR
+       ((NEW.closes_at IS DISTINCT FROM OLD.closes_at) AND
+        COALESCE(current_setting('olms.allow_exam_timing_change', true), '') <> 'on') OR
        (NEW.total_score IS DISTINCT FROM OLD.total_score) OR
        (NEW.form_template_id IS DISTINCT FROM OLD.form_template_id) OR
        (NEW.code IS DISTINCT FROM OLD.code) THEN

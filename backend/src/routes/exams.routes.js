@@ -787,6 +787,69 @@ router.post('/:examId/start', async (req, res, next) => {
     }
 });
 
+// PATCH /exams/:examId/close-time - Điều chỉnh giờ đóng có lý do và audit
+router.patch('/:examId/close-time', async (req, res, next) => {
+    try {
+        const {closes_at, reason} = req.body || {};
+        const updated = await examsService.changeExamCloseTime(
+            req.params.examId,
+            {closes_at, reason},
+            req.currentUser,
+            {ip: req.ip, userAgent: req.get('user-agent')}
+        );
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
+// POST /exams/:examId/end-early - Thu bài, chấm và kết thúc kỳ thi trước giờ đóng
+router.post('/:examId/end-early', async (req, res, next) => {
+    try {
+        const updated = await examsService.endExamEarly(
+            req.params.examId,
+            {reason: req.body?.reason},
+            req.currentUser,
+            {ip: req.ip, userAgent: req.get('user-agent')}
+        );
+        return res.status(200).json({
+            success: true,
+            code: 'SUCCESS',
+            message: 'Thành công',
+            data: updated,
+            timestamp: new Date().toISOString(),
+            trace_id: req.traceId
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({
+                success: false,
+                code: error.code || 'BAD_REQUEST',
+                message: error.message,
+                trace_id: req.traceId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        next(error);
+    }
+});
+
 // POST /exams/:examId/archive - Đóng băng kỳ thi vào lưu trữ
 router.post('/:examId/archive', async (req, res, next) => {
     try {

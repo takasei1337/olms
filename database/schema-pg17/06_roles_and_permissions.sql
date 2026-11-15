@@ -65,6 +65,8 @@ ALTER FUNCTION olms_submit_online(uuid,uuid) SECURITY DEFINER;
 ALTER FUNCTION olms_submit_online(uuid,uuid) SET search_path=pg_catalog,public,pg_temp;
 ALTER FUNCTION olms_force_submit_expired_online(uuid) SECURITY DEFINER;
 ALTER FUNCTION olms_force_submit_expired_online(uuid) SET search_path=pg_catalog,public,pg_temp;
+ALTER FUNCTION olms_assign_balanced_exam_variant(uuid) SET search_path=pg_catalog,public,pg_temp;
+ALTER FUNCTION olms_control_exam_timing(uuid,uuid,text,timestamptz,text,text,text) SET search_path=pg_catalog,public,pg_temp;
 ALTER FUNCTION olms_bind_omr_scan(uuid,uuid,uuid,uuid,text) SECURITY DEFINER;
 ALTER FUNCTION olms_bind_omr_scan(uuid,uuid,uuid,uuid,text) SET search_path=pg_catalog,public,pg_temp;
 ALTER PROCEDURE sp_finalize_submission_grading(uuid,uuid) SECURITY DEFINER;
@@ -72,12 +74,23 @@ ALTER PROCEDURE sp_finalize_submission_grading(uuid,uuid) SET search_path=pg_cat
 REVOKE ALL ON FUNCTION olms_autosave_online_cas(uuid,uuid,bigint,uuid,jsonb,text,jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION olms_submit_online(uuid,uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION olms_force_submit_expired_online(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION olms_assign_balanced_exam_variant(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION olms_control_exam_timing(uuid,uuid,text,timestamptz,text,text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION olms_bind_omr_scan(uuid,uuid,uuid,uuid,text) FROM PUBLIC;
 REVOKE ALL ON PROCEDURE sp_finalize_submission_grading(uuid,uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION olms_autosave_online_cas(uuid,uuid,bigint,uuid,jsonb,text,jsonb) TO olms_api_role;
 GRANT EXECUTE ON FUNCTION olms_submit_online(uuid,uuid) TO olms_api_role;
 GRANT EXECUTE ON FUNCTION olms_bind_omr_scan(uuid,uuid,uuid,uuid,text) TO olms_api_role;
 GRANT EXECUTE ON FUNCTION olms_force_submit_expired_online(uuid) TO olms_worker_role;
+GRANT EXECUTE ON FUNCTION olms_assign_balanced_exam_variant(uuid) TO olms_api_role;
+GRANT EXECUTE ON FUNCTION olms_control_exam_timing(uuid,uuid,text,timestamptz,text,text,text) TO olms_api_role;
 GRANT EXECUTE ON PROCEDURE sp_finalize_submission_grading(uuid,uuid) TO olms_worker_role;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT EXECUTE ON FUNCTION olms_assign_balanced_exam_variant(uuid) TO service_role;
+    GRANT EXECUTE ON FUNCTION olms_control_exam_timing(uuid,uuid,text,timestamptz,text,text,text) TO service_role;
+  END IF;
+END $$;
 -- Required DB assertions: pg_has_role/has_function_privilege and explicit denied calls.
 -- Do not GRANT roles to PUBLIC or to interactive student connections.

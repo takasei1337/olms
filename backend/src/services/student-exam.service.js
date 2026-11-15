@@ -288,25 +288,35 @@ async function findParticipantAndExam(examId, studentUserId) {
     return {exam, participant};
 }
 
-async function chooseVariantForParticipant(examId) {
-    const {data: variants, error} = await supabase
-        .from('exam_variants')
-        .select('id, variant_code, is_root')
-        .eq('exam_id', examId)
-        .is('deleted_at', null)
-        .order('variant_code', {ascending: true});
+async function chooseVariantForParticipant(participantId) {
+    const {data, error} = await supabase.rpc('olms_assign_balanced_exam_variant', {
+        p_participant_id: participantId
+    });
 
-    if (error) throw error;
-    if (!variants || variants.length === 0) {
+    if (error) {
+        if (String(error.message || '').includes('VARIANTS_NOT_GENERATED')) {
+            const err = new Error('Exam has no generated variants available.');
+            err.code = 'VARIANTS_NOT_GENERATED';
+            err.status = 409;
+            throw err;
+        }
+        if (String(error.message || '').includes('INVALID_EXAM_STATUS')) {
+            const err = new Error('Exam is no longer accepting new sessions.');
+            err.code = 'INVALID_EXAM_STATUS';
+            err.status = 409;
+            throw err;
+        }
+        throw error;
+    }
+
+    const chosen = Array.isArray(data) ? data[0] : data;
+    if (!chosen?.variant_id) {
         const err = new Error('Exam has no generated variants available.');
         err.code = 'VARIANTS_NOT_GENERATED';
         err.status = 409;
         throw err;
     }
-
-    const nonRoot = variants.filter(v => !v.is_root);
-    const pool = nonRoot.length > 0 ? nonRoot : variants;
-    return pool[crypto.randomInt(pool.length)];
+    return {id: chosen.variant_id, variant_code: chosen.variant_code};
 }
 
 async function buildSessionPayload(exam, submission) {
@@ -447,20 +457,8 @@ async function startOrResumeSession(examId, studentUserId) {
 
     let variantId = participant.variant_id;
     if (!variantId) {
-        const chosen = await chooseVariantForParticipant(exam.id);
+        const chosen = await chooseVariantForParticipant(participant.id);
         variantId = chosen.id;
-
-        const {error: assignErr} = await supabase
-            .from('participants')
-            .update({
-                variant_id: variantId,
-                attendance_status: 'PRESENT',
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', participant.id)
-            .is('deleted_at', null);
-
-        if (assignErr) throw assignErr;
     } else if (participant.attendance_status !== 'PRESENT') {
         await supabase
             .from('participants')

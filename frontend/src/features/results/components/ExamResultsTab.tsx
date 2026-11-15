@@ -58,6 +58,22 @@ export function ExamResultsTab({
   canManage,
   onExamUpdated,
 }: ExamResultsTabProps) {
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    if (exam.status !== 'IN_PROGRESS') return;
+    const updateClock = () => setNow(Date.now());
+    updateClock();
+    const timer = window.setInterval(updateClock, 1000);
+    window.addEventListener('focus', updateClock);
+    document.addEventListener('visibilitychange', updateClock);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', updateClock);
+      document.removeEventListener('visibilitychange', updateClock);
+    };
+  }, [exam.id, exam.status, exam.closes_at]);
+
   const [statistics, setStatistics] = useState<ExamStatisticsData | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<unknown>(null);
@@ -172,7 +188,8 @@ export function ExamResultsTab({
   }, []);
 
   const isFiltered = Boolean(searchInput.trim() || statusFilter);
-  const canPublish = exam.status === 'ENDED';
+  const canPublish = exam.status === 'ENDED' ||
+    (exam.status === 'IN_PROGRESS' && now >= Date.parse(exam.closes_at));
   const canChangeVisibility = exam.status === 'RESULT_PUBLISHED';
   const isPreExam = ['DRAFT', 'GENERATED', 'PUBLISHED'].includes(exam.status);
 
@@ -204,11 +221,11 @@ export function ExamResultsTab({
             <span>Làm mới &amp; Chấm tự động</span>
           </Button>
 
-          {canPublish ? (
+          {canPublish || exam.status === 'IN_PROGRESS' ? (
             <Button
               type="button"
               size="sm"
-              disabled={!canManage}
+              disabled={!canManage || !canPublish}
               onClick={() => setPublishOpen(true)}
               className="bg-brand-600 font-semibold text-white hover:bg-brand-700"
             >
@@ -231,6 +248,12 @@ export function ExamResultsTab({
           ) : null}
         </div>
       </div>
+
+      {exam.status === 'IN_PROGRESS' && !canPublish && (
+        <p className="text-sm text-text-secondary">
+          Có thể công bố kết quả sau khi kỳ thi kết thúc lúc {new Date(exam.closes_at).toLocaleString('vi-VN')}.
+        </p>
+      )}
 
       {!canManage ? (
         <div className="flex items-start gap-2.5 rounded-xl border border-semantic-info/30 bg-semantic-info-bg px-4 py-3 text-xs text-semantic-info">

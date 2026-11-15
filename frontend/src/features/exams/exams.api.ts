@@ -119,6 +119,26 @@ export async function cancelExamApi(
   });
 }
 
+export async function changeExamCloseTimeApi(
+  examId: string,
+  payload: { closes_at: string; reason: string }
+): Promise<ApiEnvelope<ExamRecord>> {
+  return apiRequest<ExamRecord>(
+    `/exams/${encodeURIComponent(examId)}/close-time`,
+    { method: 'PATCH', body: payload }
+  );
+}
+
+export async function endExamEarlyApi(
+  examId: string,
+  reason: string
+): Promise<ApiEnvelope<ExamRecord>> {
+  return apiRequest<ExamRecord>(
+    `/exams/${encodeURIComponent(examId)}/end-early`,
+    { method: 'POST', body: { reason: reason.trim() } }
+  );
+}
+
 // ==========================================
 // 2. MATRIX, GRADING RULES, ROOT & VARIANTS
 // ==========================================

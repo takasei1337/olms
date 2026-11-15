@@ -3,7 +3,7 @@ const supabase = require('../config/supabase');
 async function findSubjects(from, to, q) {
     let query = supabase
         .from('subjects')
-        .select('id, code, name, description', {count: 'exact'})
+        .select('id, code, name, description, created_by', {count: 'exact'})
         .is('deleted_at', null);
 
     if (q) {
@@ -49,7 +49,7 @@ async function createSubject({code, name, description, createdBy}) {
             created_at: now,
             updated_at: now
         })
-        .select('id, code, name, description')
+        .select('id, code, name, description, created_by')
         .single();
 
     if (error) throw error;
@@ -67,7 +67,7 @@ async function updateSubject(subjectId, updates) {
         })
         .eq('id', subjectId)
         .is('deleted_at', null)
-        .select('id, code, name, description')
+        .select('id, code, name, description, created_by')
         .maybeSingle();
 
     if (error) throw error;
